@@ -38,9 +38,13 @@ export { SKILLS_TAXONOMY, SKILL_LADDER, deriveCategory, skillDescriptor } from '
 export { AVAILABILITY_STATES, AVAILABILITY_AWAY, AVAILABILITY_LADDER, isAvailabilityState, availabilityState, isAway, availabilityDescriptor } from './src/availability.js';
 // personal-drivers matcher (#4) — on-device, explainable-only (tag overlap + optional injected LLM judge).
 export { deriveSignature, itemSignature, sharedTags, jaccard, scoreDriver, matchDrivers, matchDriversSemantic, matchProfileDrivers } from './src/driverMatch.js';
+// matchable-aware matching (P4c) — profile↔profile match on the `matchable` axis: `matchableSignature`
+// turns a candidate's releasedForMatching set into a signature, `matchProfilesMatchable` scores MY
+// drivers against it. NOT a disclosure (fed to the on-device matcher only; see releasedForMatching).
+export { matchableSignature, matchProfilesMatchable } from './src/driverMatch.js';
 // anonymous-talk reveal ladder (#5b) — self-controlled, unilateral, ephemeral-default identity reveal.
 export { REVEAL_LEVELS, isRevealLevel, revealRank, nextRevealLevel, ephemeralHandle, createParticipant, revealSelf, revealNext, presentSelf } from './src/revealLadder.js';
-export { createDisclosurePolicy, setDisclosure, getDisclosure, releasedValues, isDisclosed, isMatchable, isRequestable } from './src/disclosure.js';
+export { createDisclosurePolicy, setDisclosure, getDisclosure, releasedValues, releasedForMatching, isDisclosed, isMatchable, isRequestable } from './src/disclosure.js';
 // property layer (design Phase 1) — the canonical Request record + the governed-request check.
 export { createRequest, requestHash, requestKeys } from './src/request.js';
 export { checkRequestAllowed, DEFAULT_GOVERNED_POLICY } from './src/governedRequest.js';

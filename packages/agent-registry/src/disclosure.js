@@ -132,3 +132,51 @@ export function releasedValues({ getProfile, profileId, defaultProfileId = null 
   }
   return out;
 }
+
+/**
+ * The MATCHING counterpart to `releasedValues` — the values the on-device matcher may consult for a
+ * CONTEXT, keyed off the `matchable` axis (isMatchable), INDEPENDENT of `disclosed`/`enabled`.
+ *
+ * This is NOT a disclosure. The output is fed ONLY to the on-device matcher (per the one-sided,
+ * de-identification model: the matched-AGAINST party consents that a property "may be checked for
+ * matches", and a hit in an anonymous circle doesn't reveal WHO — NOTE-skills-vs-capabilities.md
+ * volley 3). It must NEVER be rendered on the roster, added to the released/disclosed set, or used to
+ * open a request channel. `releasedValues` remains the ONLY disclosure surface and stays
+ * `enabled`-only, so a matchable-but-not-disclosed property is surfaced HERE and nowhere else. True
+ * two-sided-blind matching (neither side exposed) is the TEE upgrade, deferred (drivers-#6).
+ *
+ * Symmetry with `releasedValues`: same resolve → coarsen → fail-closed pipeline (a value the coarsen
+ * fn can't reduce is WITHHELD from the matcher too — matching never leaks a raw fine value either),
+ * differing ONLY in the axis it keys off (`matchable` here, `enabled` there).
+ *
+ * Scoping: with a typed `request` (items[]) it restricts to those keys (symmetry with releasedValues);
+ * with NO request it surfaces EVERY matchable key for the context — the match-PROPOSAL path (a
+ * property change / circle-join runs the matcher with no incoming request).
+ *
+ * @param {object} profileCtx  { getProfile, profileId, defaultProfileId }  (as releasedValues)
+ * @param {{ items?: Array<{key:string}> }|null} [request]  optional key filter; null = all matchable keys
+ * @param {object} policy       the user's disclosure policy
+ * @param {string} contextId
+ * @param {object} [vocabulary] a createVocabulary(...) — for coarsening (optional)
+ * @returns {object}  { [key]: matchableValue } for matchable + resolvable keys only
+ */
+export function releasedForMatching({ getProfile, profileId, defaultProfileId = null }, request, policy, contextId, vocabulary = null) {
+  const out = {};
+  // An explicit request restricts to its keys; otherwise every key the policy marks for this context
+  // (we then keep only the matchable ones) — the request-less match-proposal path.
+  const keys = (Array.isArray(request?.items) && request.items.length)
+    ? request.items.map((it) => it?.key).filter((k) => typeof k === 'string' && k)
+    : Object.keys(policy?.perContext?.[contextId] || {});
+  for (const key of keys) {
+    // ONLY the matchable axis gates here — enabled/requestable are deliberately NOT consulted, so this
+    // fires for a matchable-but-not-disclosed property (the whole point) and never depends on disclosure.
+    const { matchable, rung } = getDisclosure(policy, contextId, key);
+    if (!matchable) continue;                                            // not matchable → absent
+    const value = resolveProperty(getProfile, profileId, key, { defaultProfileId });
+    if (value === undefined) continue;                                   // nothing to match on
+    const forMatch = vocabulary ? vocabulary.coarsen(key, value, rung) : value;
+    if (forMatch === undefined) continue;                                // fail-closed (as releasedValues)
+    out[key] = forMatch;
+  }
+  return out;
+}

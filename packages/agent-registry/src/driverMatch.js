@@ -11,7 +11,7 @@
 //
 // Pure deterministic core + an optional async judge-aware wrapper. web ≡ mobile.
 
-import { normalizeTags, driversFromProperties } from './drivers.js';
+import { normalizeTags, driversFromProperties, isDriverValue } from './drivers.js';
 
 /**
  * A "driver signature" is what an item carries for matching: `{ text, tags[] }` (#5 puts it on
@@ -67,6 +67,73 @@ export function matchProfileDrivers({ properties, item, judge, minShared = 1 } =
     minShared,
   });
 }
+
+/**
+ * Build a driver-matching SIGNATURE from a candidate's MATCHABLE value-set — the `{ key → value }`
+ * map produced by `releasedForMatching` (disclosure.js). This is the counterpart to `itemSignature`:
+ * where that turns an incoming feed ITEM into a signature, this turns another person's matchable
+ * surface into one, so MY drivers can be scored against it (profile↔profile matching).
+ *
+ * A driver value contributes its tags (+ text); a plain string value (a coarse-enum like a place)
+ * contributes as a single tag. Everything flattens into the SAME normalised tag space the item
+ * matcher already uses, so no new matching logic is needed — just a new signature source.
+ *
+ * NOTE: the input is a MATCHABLE set, never a disclosed one — the caller feeds it the output of
+ * `releasedForMatching`, NOT `releasedValues`. The values are used only to compute a match on the
+ * matcher's device; they are not surfaced anywhere (the de-identification model).
+ *
+ * @param {Record<string, any>} matchableValues   releasedForMatching(...) output
+ * @returns {{text:string, tags:string[]}}
+ */
+export function matchableSignature(matchableValues) {
+  const tags = [];
+  const texts = [];
+  for (const v of Object.values(matchableValues ?? {})) {
+    if (isDriverValue(v)) {
+      if (v.text) texts.push(v.text);
+      for (const t of v.tags) tags.push(t);
+    } else if (typeof v === 'string' && v.trim()) {
+      tags.push(v);                       // a coarse-enum value (e.g. 'bird-watching') matches as a tag
+    }
+    // structured coded values ({code,system,…}) carry no tag space → not matched on here
+  }
+  return deriveSignature({ text: texts.join(' '), tags });
+}
+
+/**
+ * PROFILE↔PROFILE matchable-aware match: score MY private drivers against a CANDIDATE's MATCHABLE
+ * surface. My side never leaves my device (the drivers stay in `properties`); the candidate's side is
+ * ONLY the matchable set they consented to expose for matching (`releasedForMatching` output) — never
+ * their disclosed/roster values. Reuses the exact same explainable matcher (`matchDriversSemantic`):
+ * tag overlap, optional injected judge, every surfaced match carries its plain-language reason.
+ *
+ * This is the on-device matcher's matchable path. The existing item path (`matchProfileDrivers`) is
+ * unchanged — this ADDS the profile↔profile path by feeding the matcher a matchable-derived signature
+ * instead of an item-derived one.
+ *
+ * @param {object} a
+ * @param {Record<string, any>} a.properties         MY full property map (drivers pulled out locally)
+ * @param {Record<string, any>} a.candidateMatchable a candidate's releasedForMatching(...) value-set
+ * @param {Function} [a.judge]                        optional injected LLM judge
+ * @param {number} [a.minShared=1]
+ * @returns {Promise<Array<object>>}
+ */
+export function matchProfilesMatchable({ properties, candidateMatchable, judge, minShared = 1 } = {}) {
+  return matchDriversSemantic({
+    drivers: driversFromProperties(properties),
+    signature: matchableSignature(candidateMatchable),
+    judge,
+    minShared,
+  });
+}
+
+// TODO (P4c follow-ons, NOT in this pass — kept as seam notes):
+//  • basis match-PROPOSAL trigger — call this from apps/basis (the driverMatchNotify seam) on
+//    property-change and circle-join, not only per-incoming-feed-item, and surface "N people here
+//    also care about Y — connect?" (NOTE-skills-vs-capabilities.md volley 3; the wiring is app-side).
+//  • TEE two-sided-blind — matchProfilesMatchable is still ONE-SIDED: the candidate's matchable set
+//    reaches this (the matcher's) device, safe today only via de-identification / anon circles. The
+//    neither-side-exposed upgrade is TEE matching (drivers-#6), deferred.
 
 /** The tags two tag-lists share (normalised inputs assumed), first-seen order of `a`. */
 export function sharedTags(a = [], b = []) {

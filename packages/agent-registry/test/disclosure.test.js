@@ -2,7 +2,8 @@
 import { describe, it, expect } from 'vitest';
 import { own, inherit } from '../src/profileProperties.js';
 import { descriptor, createVocabulary, isPropertyType, PROPERTY_TYPES } from '../src/propertyVocabulary.js';
-import { createDisclosurePolicy, setDisclosure, getDisclosure, releasedValues, isDisclosed, isMatchable, isRequestable } from '../src/disclosure.js';
+import { createDisclosurePolicy, setDisclosure, getDisclosure, releasedValues, releasedForMatching, isDisclosed, isMatchable, isRequestable } from '../src/disclosure.js';
+import { createDriver } from '../src/drivers.js';
 
 // a tiny profile registry: id → { properties }
 const reg = (profiles) => (id) => profiles[id] ?? null;
@@ -176,5 +177,77 @@ describe('three disclosure axes — disclosed · matchable · requestable (P4 fo
     expect(isDisclosed(policy, 'nope', 'nope')).toBe(false);
     expect(isMatchable(policy, 'nope', 'nope')).toBe(false);
     expect(isRequestable(policy, 'nope', 'nope')).toBe(false);
+  });
+});
+
+describe('releasedForMatching — the matching surface, keyed off matchable, NOT disclosed (P4c)', () => {
+  const getProfile = reg({ default: { properties: {
+    hobby: own(createDriver({ kind: 'hobby', text: 'bird-watching', tags: ['bird-watching'] })),
+    place: own('Groningen'),
+  } } });
+  const ctx = { getProfile, profileId: 'default', defaultProfileId: 'default' };
+
+  it('a matchable:true + disclosed:false property is INCLUDED in releasedForMatching, EXCLUDED from releasedValues', () => {
+    // THE INVARIANT: it matches, but never discloses.
+    let policy = createDisclosurePolicy();
+    policy = setDisclosure(policy, 'buurt-42', 'hobby', { matchable: true });   // matchable, NOT disclosed
+    const req = { items: [{ key: 'hobby' }] };
+
+    // surfaced to the matcher…
+    expect(releasedForMatching(ctx, req, policy, 'buurt-42')).toEqual({
+      hobby: createDriver({ kind: 'hobby', text: 'bird-watching', tags: ['bird-watching'] }),
+    });
+    // …but absent from the disclosed/released (roster) set — the value never leaks that way.
+    expect(releasedValues(ctx, req, policy, 'buurt-42')).toEqual({});
+    expect(isDisclosed(policy, 'buurt-42', 'hobby')).toBe(false);
+  });
+
+  it('a disclosed:false property is absent from the disclosed set even while matchable surfaces it', () => {
+    let policy = createDisclosurePolicy();
+    policy = setDisclosure(policy, 'c', 'place', { matchable: true });          // matchable only
+    // disclosed set: nothing (default-withhold, no marker)
+    expect(releasedValues(ctx, { items: [{ key: 'place' }] }, policy, 'c')).toEqual({});
+    // matching set: present
+    expect(releasedForMatching(ctx, { items: [{ key: 'place' }] }, policy, 'c')).toEqual({ place: 'Groningen' });
+  });
+
+  it('a DISCLOSED-but-not-matchable property is released but NOT in the matching set (axes are independent)', () => {
+    let policy = createDisclosurePolicy();
+    policy = setDisclosure(policy, 'c', 'place', { enabled: true });            // disclosed, NOT matchable
+    expect(releasedValues(ctx, { items: [{ key: 'place' }] }, policy, 'c')).toEqual({ place: 'Groningen' });
+    expect(releasedForMatching(ctx, { items: [{ key: 'place' }] }, policy, 'c')).toEqual({});
+  });
+
+  it('a REQUESTABLE-but-not-matchable property is NOT in the matching set (requestable stays independent)', () => {
+    let policy = createDisclosurePolicy();
+    policy = setDisclosure(policy, 'c', 'hobby', { requestable: true });        // requestable only
+    expect(isRequestable(policy, 'c', 'hobby')).toBe(true);
+    expect(releasedForMatching(ctx, { items: [{ key: 'hobby' }] }, policy, 'c')).toEqual({});   // not matchable → absent
+    expect(releasedValues(ctx, { items: [{ key: 'hobby' }] }, policy, 'c')).toEqual({});        // not disclosed → absent
+  });
+
+  it('with NO request it surfaces EVERY matchable key for the context (the match-proposal path)', () => {
+    let policy = createDisclosurePolicy();
+    policy = setDisclosure(policy, 'c', 'hobby', { matchable: true });
+    policy = setDisclosure(policy, 'c', 'place', { matchable: true });
+    policy = setDisclosure(policy, 'c', 'other', { requestable: true });        // not matchable → excluded
+    expect(Object.keys(releasedForMatching(ctx, null, policy, 'c')).sort()).toEqual(['hobby', 'place']);
+  });
+
+  it('is per-context: matchable in one circle does not surface in another', () => {
+    let policy = createDisclosurePolicy();
+    policy = setDisclosure(policy, 'circleA', 'hobby', { matchable: true });
+    expect(Object.keys(releasedForMatching(ctx, null, policy, 'circleA'))).toEqual(['hobby']);
+    expect(releasedForMatching(ctx, null, policy, 'circleB')).toEqual({});
+  });
+
+  it('fail-closed: a matchable value its coarsen fn cannot reduce is WITHHELD from the matcher too', () => {
+    const gp = reg({ default: { properties: { place: own('a-plain-string') } } });
+    const vocab = createVocabulary([descriptor({ key: 'place', type: 'coarse-enum', ladder: ['municipality'],
+      coarsen: (v, rung) => (rung === 'municipality' ? v.municipality : v) })]);   // string → undefined
+    let policy = createDisclosurePolicy();
+    policy = setDisclosure(policy, 'c', 'place', { matchable: true, rung: 'municipality' });
+    expect(releasedForMatching({ getProfile: gp, profileId: 'default', defaultProfileId: 'default' },
+      { items: [{ key: 'place' }] }, policy, 'c', vocab)).toEqual({});   // withheld, not leaked raw
   });
 });

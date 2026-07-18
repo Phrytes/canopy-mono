@@ -133,3 +133,50 @@ describe('driver matcher (#5) — profile + item bridge', () => {
     expect(matches[0].reason).toEqual({ kind: 'tags', tags: ['sailing'] });
   });
 });
+
+describe('matchable-aware matcher (P4c) — profile↔profile on the matchable surface', () => {
+  it('matchableSignature: flattens a releasedForMatching value-set into a normalised signature', async () => {
+    const { matchableSignature, createDriver } = await import('../index.js');
+    const candidateMatchable = {
+      hobby: createDriver({ kind: 'hobby', text: 'bird watching', tags: ['Bird-Watching'] }),
+      place: 'Groningen',                                    // a coarse-enum string → matches as a tag
+    };
+    expect(matchableSignature(candidateMatchable)).toEqual({ text: 'bird watching', tags: ['bird-watching', 'groningen'] });
+  });
+
+  it('two profiles both matchable on the same hobby → the matcher finds the match', async () => {
+    const { releasedForMatching, matchProfilesMatchable } = await import('../index.js');
+    const { own } = await import('../index.js');
+    const { createDisclosurePolicy, setDisclosure, createDriver } = await import('../index.js');
+
+    // My profile (the searcher) — my drivers never leave my device.
+    const myProperties = { hobby: createDriver({ kind: 'hobby', text: 'birding', tags: ['bird-watching'] }) };
+
+    // The candidate exposes their hobby as matchable-but-NOT-disclosed, on THEIR device.
+    const candProfile = (id) => ({ default: { properties: {
+      hobby: own(createDriver({ kind: 'hobby', text: 'bird-watching', tags: ['bird-watching'] })),
+    } } }[id] ?? null);
+    let candPolicy = createDisclosurePolicy();
+    candPolicy = setDisclosure(candPolicy, 'buurt-42', 'hobby', { matchable: true });
+    const candidateMatchable = releasedForMatching(
+      { getProfile: candProfile, profileId: 'default', defaultProfileId: 'default' }, null, candPolicy, 'buurt-42');
+
+    const matches = await matchProfilesMatchable({ properties: myProperties, candidateMatchable });
+    expect(matches).toHaveLength(1);
+    expect(matches[0].key).toBe('hobby');
+    expect(matches[0].reason).toEqual({ kind: 'tags', tags: ['bird-watching'] });
+  });
+
+  it('no shared matchable tag ⇒ no match (never an unexplainable one)', async () => {
+    const { matchProfilesMatchable, createDriver } = await import('../index.js');
+    const myProperties = { hobby: createDriver({ kind: 'hobby', text: 'cooking', tags: ['cooking'] }) };
+    const candidateMatchable = { hobby: createDriver({ kind: 'hobby', text: 'sailing', tags: ['sailing'] }) };
+    expect(await matchProfilesMatchable({ properties: myProperties, candidateMatchable })).toEqual([]);
+  });
+
+  it('a candidate that exposed NOTHING matchable (empty set) yields no match', async () => {
+    const { matchProfilesMatchable, createDriver } = await import('../index.js');
+    const myProperties = { hobby: createDriver({ kind: 'hobby', text: 'birding', tags: ['bird-watching'] }) };
+    expect(await matchProfilesMatchable({ properties: myProperties, candidateMatchable: {} })).toEqual([]);
+  });
+});
