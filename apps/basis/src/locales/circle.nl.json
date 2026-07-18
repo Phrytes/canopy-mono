@@ -3329,6 +3329,10 @@
       "driver": {
         "text": "Drijfveer",
         "doc": "drivers#5 — algemene soort drijfveer."
+      },
+      "interest": {
+        "text": "Interesse",
+        "doc": "interesses→drijfveren fold-in (audit §4/Q6) — soort drijfveer: waar je mee bezig bent (geleerd uit wat je opmerkte)."
       }
     },
     "driver_label_ph": {
@@ -3448,6 +3452,10 @@
         "text": "status",
         "doc": "mij#personas — laddersport: alleen de beschikbaarheids-status (open/beperkt/afwezig), zonder wanneer-detail."
       },
+      "detail": {
+        "text": "status + wanneer",
+        "doc": "availability-polish 1 — laddersport: de status plus een vrije wanneer-notitie (fijnste beschikbaarheids-sport)."
+      },
       "all": {
         "text": "alles",
         "doc": "mij#personas — laddersport: het hele item (drijfveer/vaardigheid deelt heel of niet)."
@@ -3470,6 +3478,10 @@
         "text": "Afwezig",
         "doc": "availability-unificatie (Q5) — waarde: vakantie / niet bereikbaar (== oude holidayMode)."
       }
+    },
+    "availability_when_ph": {
+      "text": "wanneer (bijv. weekends, na 18u)",
+      "doc": "availability-polish 1 — placeholder voor de vrije wanneer-notitie (de 'detail'-sport)."
     },
     "not_set": {
       "text": "niet ingevuld",

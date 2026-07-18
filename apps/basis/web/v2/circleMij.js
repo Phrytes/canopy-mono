@@ -106,12 +106,28 @@ function renderGeneral(tr, model, { onSetProperty, onAddOffering }) {
           save.addEventListener('click', () => onSetProperty(p.key, input.value.trim()));
           editor.append(input, save);
         } else {
+          // A whenField property (availability) can carry an optional free-text "when" note
+          // (the descriptor's finest 'detail' rung). Compose { state, when } when a when is
+          // present; a bare state string otherwise — the store keeps it opaque either way.
+          let whenDraft = p.when ?? '';
+          const compose = (state) => (p.whenField && whenDraft.trim() ? { state, when: whenDraft.trim() } : state);
           for (const b of (p.buckets || [])) {
             const btn = el('button', 'cc-btn', valLabel(b));
             btn.type = 'button';
             if (b === p.value) btn.classList.add('is-active');
-            btn.addEventListener('click', () => onSetProperty(p.key, b));
+            btn.addEventListener('click', () => onSetProperty(p.key, compose(b)));
             editor.appendChild(btn);
+          }
+          if (p.whenField) {
+            const whenInput = el('input', 'cc-mij__input');
+            whenInput.type = 'text';
+            whenInput.value = whenDraft;
+            whenInput.placeholder = tr('circle.mij.availability_when_ph');
+            whenInput.addEventListener('input', () => { whenDraft = whenInput.value; });
+            const whenSave = el('button', 'cc-btn cc-btn--primary', tr('circle.aboutme.save'));
+            whenSave.type = 'button';
+            whenSave.addEventListener('click', () => onSetProperty(p.key, compose(p.value ?? p.buckets[0])));
+            editor.append(whenInput, whenSave);
           }
         }
         row.appendChild(editor);
@@ -196,7 +212,11 @@ function renderPersonas(tr, model, { onCreatePersona }) {
       if (entry.state === 'own') {
         // The root card's own values ARE the general truth — no EIGEN mark there.
         if (!p.isDefault) line.appendChild(el('span', 'cc-mij__own-mark', tr('circle.mij.own_mark')));
-        line.appendChild(el('b', 'cc-mij__own-value', entry.value ?? ''));
+        // Value-localised keys (availability) show their localised token, not a raw one.
+        const ownDisp = (entry.l10n && entry.value != null)
+          ? tr(`${entry.l10n}.${entry.value}`, { defaultValue: entry.value })
+          : entry.value;
+        line.appendChild(el('b', 'cc-mij__own-value', ownDisp ?? ''));
       } else if (entry.state === 'inherit') {
         line.appendChild(el('span', 'cc-mij__inherit', tr('circle.mij.follows_general')));
       } else {
@@ -290,7 +310,10 @@ function renderCircles(tr, model, { onToggleDisclosure, onShareToCircle }) {
       trEl.appendChild(el('td', 'cc-mij__key', tr(`circle.aboutme.key.${r.key}`, { defaultValue: r.key })));
       trEl.appendChild(el('td', 'cc-mij__cell-level',
         r.rung ? tr(`circle.mij.rung.${r.rung}`, { defaultValue: r.rung }) : tr('circle.mij.level_all')));
-      trEl.appendChild(el('td', r.released != null ? 'cc-mij__cell-released' : 'cc-mij__empty', r.released ?? '—'));
+      const relDisp = (r.l10n && r.released != null)
+        ? tr(`${r.l10n}.${r.released}`, { defaultValue: r.released })
+        : r.released;
+      trEl.appendChild(el('td', r.released != null ? 'cc-mij__cell-released' : 'cc-mij__empty', relDisp ?? '—'));
       trEl.appendChild(charterCell(c, r.key));
 
       const action = el('td', 'cc-mij__cell-action');

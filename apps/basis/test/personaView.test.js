@@ -234,14 +234,14 @@ describe('buildMijViewModel', () => {
     const c1 = m.circles.find((c) => c.circleId === 'circle-1');
     // only ENABLED entries become rows (ageBand enabled:false stays out)
     expect(c1.rows).toEqual([
-      { personaId: 'default', personaName: 'default', key: 'place', rung: 'municipality', released: 'Amsterdam' },
+      { personaId: 'default', personaName: 'default', key: 'place', rung: 'municipality', released: 'Amsterdam', l10n: null },
     ]);
     expect(c1.charter).toEqual({ requests: [{ key: 'place', maxRung: 'municipality', purpose: 'spreiding' }] });
     // addable = the general persona's valued keys not yet shared here
     expect(c1.addable.sort()).toEqual(['ageBand', 'zeilen']);
     const c2 = m.circles.find((c) => c.circleId === 'circle-2');
     expect(c2.rows).toEqual([
-      { personaId: 'werk', personaName: 'Werk', key: 'place', rung: null, released: 'Utrecht' },
+      { personaId: 'werk', personaName: 'Werk', key: 'place', rung: null, released: 'Utrecht', l10n: null },
     ]);
     expect(c2.charter).toBe(null);   // no charter → clean empty state
   });
@@ -276,6 +276,61 @@ describe('buildMijViewModel', () => {
     // an unset property is not offered for sharing
     const c1 = m.circles.find((c) => c.circleId === 'circle-1');
     expect(c1.addable).not.toContain('availability');
+  });
+
+  it('availability polish 1 — exposes the detail rung + an optional free-text "when"', () => {
+    const bare = buildMijViewModel({
+      personas: [{ id: 'default', name: 'default', properties: { availability: { mode: 'own', value: 'limited' } }, disclosure: { perContext: {} } }],
+      circles: [], releases: {},
+    });
+    const a = bare.general.properties.find((p) => p.key === 'availability');
+    // display ladder now ends state → detail → ∅ (the descriptor's finest rung is surfaced)
+    expect(a.ladder).toEqual(['state', 'detail', 'none']);
+    expect(a).toMatchObject({ whenField: true, when: null });   // no when yet
+
+    // a structured { state, when } value: state still drives the row value; the when is exposed
+    const rich = buildMijViewModel({
+      personas: [{ id: 'default', name: 'default', properties: { availability: { mode: 'own', value: { state: 'limited', when: 'weekends' } } }, disclosure: { perContext: {} } }],
+      circles: [], releases: {},
+    });
+    const r = rich.general.properties.find((p) => p.key === 'availability');
+    expect(r).toMatchObject({ key: 'availability', value: 'limited', set: true, whenField: true, when: 'weekends' });
+  });
+
+  it('availability polish 2 — carries the value-l10n hint onto persona cards + released rows', () => {
+    const personas = [{
+      id: 'default', name: 'default',
+      properties: { availability: { mode: 'own', value: 'away' } },
+      disclosure: { perContext: { 'circle-1': { availability: { enabled: true, rung: 'state' } } } },
+    }];
+    const releases = { default: { 'circle-1': { availability: 'away' } } };
+    const m = buildMijViewModel({ personas, circles: mijCircles, releases });
+    // section 2: the persona card entry for availability carries the l10n prefix so the shell
+    // localises the raw token; the value stays the token (localisation happens in the shell).
+    const card = m.personas.find((p) => p.id === 'default');
+    const entry = card.entries.find((e) => e.key === 'availability');
+    expect(entry).toMatchObject({ key: 'availability', value: 'away', l10n: 'circle.mij.availability' });
+    // a non-l10n key (place) carries a null hint → rendered raw
+    expect(card.entries.find((e) => e.key === 'place').l10n).toBe(null);
+    // section 3: the per-circle released row also carries the hint
+    const row = m.circles.find((c) => c.circleId === 'circle-1').rows.find((rr) => rr.key === 'availability');
+    expect(row).toMatchObject({ key: 'availability', released: 'away', l10n: 'circle.mij.availability' });
+  });
+
+  it('interests fold-in — an interest-kind driver shows as a general chip (audit §4/Q6)', () => {
+    const personas = [{
+      id: 'default', name: 'default',
+      properties: { interests: { mode: 'own', value: { kind: 'interest', text: '', tags: ['zeilen', 'houtbewerking'] } } },
+      disclosure: { perContext: {} },
+    }];
+    const m = buildMijViewModel({ personas, circles: mijCircles, releases: {} });
+    // interests are FREE drivers → a chip, not a coarse property row
+    expect(m.general.properties.find((p) => p.key === 'interests')).toBeUndefined();
+    const chip = m.general.drivers.find((d) => d.key === 'interests');
+    expect(chip).toMatchObject({ key: 'interests', kind: 'interest', text: '', tags: ['zeilen', 'houtbewerking'] });
+    expect(chip.categoryId).toBeUndefined();   // no taxonomy / coarse rung for interests
+    // shareable per circle like any driver (disclosure-controlled)
+    expect(m.circles.find((c) => c.circleId === 'circle-1').addable).toContain('interests');
   });
 
   it('renders location as a folded-in coarse place property row (audit §4)', () => {

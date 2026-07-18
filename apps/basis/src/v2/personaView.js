@@ -27,17 +27,37 @@
 import { attributeKeys, bucketsFor } from '@onderling/attribute-charter';
 import { isDriverValue, normalizeDriverKind, deriveOfferingCategory, OFFERINGS_TAXONOMY, AVAILABILITY_STATES, availabilityState, locationLabel } from '@onderling/agent-registry';
 
+/** The free-text "when" note of a structured availability value ({ state, when }), or null. */
+function availabilityWhen(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value) && typeof value.when === 'string' && value.when.trim()) {
+    return value.when.trim();
+  }
+  return null;
+}
+
 /* ── availability — the ONE unified reachability property (decision Q5) ───────
  * Not a charter key: a person-level coarse-enum (open/limited/away) that folds
  * the old per-offering availability sub-field AND the holidayMode boolean. Rendered
  * as a normal property ROW in the general-persona section; disclosure-controlled
  * per circle like every other key. The `l10n` prefix tells the shells to localise
  * the value + the bucket options (charter buckets stay raw domain tokens). Its
- * DISPLAY ladder hint is `state → ∅` — the descriptor's finer 'detail' rung
- * (free-text "when") is a TODO, so it isn't offered to users yet. */
+ * DISPLAY ladder is `state → detail → ∅`: the descriptor's finest 'detail' rung
+ * is the free-text "when" note — a value-localised state PLUS an optional free
+ * phrase ("weekends", "na 18u") that only the 'detail' rung releases (availability
+ * polish item 1; the descriptor + fail-closed coarsen already ship the
+ * `{ state, when }` value model). The row carries `whenField:true` + the current
+ * `when` so the shells offer an optional "when" input alongside the state buckets. */
 export const AVAILABILITY_KEY = 'availability';
-const AVAILABILITY_DISPLAY_LADDER = Object.freeze(['state', 'none']);
+const AVAILABILITY_DISPLAY_LADDER = Object.freeze(['state', 'detail', 'none']);
 const AVAILABILITY_L10N = 'circle.mij.availability';
+
+/* Keys whose OPAQUE value is a localised domain TOKEN (not a real name): the shells
+ * localise it via `<l10n>.<value>` everywhere it renders — the general row already did,
+ * this hint carries the same to the persona cards + the per-circle released column so a
+ * shared availability never shows a raw `away`/`open` token (availability polish item 2). */
+const VALUE_L10N = Object.freeze({ [AVAILABILITY_KEY]: AVAILABILITY_L10N });
+/** The value-l10n prefix for a key (e.g. availability), or null when its value is a real string. */
+export function valueL10nFor(key) { return VALUE_L10N[key] ?? null; }
 
 /* ── location — the folded-in coarse PLACE property (audit §4, design's canonical ladder) ──
  * Not a charter key: a person-level property that folds the bespoke stoop `profile.location`
@@ -128,6 +148,13 @@ export function propertyStateFor(rawSelf, rawDefault, key) {
 function displayValue(v) {
   if (v === undefined || v === null) return null;
   if (isDriverValue(v)) return v.text || v.tags.join(', ');
+  // availability {state,when} (or a coarsened bare state) → the state TOKEN; the shells
+  // localise it via the value-l10n hint. Kept before the string checks so the object form
+  // (the 'detail' rung's released value) renders its state, not empty.
+  if (v && typeof v === 'object' && !Array.isArray(v)) {
+    const st = availabilityState(v);
+    if (st != null) return st;
+  }
   if (typeof v === 'string') return v.length ? v : null;
   if (typeof v === 'number' || typeof v === 'boolean') return String(v);
   return null;
@@ -284,7 +311,8 @@ export function buildMijViewModel({ personas, defaultId = 'default', circles, re
   });
   // availability — the unified reachability property (decision Q5): a coarse-enum row
   // with a LOCALISED value set (l10n prefix), rendered like place/ageBand.
-  const availabilityValue = availabilityState(ownValueOf(defaultRaw[AVAILABILITY_KEY]));
+  const availabilityRaw = ownValueOf(defaultRaw[AVAILABILITY_KEY]);
+  const availabilityValue = availabilityState(availabilityRaw);
   generalProperties.push({
     key: AVAILABILITY_KEY,
     value: availabilityValue,
@@ -293,6 +321,10 @@ export function buildMijViewModel({ personas, defaultId = 'default', circles, re
     set: availabilityValue != null,
     ladder: AVAILABILITY_DISPLAY_LADDER,
     l10n: AVAILABILITY_L10N,
+    // polish item 1 — the 'detail' rung: an optional free-text "when" note the shells offer
+    // alongside the state buckets (stored as { state, when }; released only at the 'detail' rung).
+    whenField: true,
+    when: availabilityWhen(availabilityRaw),
   });
   // location — the folded-in coarse place property (audit §4): an OPEN coarse label (free
   // like `place`) with the design's canonical ladder; disclosure-controlled per circle.
@@ -320,7 +352,9 @@ export function buildMijViewModel({ personas, defaultId = 'default', circles, re
       const { state, value } = isDefault
         ? propertyStateFor(p.properties ?? {}, null, key)      // the root inherits from nobody
         : propertyStateFor(p.properties ?? {}, defaultRaw, key);
-      return { key, state, value: displayValue(value) };
+      // polish item 2 — carry the value-l10n hint (availability) so the card shows the
+      // localised state token, not a raw `away`/`open`.
+      return { key, state, value: displayValue(value), l10n: valueL10nFor(key) };
     });
     return { id: p.id, name: (typeof p.name === 'string' && p.name) ? p.name : p.id, isDefault, entries };
   });
@@ -346,6 +380,8 @@ export function buildMijViewModel({ personas, defaultId = 'default', circles, re
             key,
             rung: (typeof entry.rung === 'string' && entry.rung) ? entry.rung : null,
             released: (released && released[key] !== undefined) ? displayValue(released[key]) : null,
+            // polish item 2 — value-l10n hint so a released availability shows the localised token.
+            l10n: valueL10nFor(key),
           });
         }
       }

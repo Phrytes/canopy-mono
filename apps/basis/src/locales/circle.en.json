@@ -3329,6 +3329,10 @@
       "driver": {
         "text": "Driver",
         "doc": "drivers#5 — generic driver kind."
+      },
+      "interest": {
+        "text": "Interest",
+        "doc": "interests→drivers fold-in (audit §4/Q6) — driver kind: what you engage with (learned from what you noticed)."
       }
     },
     "driver_label_ph": {
@@ -3448,6 +3452,10 @@
         "text": "status",
         "doc": "mij#personas — ladder rung: the availability status only (open/limited/away), without a when-detail."
       },
+      "detail": {
+        "text": "status + when",
+        "doc": "availability polish 1 — ladder rung: the status plus a free-text when-note (the finest availability rung)."
+      },
       "all": {
         "text": "everything",
         "doc": "mij#personas — ladder rung: the whole item (a driver/skill shares whole or not at all)."
@@ -3470,6 +3478,10 @@
         "text": "Away",
         "doc": "availability unification (Q5) — value: holiday / not available (== the old holidayMode)."
       }
+    },
+    "availability_when_ph": {
+      "text": "when (e.g. weekends, after 6pm)",
+      "doc": "availability polish 1 — placeholder for the free-text when-note (the 'detail' rung)."
     },
     "not_set": {
       "text": "not set",
