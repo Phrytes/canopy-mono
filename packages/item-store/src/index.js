@@ -9,6 +9,9 @@
 
 export { ItemStore, computeStatus } from './ItemStore.js';
 export { CircleItemStore } from './CircleItemStore.js';   // cluster L · L1 — per-circle, type-indexed generic store
+export {                                                  // PLAN-capabilities-tasks-roles P1 (Option A) — task lifecycle
+  claim, reassign, markComplete, submit, approve, reject, revoke,  // VERBS as functions-over-CircleItemStore
+} from './taskLifecycle.js';
 export { createGenericAtomHandlers } from './genericAtomHandlers.js';  // B · Layer 1 §1b — generic CRUD-by-atom over any noun
 export { memoryDataSource } from './memoryDataSource.js'; // cluster L · L1 — Map-backed DataSource (no-pod / tests)
 export { createCircleStores } from './circleStores.js';  // cluster L · L1 — per-circle store registry (web≡mobile)
