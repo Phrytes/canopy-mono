@@ -17,7 +17,7 @@
  * applies only at new joins).
  */
 
-import { SKILLS_TAXONOMY } from '@onderling/agent-registry';
+import { OFFERINGS_TAXONOMY } from '@onderling/agent-registry';
 
 /** Marker property on the default profile: comma-joined migrated circle ids.
  *  Not a charter key and not a driver value, so no surface renders it. */
@@ -31,7 +31,7 @@ export function skillKeyFor({ text, tags }) {
 const unwrap = (v) => (v && typeof v === 'object' && 'mode' in v ? v.value : v);
 
 function categoryLabelNl(categoryId) {
-  const cat = SKILLS_TAXONOMY.categories.find((c) => c.id === categoryId);
+  const cat = OFFERINGS_TAXONOMY.categories.find((c) => c.id === categoryId);
   return cat?.label?.nl ?? null;
 }
 
@@ -73,7 +73,7 @@ export async function migrateRosterSkills({ callSkill, circleId, defaultId = 'de
     if (keys.includes(key)) continue; // same phrase twice on one roster — one item
     try {
       const res = await callSkill('agents', 'setProfileDriver', {
-        id: defaultId, key, kind: 'skill', text, tags: freeTags,
+        id: defaultId, key, kind: 'offering', text, tags: freeTags,
         categoryId: typeof s.categoryId === 'string' ? s.categoryId : undefined,
       });
       if (res?.ok === false) continue;

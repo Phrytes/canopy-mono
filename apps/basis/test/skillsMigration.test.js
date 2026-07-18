@@ -36,7 +36,7 @@ describe('phase D — roster skills → root persona', () => {
     expect(res).toMatchObject({ ok: true, migrated: 1 });
     const [d] = driverCalls(host.calls);
     expect(d.args).toMatchObject({
-      id: 'default', kind: 'skill', text: 'lekken sanitair', tags: ['lekken', 'sanitair'], categoryId: 'klussen',
+      id: 'default', kind: 'offering', text: 'lekken sanitair', tags: ['lekken', 'sanitair'], categoryId: 'klussen',
     });
     expect(d.args.key).toBe(skillKeyFor({ text: 'lekken sanitair', tags: 'lekken sanitair' }));
   });

@@ -36,7 +36,7 @@ import { skillKeyFor as sharedSkillKeyFor } from '../../../basis/src/core/skills
 /** Skills (#Q1) — add a skill-kind driver ({text, tags}) to the GENERAL persona. */
 export async function addGeneralSkill({ callSkill, defaultId, text, tags }) {
   const key = sharedSkillKeyFor({ text, tags });
-  try { await callSkill('agents', 'setProfileDriver', { id: defaultId ?? 'default', key, kind: 'skill', text, tags }); } catch { /* */ }
+  try { await callSkill('agents', 'setProfileDriver', { id: defaultId ?? 'default', key, kind: 'offering', text, tags }); } catch { /* */ }
 }
 
 /** Section-2 add-affordance — create a new persona (createProfile). */

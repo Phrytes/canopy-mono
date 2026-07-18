@@ -34,14 +34,6 @@ export { DRIVER_KINDS, isDriverKind, normalizeDriverKind, normalizeTag, normaliz
 // legacy `skill` read-accepted); the fixed taxonomy is DEMOTED to its coarse disclosure rung
 // (text+tags → categoryId → ∅). The INVOCABLE A2A sense keeps the word "skill".
 export { OFFERINGS_TAXONOMY, OFFERING_LADDER, deriveOfferingCategory, offeringDescriptor } from './src/offeringsTaxonomy.js';
-// TEMPORARY back-compat aliases (pre-rename Sense-B names) — in-repo consumers migrate slice by
-// slice; remove once none remain (see plans/NOTE-offering-rename-inventory.md).
-export {
-  OFFERINGS_TAXONOMY as SKILLS_TAXONOMY,
-  OFFERING_LADDER as SKILL_LADDER,
-  deriveOfferingCategory as deriveCategory,
-  offeringDescriptor as skillDescriptor,
-} from './src/offeringsTaxonomy.js';
 // availability unification (NOTE-skills-properties-audit §4/§5, Q5) — ONE person-level
 // coarse-enum property (open/limited/away) folding the old per-skill `availability`
 // sub-field AND the standalone `holidayMode` boolean; 'away' IS holiday mode.

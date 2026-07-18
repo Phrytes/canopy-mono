@@ -33,13 +33,19 @@ describe('setProfileDriver / getProfileDrivers (#3)', () => {
     expect(got.drivers.goals.tags).toEqual(['sailing', 'learning']);
   });
 
-  it('accepts kind skill end-to-end (skills fold-in): stored as a skill, not downgraded', async () => {
+  it('accepts kind offering end-to-end (offering fold-in): stored as offering, not downgraded', async () => {
     const store = fakeStore();
-    const r = await setProfileDriver(store, { id: 'default', key: 'skill', kind: 'skill', text: 'ik repareer fietsen', tags: 'fiets, repareren' });
-    expect(r).toEqual({ ok: true, id: 'default', key: 'skill' });
-    expect(store._properties.skill.kind).toBe('skill');    // NOT the generic 'driver' fallback
+    const r = await setProfileDriver(store, { id: 'default', key: 'offering', kind: 'offering', text: 'ik repareer fietsen', tags: 'fiets, repareren' });
+    expect(r).toEqual({ ok: true, id: 'default', key: 'offering' });
+    expect(store._properties.offering.kind).toBe('offering');    // NOT the generic 'driver' fallback
     const got = await getProfileDrivers(store, { id: 'default' });
-    expect(got.drivers.skill.tags).toEqual(['fiets', 'repareren']);
+    expect(got.drivers.offering.tags).toEqual(['fiets', 'repareren']);
+  });
+
+  it('read-accepts the legacy kind skill, normalizing it to offering', async () => {
+    const store = fakeStore();
+    await setProfileDriver(store, { id: 'default', key: 'legacy', kind: 'skill', text: 'ik repareer fietsen', tags: 'fiets' });
+    expect(store._properties.legacy.kind).toBe('offering');
   });
 
   it('accepts tags as a comma-separated string (wire/slash path)', async () => {

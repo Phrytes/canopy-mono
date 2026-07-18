@@ -3467,11 +3467,11 @@ async function openAboutMePanel(personaId) {
         await draw();
       },
       // Skills (#Q1) — a skill is a driver-like open item {text, tags[]};
-      // kind 'skill' is a first-class DRIVER_KIND (agent-registry) and its
-      // coarse rung is the taxonomy category (skillsTaxonomy.js).
+      // kind 'offering' is a first-class DRIVER_KIND (agent-registry) and its
+      // coarse rung is the taxonomy category (offeringsTaxonomy.js).
       onAddSkill: async ({ text, tags }) => {
         const key = (text || tags).trim().toLowerCase().slice(0, 40);   // keyed by the phrase; re-using it edits
-        try { await rawCallSkill('agents', 'setProfileDriver', { id: model.defaultId ?? 'default', key, kind: 'skill', text, tags }); } catch { /* */ }
+        try { await rawCallSkill('agents', 'setProfileDriver', { id: model.defaultId ?? 'default', key, kind: 'offering', text, tags }); } catch { /* */ }
         await draw();
       },
       onCreatePersona: async (name) => {

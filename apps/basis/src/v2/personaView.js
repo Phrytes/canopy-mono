@@ -25,11 +25,11 @@
  */
 
 import { attributeKeys, bucketsFor } from '@onderling/attribute-charter';
-import { isDriverValue, deriveCategory, SKILLS_TAXONOMY, AVAILABILITY_STATES, availabilityState, locationLabel } from '@onderling/agent-registry';
+import { isDriverValue, normalizeDriverKind, deriveOfferingCategory, OFFERINGS_TAXONOMY, AVAILABILITY_STATES, availabilityState, locationLabel } from '@onderling/agent-registry';
 
 /* ── availability — the ONE unified reachability property (decision Q5) ───────
  * Not a charter key: a person-level coarse-enum (open/limited/away) that folds
- * the old per-skill availability sub-field AND the holidayMode boolean. Rendered
+ * the old per-offering availability sub-field AND the holidayMode boolean. Rendered
  * as a normal property ROW in the general-persona section; disclosure-controlled
  * per circle like every other key. The `l10n` prefix tells the shells to localise
  * the value + the bucket options (charter buckets stay raw domain tokens). Its
@@ -70,7 +70,7 @@ export const PROPERTY_LADDERS = Object.freeze({
   household: Object.freeze(['category', 'none']),
 });
 
-/** A driver/skill has NO coarseness ladder — it is shared whole or not at all. */
+/** A driver/offering has NO coarseness ladder — it is shared whole or not at all. */
 export const DRIVER_LADDER = Object.freeze(['all', 'none']);
 
 /** The ladder rung keys for a charter attribute, or null when none is known. */
@@ -134,17 +134,19 @@ function displayValue(v) {
 }
 
 /** The driver-shaped entries of a raw properties map, unwrapped: [{key, kind, text, tags}].
- *  Skill-kind entries also carry `categoryId` — the taxonomy bucket the skill
- *  coarsens to under disclosure (a user-picked id wins over derivation). */
+ *  Offering-kind entries also carry `categoryId` — the taxonomy bucket the offering
+ *  coarsens to under disclosure (a user-picked id wins over derivation). Legacy `skill`-kind
+ *  values are normalized to `offering` on read. */
 function driverEntries(raw) {
   return Object.entries(unwrapOwnProperties(raw))
     .filter(([, v]) => isDriverValue(v))
     .map(([key, v]) => {
-      const entry = { key, kind: v.kind, text: v.text, tags: [...v.tags] };
-      if (v.kind === 'skill') {
-        entry.categoryId = v.categoryId || deriveCategory({ text: v.text, tags: v.tags });
+      const kind = normalizeDriverKind(v.kind);
+      const entry = { key, kind, text: v.text, tags: [...v.tags] };
+      if (kind === 'offering') {
+        entry.categoryId = v.categoryId || deriveOfferingCategory({ text: v.text, tags: v.tags });
         const cat = entry.categoryId
-          ? SKILLS_TAXONOMY.categories.find((c) => c.id === entry.categoryId)
+          ? OFFERINGS_TAXONOMY.categories.find((c) => c.id === entry.categoryId)
           : null;
         if (cat) entry.categoryLabel = { ...cat.label }; // {nl, en} — renderer picks by lang
       }
@@ -237,7 +239,7 @@ export function buildPersonaViewModel({ view, circles } = {}) {
 /* ── Mij → persona's (the bulletin surface) ─────────────────────────────────
  * The read-model behind the three stacked sections:
  *   1. the GENERAL persona (the default profile — the truth layer): its charter
- *      properties with ladder hints + its skills/drivers as chips,
+ *      properties with ladder hints + its offerings/drivers as chips,
  *   2. every persona as a card — per key own ("EIGEN") / inherit ("volgt
  *      algemeen") / absent (∅) against the general persona,
  *   3. per circle: who sees what — persona × key × rung × released value, plus
@@ -307,7 +309,7 @@ export function buildMijViewModel({ personas, defaultId = 'default', circles, re
 
   // ── 2 · persona cards ────────────────────────────────────────────────────
   // Row keys = the charter attributes + every extra key any persona declares
-  // (drivers/skills included), so an override never disappears from its card.
+  // (drivers/offerings included), so an override never disappears from its card.
   const keyOrder = [...attributeKeys()];
   for (const p of list) {
     for (const k of Object.keys(p.properties ?? {})) if (!keyOrder.includes(k)) keyOrder.push(k);

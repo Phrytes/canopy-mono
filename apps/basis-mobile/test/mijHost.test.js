@@ -131,11 +131,11 @@ describe('the edit ops — same calls the web host fires (verify the dispatch sh
     expect(callSkill).toHaveBeenCalledWith('agents', 'setProfileProperty', { id: 'default', key: 'place', value: 'Utrecht' });
   });
 
-  it('addGeneralSkill sends setProfileDriver kind=skill on the default profile, keyed by the phrase (web parity)', async () => {
+  it('addGeneralSkill sends setProfileDriver kind=offering on the default profile, keyed by the phrase (web parity)', async () => {
     const callSkill = vi.fn(async () => ({ ok: true }));
     await addGeneralSkill({ callSkill, defaultId: 'default', text: 'Fietsen repareren', tags: 'fiets, gereedschap' });
     expect(callSkill).toHaveBeenCalledWith('agents', 'setProfileDriver', {
-      id: 'default', key: 'fietsen repareren', kind: 'skill', text: 'Fietsen repareren', tags: 'fiets, gereedschap',
+      id: 'default', key: 'fietsen repareren', kind: 'offering', text: 'Fietsen repareren', tags: 'fiets, gereedschap',
     });
     // the exact web derivation: (text || tags) → trim → lowercase → first 40 chars
     expect(skillKeyFor({ text: '', tags: 'X'.repeat(50) })).toBe('x'.repeat(40));

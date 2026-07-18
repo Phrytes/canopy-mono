@@ -11,6 +11,8 @@
  * without an explicit polyfill check.
  */
 
+import { normalizeDriverKind } from '@onderling/agent-registry';
+
 import { buildJoinConsentModel, optOutsFromDeclined } from '../../v2/circleConsent.js';
 
 /* ─── Locale strings ────────────────────────────────────────── */
@@ -285,7 +287,7 @@ export function setShareSkillsAtJoin(state, on) {
   return state;
 }
 
-/** The coarse rung the join-time default discloses skills at (SKILL_LADDER's coarsest). */
+/** The coarse rung the join-time default discloses offerings at (OFFERING_LADDER's coarsest). */
 export const SKILLS_JOIN_RUNG = 'category';
 
 /**
@@ -306,7 +308,8 @@ export async function applySkillsDisclosureAtJoin({ state, callSkill, contextId 
   try { drivers = (await callSkill('agents', 'getProfileDrivers', { id: personaId }))?.drivers ?? {}; }
   catch { return []; }
   const keys = Object.entries(drivers)
-    .filter(([, v]) => v?.kind === 'skill')
+    // offering-kind drivers (legacy `skill` kind read-accepted / normalized)
+    .filter(([, v]) => normalizeDriverKind(v?.kind) === 'offering')
     .map(([k]) => k);
   const enabled = [];
   for (const key of keys) {

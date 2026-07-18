@@ -29,10 +29,10 @@ async function boot() {
 
   // Two skill-kind offerings on the default (no-login) persona.
   expect((await a.callSkill('agents', 'setProfileDriver', {
-    id: 'default', key: OFFER_KEY, kind: 'skill', text: 'Walk your dog', tags: 'pets,dogs',
+    id: 'default', key: OFFER_KEY, kind: 'offering', text: 'Walk your dog', tags: 'pets,dogs',
   })).ok).toBe(true);
   expect((await a.callSkill('agents', 'setProfileDriver', {
-    id: 'default', key: OTHER_KEY, kind: 'skill', text: 'Cook a meal', tags: 'food',
+    id: 'default', key: OTHER_KEY, kind: 'offering', text: 'Cook a meal', tags: 'food',
   })).ok).toBe(true);
 
   // Mark ONLY dogwalk requestable (+ matchable) in this circle; cooking stays non-requestable.
