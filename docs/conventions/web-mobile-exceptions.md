@@ -36,7 +36,7 @@ different gesture.
 | QR **scanning** | mobile only | no camera API parity on desktop web; web shows the QR + paste-a-code path | 2026-05 | WebRTC camera capture, when worth it |
 | Push notifications | mobile only | web-push exists but the privacy-preserving notification model is still designed, not built | 2026-06 | `plans/NOTE-notifications-model.md` |
 | Legacy ChatScreen (invisible peer-wiring host) | mobile only | v1 residue; keeps inbound routing alive until the port lands | 2026-05 | retire with the chat-surface completion |
-| Light/dark **toggle** (both platforms follow the OS scheme) | web only | mobile v2 screens build StyleSheets at module load — palette is picked once at boot; live switching needs a theme-context refactor | 2026-07 | theme-context refactor across the v2 screens |
+| Light/dark **toggle** — live recolour of *every* screen | web full; mobile partial | the systeem/licht/donker toggle + reactive theme context now ship on both (shared `themePref` contract, one storage key); on mobile the toggle recolours screens that read the theme via `useTheme()` at render (My-data) live, but the remaining v2 screens still build StyleSheets at module load so they adopt the resolved palette on their next mount | 2026-07 | convert the remaining module-level StyleSheets to render-time (`useTheme()` / `makeStyles(theme)`) screen by screen |
 
 Add a row when you consciously ship a one-platform feature; remove it when parity lands. The
 surface-coverage snapshot (`npm run coverage` in `apps/basis`) is the mechanical side of this

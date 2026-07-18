@@ -22,6 +22,7 @@ import { asyncStorageMappingsStore, MAPPINGS_DEVICE } from './src/core/mappingsS
 import * as SecureStore from 'expo-secure-store';
 
 import { theme } from './src/screens/v2/theme.js';
+import { ThemeProvider } from './src/screens/v2/themeContext.js';
 
 import ChatScreen from './src/screens/ChatScreen.js';
 import CircleLauncherScreen from './src/screens/v2/CircleLauncherScreen.js';
@@ -434,6 +435,10 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="auto" />
+      {/* Reactive display theme (systeem / licht / donker). The provider reads the
+          stored preference, resolves 'system' against the live OS scheme, and
+          re-renders on change — the My-data toggle recolours render-time readers live. */}
+      <ThemeProvider>
       <View style={styles.root}>
         {/* ChatScreen stays mounted (peer-wiring keeps routing
             inbound DMs / mesh) but is visually hidden behind the launcher
@@ -471,6 +476,7 @@ export default function App() {
              no onChatRoute (the kring view IS the chat, no route). */
         />
       </View>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

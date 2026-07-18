@@ -3,21 +3,28 @@
  *
  * Derives from the canonical token object (apps/basis/src/v2/theme.js,
  * re-exported as THEME/THEME_DARK) so web + mobile share one source of truth.
+ * The mobile theme IMPORTS the shared colour tokens (it does NOT duplicate the
+ * hex values), so bot-bubble / consent tokens added to the shared source
+ * (botBg / botLine / consentBg, light + dark) are available here for free.
  *
- * Dark mode (2026-07-17): the palette is picked ONCE at module load from the
- * OS scheme (Appearance is synchronous), because the v2 screens build their
- * StyleSheets at module load — everything downstream captures the right
- * palette with zero refactor. Consequences, on purpose:
- *  - an OS theme change mid-run applies on next app start;
- *  - the in-app light/dark TOGGLE is web-only for now (mobile needs the
- *    theme-context refactor first) — listed in
- *    docs/conventions/web-mobile-exceptions.md with that exit path.
+ * Reactive theme (2026-07-18): the display theme is now driven by a stored
+ * preference (systeem / licht / donker) through the theme context
+ * (./themeContext.js). This module keeps a LIVE `theme` singleton that
+ * `applyTheme(pref, osScheme)` reassigns, plus `subscribeTheme` — mirroring the
+ * subscribeLang idiom. `resolveTheme` is the pure pref→theme map (the decision
+ * itself is the shared, off-platform-testable `resolveThemeName`).
+ *
+ * SEAM (invariant #1): most v2 screens still build their StyleSheets at MODULE
+ * load from this singleton, so they capture the boot-time palette; screens that
+ * read the theme through `useTheme()` at render time (My-data) recolour live the
+ * moment the toggle flips. Converting the remaining module-level StyleSheets to
+ * render-time is the tracked follow-up in docs/conventions/web-mobile-exceptions.md.
  *
  * Bulletin design: headings are bold SYSTEM sans (undefined fontFamily =
  * RN system default); Source Serif is gone with the linen theme.
  */
 import { Appearance } from 'react-native';
-import { THEME, THEME_DARK } from '@onderling-app/basis';
+import { THEME, THEME_DARK, resolveThemeName } from '@onderling-app/basis';
 
 const FONT = {
   serif:     undefined, // system sans — bulletin headings are bold sans
@@ -35,7 +42,26 @@ const wrap = (tokens) => ({
 export const themeLight = wrap(THEME);
 export const themeDark = wrap(THEME_DARK);
 
-const scheme = typeof Appearance?.getColorScheme === 'function' ? Appearance.getColorScheme() : 'light';
-export const theme = scheme === 'dark' ? themeDark : themeLight;
+/** Pure: preference ('system'|'light'|'dark') + OS scheme → the wrapped theme. */
+export function resolveTheme(pref, osScheme) {
+  return resolveThemeName(pref, osScheme) === 'dark' ? themeDark : themeLight;
+}
+
+// Live singleton — reassigned by `applyTheme` so render-time readers and the
+// theme context share one source. Boot value follows the OS scheme (Appearance
+// is synchronous) until the stored preference hydrates.
+const bootScheme = typeof Appearance?.getColorScheme === 'function' ? Appearance.getColorScheme() : 'light';
+export let theme = resolveTheme('system', bootScheme);
+
+const _themeListeners = new Set();
+/** Subscribe to live theme changes. Returns an unsubscribe fn (mirrors subscribeLang). */
+export function subscribeTheme(cb) { _themeListeners.add(cb); return () => _themeListeners.delete(cb); }
+
+/** Reassign the live `theme` singleton from a preference + OS scheme; notify subscribers. */
+export function applyTheme(pref, osScheme) {
+  theme = resolveTheme(pref, osScheme);
+  for (const cb of _themeListeners) { try { cb(theme); } catch { /* ignore */ } }
+  return theme;
+}
 
 export default theme;

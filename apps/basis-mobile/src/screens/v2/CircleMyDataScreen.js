@@ -7,10 +7,10 @@
  * Self-contained: loads + mutates via the injected stoop-capable `callSkill`.
  * The backup/restore flows reuse the existing RN wizard modals — no reimpl.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Modal, TextInput } from 'react-native';
 import { t, lang, setLang } from '../../core/localisation.js';
-import { theme } from './theme.js';
+import { useTheme, useThemePref } from './themeContext.js';
 import { surfacePrefStore } from '../../core/surfacePrefStore.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createRelayPrefStore, asyncStorageRelayIo } from '../../../../basis/src/v2/relayPref.js';
@@ -22,6 +22,24 @@ import { enableNativePush, disableNativePush, getNativePushState } from '../../v
 const CHAT_AI_KEY = { on: 'chat_ai_on', 'circle-off': 'chat_ai_circle_off', 'no-llm': 'chat_ai_no_llm', 'no-provider': 'chat_ai_no_provider' };
 
 export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi, userLlm, onSaveUserLlm, validateUserLlm, onReconnectPeer }) {
+  // Reactive theme — reading it at render time is what lets the display-theme
+  // toggle below recolour THIS screen live (module-level StyleSheets can't).
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const [themePref, setThemePref] = useThemePref();
+  // Section / KV close over the render-time `styles` so they recolour with the theme.
+  const Section = useCallback(({ title, children }) => (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {children}
+    </View>
+  ), [styles]);
+  const KV = useCallback(({ k, v }) => (
+    <View style={styles.kv}>
+      <Text style={styles.k}>{k}</Text>
+      <Text style={styles.v}>{v}</Text>
+    </View>
+  ), [styles]);
   const [dataLocation, setDataLocation] = useState({});
   const [podStatus, setPodStatus] = useState({});
   // cluster J — pod sign-in entry (the v2 UI had none; sign-in was stranded in the hidden ChatScreen).
@@ -206,6 +224,28 @@ export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi,
         ) : null}
       </Section>
 
+      {/* Display theme (systeem / licht / donker) — a mono pill segmented control,
+          mirror of web's Mij toggle + onderling.org's header toggle. Reuses the
+          shared circle.mydata.theme(_system/_light/_dark) keys; switches live. */}
+      <Section title={t('circle.mydata.theme')}>
+        <View style={styles.themeToggle} accessibilityLabel={t('circle.mydata.theme')} testID="mydata-theme-toggle">
+          {['system', 'light', 'dark'].map((opt) => (
+            <Pressable
+              key={opt}
+              accessibilityRole="button"
+              accessibilityState={{ selected: opt === themePref }}
+              style={[styles.themeBtn, opt === themePref && styles.themeBtnActive]}
+              onPress={() => setThemePref(opt)}
+              testID={`mydata-theme-${opt}`}
+            >
+              <Text style={[styles.themeBtnText, opt === themePref && styles.themeBtnTextActive]}>
+                {t(`circle.mydata.theme_${opt}`)}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </Section>
+
       <Section title={t('circle.mydata.surface_pref')}>
         {['inline', 'screen', 'chat'].map((opt) => (
           <Pressable
@@ -288,24 +328,7 @@ export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi,
   );
 }
 
-function Section({ title, children }) {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {children}
-    </View>
-  );
-}
-function KV({ k, v }) {
-  return (
-    <View style={styles.kv}>
-      <Text style={styles.k}>{k}</Text>
-      <Text style={styles.v}>{v}</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   wrap: { flex: 1, backgroundColor: theme.color.paper },
   content: { padding: 16, gap: 16, paddingBottom: 80 },
   header: { flexDirection: 'row', alignItems: 'baseline', gap: 12 },
@@ -328,6 +351,13 @@ const styles = StyleSheet.create({
   signin: { marginTop: 10, gap: 8 },
   signinInput: { fontSize: 14, paddingVertical: 9, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius.md, color: theme.color.ink, backgroundColor: theme.color.white },
   signinErr: { fontSize: 12, color: '#b3261e' },
+  // Display-theme pill toggle (mono, ink-outlined; active inverts to ink) —
+  // mirror of web's .cc-mydata__theme-toggle / onderling.org's #theme-toggle.
+  themeToggle:       { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignSelf: 'flex-start' },
+  themeBtn:          { borderWidth: 1.5, borderColor: theme.color.ink, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 12, backgroundColor: 'transparent' },
+  themeBtnActive:    { backgroundColor: theme.color.ink },
+  themeBtnText:      { fontFamily: theme.font.mono, fontSize: 11.5, color: theme.color.ink },
+  themeBtnTextActive:{ color: theme.color.card, fontWeight: '700' },
   action: { alignSelf: 'flex-start', borderWidth: 1, borderColor: theme.color.accent, borderRadius: theme.radius.md, paddingVertical: 8, paddingHorizontal: 14 },
   actionLabel: { fontSize: 13, fontWeight: '600', color: theme.color.accent },
   actionActive: { backgroundColor: theme.color.accent, borderColor: theme.color.accent },
