@@ -162,6 +162,14 @@ import {
 import { DEFAULT_ONBOARDING_TEMPLATE, loadOnboardingTemplate } from '../../src/v2/onboardingTemplate.js';
 import { onboardingTurn, answerOnboarding, parseOnboardingAction } from '../../src/v2/onboardingChat.js';
 import { createOnboardingFlags, localStorageOnboardingIo } from '../../src/v2/onboardingFlags.js';
+// Task #13 Phase 2 — the standing help Q&A: the tag-to-address gate + the deterministic-answer router
+// (both pure, shared src/). The web shell only posts the descriptors they return + runs the LLM leg.
+import { botIsAddressed } from '../../src/v2/botAddress.js';
+import { stripBotTag } from '../../src/v2/circleDispatch.js';
+import { routeHelpMessage, helpTopicChips, resolveHelpTopic, parseHelpAction, helpConsentAction } from '../../src/v2/helpChat.js';
+import { resolveCircleLlm } from '../../src/v2/llmPicker.js';
+// Task #13 Phase 2 — the onboarding "Ja, help me" handoff opens the RICH 5-step create wizard.
+import { renderCreateGroupWizard } from '../../src/web/wizards/createGroupWizard.js';
 // B #64 — apply an authored remote recipe (loaded+validated → active circle policy) via the shared apply-wiring.
 import { loadAndApplyRecipe } from '../../src/v2/recipeApply.js';
 // B · consent-card — REVIEWED recipe apply: load→review model, then apply-with-opt-outs through the SAME gate.
@@ -1856,6 +1864,29 @@ function buildCircleBot(agent) {
     }),
     botName: CIRCLE_BOT_NAME,
   });
+
+  // Task #13 Phase 2 — bind the help layer-2 executor to the SAME consent-gated circle LLM route the
+  // command bot uses (resolveCircleLlm over the member's live providers, honouring the circle's llmTool
+  // policy) + interpretToCommand for a conversational answer. `ready()` reflects whether an LLM is
+  // ACTUALLY connected (so the standing Q&A only OFFERS the consent card when there's something to
+  // forward to); `answer()` returns the model's spoken reply, or null when it produced no answer / mapped
+  // the ask to a tool (never faked). The deterministic kaartjes layer never touches this.
+  circleHelpLlm = {
+    ready: async () => {
+      try {
+        const circlePolicy = await policyFor();
+        return resolveCircleLlm({ circlePolicy, userDefault, providers: llmProviders }) != null;
+      } catch { return false; }
+    },
+    answer: async (query) => {
+      const circlePolicy = await policyFor();
+      const llm = resolveCircleLlm({ circlePolicy, userDefault, providers: llmProviders });
+      if (!llm) return null;
+      const scopedCatalog = scopeCatalogToApps(catalog, circlePolicy?.apps);
+      const cmd = await interpretToCommand(query, { catalog: scopedCatalog, llm });
+      return cmd && typeof cmd.reply === 'string' && cmd.reply ? cmd.reply : null;
+    },
+  };
 }
 
 // Top-level tab bar (Kringen / Stroom / Mij). Shown on the three top-level
@@ -3769,7 +3800,7 @@ async function maybeStartOnboarding(id) {
   postOnboardingBubbles(turn.bubbles);
   onboardingRunState = turn.state;
   if (turn.done) {
-    if (turn.handoff) createCircle();
+    if (turn.handoff) openCreateCircleWizard();
     await onboardingFlags.markOnboardingDone();
   }
 }
@@ -3783,11 +3814,98 @@ async function handleOnboardingAnswer(id, value) {
   onboardingRunState = r.state;
   if (r.handoff) {
     await onboardingFlags.markOnboardingDone();
-    createCircle();                    // handoff → the real create path
+    openCreateCircleWizard();          // handoff → the rich 5-step create wizard
     return;
   }
   postOnboardingBubbles(r.bubbles);
   if (r.done) await onboardingFlags.markOnboardingDone();
+}
+
+// Task #13 Phase 2 — the onboarding "Ja, help me" handoff opens the RICH 5-step create-group wizard
+// (identity · governance · rules · offerings · tech → review) instead of the bare one-line prompt
+// (quickCreateCircle, kept for the launcher's "+ new circle"). Reuses the SAME dismissable overlay
+// adapter the backup/restore/join wizards mount through; on submit success it refreshes the launcher.
+function openCreateCircleWizard() {
+  if (typeof rawCallSkill !== 'function') { globalThis.alert?.(t('circle.create_unavailable')); return; }
+  mountMyDataWizard(renderCreateGroupWizard, {
+    getMyPeerAddr: () => circleHouseholdAgent?.householdSelfAddr ?? null,
+    onDispatched: async (reply) => {
+      const gid = reply?.groupId ?? null;
+      if (gid) { try { await feedHouseholdRosterForCircle?.(gid); } catch { /* best-effort */ } }
+      try { circlesCache = await loadCircles(sources); showLauncher(); } catch { /* keep current view */ }
+    },
+  });
+}
+
+// ── Standing help Q&A (task #13, Phase 2) ─────────────────────────────────────────────────────────
+// Bound in buildCircleBot to the SAME consent-gated circle LLM route (see there). null until the bot is
+// built → treated as "no LLM connected" (the honest set-topics fallback, no consent card offered).
+let circleHelpLlm = null;
+// The miss awaiting a "ja, doorsturen" tap — the exact query to forward when the user consents.
+let helpPendingHelpQuery = null;   // { circleId, query }
+
+// Post the deterministic set-topic chips ("of kies zelf") — each resolves to its kaartje answer with
+// NO language model. `honest` frames them as the ONLY answerable topics (the no-assistant fallback).
+function postHelpTopicChips(id, { honest = false } = {}) {
+  const chips = helpTopicChips({ lang: currentLang() });
+  const text = honest ? t('circle.help.no_llm_topics') : t('circle.help.pick_topic');
+  _kringRender?.botBubble(text, { buttons: chips });
+}
+
+// Answer a posted help message. HIT → the card + its transparency badge (deterministic, on-device,
+// nothing leaves). MISS → offer the consent card when an LLM is connected, else the honest set-topics.
+async function answerHelpMessage(id, query) {
+  const llmReady = circleHelpLlm ? await circleHelpLlm.ready() : false;
+  const route = routeHelpMessage(query, { lang: currentLang(), llmReady });
+  if (route.kind === 'hit') {
+    // provenance.llmUsed === false lights the styled "· direct beantwoord — geen taalmodel gebruikt" badge.
+    _kringRender?.botBubble(route.text, { provenance: route.provenance });
+    return;
+  }
+  if (route.kind === 'consent') {
+    helpPendingHelpQuery = { circleId: id, query };
+    // The dashed-rust consent card (payload.consent) + the primary/secondary button pair.
+    _kringRender?.botBubble(t('circle.help.consent_prompt'), {
+      consent: true,
+      buttons: [
+        { label: t('circle.help.consent_yes'), action: helpConsentAction('yes'), variant: 'primary' },
+        { label: t('circle.help.consent_no'),  action: helpConsentAction('no'),  variant: 'secondary' },
+      ],
+    });
+    return;
+  }
+  // no LLM → honest: only the fixed topics can be answered without an assistant.
+  postHelpTopicChips(id, { honest: true });
+}
+
+// A tapped help button: a topic chip resolves deterministically; a consent choice forwards to the LLM
+// ("ja, doorsturen") or offers the set topics to pick from ("nee, ik kies zelf").
+async function handleHelpAction(id, help) {
+  if (help.kind === 'topic') {
+    const ans = resolveHelpTopic(help.id, { lang: currentLang() });
+    if (ans) _kringRender?.botBubble(ans.text, { provenance: ans.provenance });
+    return;
+  }
+  if (help.kind === 'consent') {
+    if (help.value === 'no') { postHelpTopicChips(id); return; }
+    if (help.value === 'yes') {
+      const pending = helpPendingHelpQuery && helpPendingHelpQuery.circleId === id ? helpPendingHelpQuery.query : null;
+      helpPendingHelpQuery = null;
+      if (pending != null) await runHelpLlm(id, pending);
+    }
+  }
+}
+
+// Layer-2 execution — REUSE the consent-gated circle LLM route (circleHelpLlm.answer). Posts the
+// model's spoken answer with the LLM-provenance badge; a null/failed answer is surfaced HONESTLY
+// (never faked) and the user can still pick a set topic.
+async function runHelpLlm(id, query) {
+  let reply = null;
+  try { reply = circleHelpLlm ? await circleHelpLlm.answer(query) : null; }
+  catch { _kringRender?.botBubble(t('circle.help.llm_unavailable')); return; }
+  if (reply) { _kringRender?.botBubble(reply, { provenance: t('circle.help.provenance_llm') }); return; }
+  _kringRender?.botBubble(t('circle.help.llm_no_answer'));
+  postHelpTopicChips(id);
 }
 
 async function showDetail(id) {
@@ -4158,6 +4276,9 @@ function showKring(id, circle, policy) {
       onEmbedButton: (b) => {
         const onboardVal = parseOnboardingAction(b?.action);
         if (onboardVal != null) { handleOnboardingAnswer(id, onboardVal); return; }
+        // Task #13 Phase 2 — a help affordance (topic chip / consent choice) routes to the help Q&A.
+        const help = parseHelpAction(b?.action);
+        if (help) { handleHelpAction(id, help); return; }
         circleEmbedButtonTap?.(b);
       },
       // tap a "See also" embed chip → open the screen where the item lives (S6.B panel).
@@ -4288,6 +4409,13 @@ function showKring(id, circle, policy) {
       onSend:   async (text) => {
         const line = String(text ?? '').trim();
         if (!line) return;
+        // Task #13 Phase 2 — `/help` (or `/hulp`) in a circle with the Onderling-bot surfaces the
+        // pickable set-topic chips ("of kies zelf"), so a user can pick a topic without typing. Each
+        // chip resolves DETERMINISTICALLY to its kaartje answer (no language model).
+        if (/^\/(help|hulp)\s*$/i.test(line)) {
+          const hb = (kringMembers || []).find((m) => m && (m.relation === 'agent' || m.isBot === true));
+          if (hb) { postHelpTopicChips(id); return; }
+        }
         // a slash command opens a declared list-screen (the CHAT entry; the ⋯ menu is the GUI
         // one — peer compilers to the same surface). e.g. "/contacts", "/prikbord".
         const scr = line.match(/^\/(contacts|prikbord)\b/i);
@@ -4386,6 +4514,22 @@ function showKring(id, circle, policy) {
         // intercepts as a command posts its OWN scoped reply; the user's words still went out.)
         eventLog.append(kringChatMessageEvent({ msgId, ts, circleId: id, actor: LOCAL_ACTOR, text: line, scope: 'kring' }));
         rerender();
+        // Task #13 Phase 2 — standing help Q&A. When the Onderling-bot is ADDRESSED in this circle (the
+        // 1:1 help circle: always; a group: only when @-tagged, per the shared `botIsAddressed` gate),
+        // answer from the deterministic kaartjes engine BEFORE the command bot / fan-out. A miss offers
+        // the consent-gated LLM (when one is connected) or the honest set topics. Feedback circles are
+        // exempt — they route all free text to their own co-hosted surface (below).
+        if (!feedbackCircleSurfaces.get(id)) {
+          const helpBot = (kringMembers || []).find((m) => m && (m.relation === 'agent' || m.isBot === true));
+          if (helpBot && botIsAddressed({ text: line, circleMembers: kringMembers, selfWebid: myWebid || null, botMember: helpBot })) {
+            // Strip the @-tag from a GROUP mention before matching; a 1:1 line (no tag) is passed verbatim
+            // so a question like "ben jij een bot?" isn't gutted by the tag-stripper's bare-"bot" rule.
+            const solo = oneToOneBotLabel({ members: kringMembers, selfWebid: myWebid || null, fallbackLabel: 'bot' }) != null;
+            const q = solo ? line : stripBotTag(line, helpBot.name ?? helpBot.displayName ?? helpBot.label ?? '');
+            await answerHelpMessage(id, q);
+            return;
+          }
+        }
         const _fbSurface = feedbackCircleSurfaces.get(id);
         if (_fbSurface) {
           // ✏ edit in progress (composer was pre-filled from a review card) → this line is the new wording;
@@ -4436,7 +4580,7 @@ function showKring(id, circle, policy) {
       const mid = `kring-${id}-${Date.now()}-${(seq += 1).toString(36)}-bot`;
       // S6.A — opts.buttons ride payload.buttons. scope ('self'|'kring') — a bot reply is
       // private unless it represents a shared action; absent → renderer defaults to 'self'.
-      eventLog.append(kringChatMessageEvent({ msgId: mid, ts: Date.now(), circleId: id, actor: 'bot', text, buttons: opts?.buttons, scope: opts?.scope ?? (opts?.review ? 'self' : undefined), embeds: opts?.embeds, review: opts?.review }));
+      eventLog.append(kringChatMessageEvent({ msgId: mid, ts: Date.now(), circleId: id, actor: 'bot', text, buttons: opts?.buttons, scope: opts?.scope ?? (opts?.review ? 'self' : undefined), embeds: opts?.embeds, review: opts?.review, provenance: opts?.provenance, consent: opts?.consent }));
       rerender();
     },
     // Local echo of the user's own line (used by the feedback mount, which consumes the message before the
