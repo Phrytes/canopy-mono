@@ -12,12 +12,16 @@
  */
 import { initialState, finalSubmit, slugify } from '../core/wizards/createGroupState.js';
 
-export async function quickCreateCircle({ callSkill, name } = {}) {
+export async function quickCreateCircle({ callSkill, name, id } = {}) {
   const clean = String(name ?? '').trim();
   if (!clean) throw new Error('circle name required');
   const state = initialState();
   state.name = clean;
-  state.groupId = slugify(clean) || `circle-${Date.now().toString(36)}`;
+  // A caller may pin a STABLE id (e.g. a system circle like the help circle); otherwise
+  // derive one from the name as before.
+  state.groupId = (typeof id === 'string' && id.trim())
+    ? id.trim()
+    : (slugify(clean) || `circle-${Date.now().toString(36)}`);
   const { result, state: after } = await finalSubmit({ state, callSkill });
   if (after.submitError) throw new Error(after.submitError);
   return result; // { groupId, code, expiresAt, ... }

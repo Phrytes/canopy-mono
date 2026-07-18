@@ -493,6 +493,12 @@
       "doc": "Theme B — flow finished."
     }
   },
+  "onboarding": {
+    "help_name": {
+      "text": "Onderling",
+      "doc": "First-run help circle name — the standing 1:1 chat with the Onderling-bot."
+    }
+  },
   "recipeApply": {
     "button": {
       "text": "📦 Recept toepassen",

@@ -23,6 +23,12 @@
  *     handoff?:boolean,                       // end the flow + open the GUI settings form
  *   }
  *
+ * Per-option branching (opt-in, backward-compatible): a `choice` option may carry
+ * its own `next` / `handoff`, which override the step's when that option is picked.
+ * Templates whose options carry neither behave exactly as before (the step-level
+ * `next`/`handoff` still apply). This lets an onboarding template send "yes → open
+ * the create wizard (handoff)" while "later → continue" — without an engine fork.
+ *
  * The template carries its own copy (it's remote content, not UI chrome); the UI
  * chrome (Continue / Skip / Open settings) stays localized via t().
  */
@@ -116,12 +122,21 @@ export function submitGuidedStep(template, state, answer) {
     answers[step.sets] = answer;
     applied = { key: step.sets, value: answer };
   }
-  const nextId = step.next ?? null;
+  // Per-option branching: for a `choice`, a picked option's own next/handoff wins
+  // over the step's. Options without either fall through to the step level, so
+  // existing (settings) templates are unaffected.
+  const chosen = (step.kind === 'choice' && Array.isArray(step.options) && answer !== undefined)
+    ? step.options.find((o) => o && o.value === answer) ?? null
+    : null;
+  const handoff = !!(chosen && chosen.handoff !== undefined ? chosen.handoff : step.handoff);
+  const nextId = handoff
+    ? null
+    : (chosen && chosen.next !== undefined ? chosen.next : (step.next ?? null));
   return {
     state: { ...state, stepId: nextId, answers },
     applied,
-    handoff: !!step.handoff,
-    done: !nextId || !!step.handoff,
+    handoff,
+    done: !nextId || handoff,
   };
 }
 
