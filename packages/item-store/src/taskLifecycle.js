@@ -57,44 +57,15 @@
 import { computeStatus } from './ItemStore.js';   // pure, shared status fn (reused, not reimplemented)
 import {
   ItemNotFoundError,
-  PermissionDeniedError,
   InvalidLifecycleError,
   MissingArgumentError,
   DependenciesOpenError,
 } from './errors.js';
+// Shared ctx plumbing (actor/gate/emit/ref-resolution) lives ONCE in taskCtx.js
+// and is reused by both this module and taskCrud.js — no duplicated gate logic.
+import { requireActor, gate, emit, resolveById } from './taskCtx.js';
 
-// ── ctx helpers ──────────────────────────────────────────────────────────────
-
-function requireActor(ctx) {
-  if (!ctx || typeof ctx.actor !== 'string' || ctx.actor.length === 0) {
-    throw new TypeError('taskLifecycle: ctx.actor (webid) is required');
-  }
-  return ctx.actor;
-}
-
-/**
- * Role-policy gate — parity with `ItemStore#gate`. `ctx.rolePolicy` is the same
- * `RolePolicy` shape ItemStore's constructor took (a bag of `can*` predicates);
- * a missing policy or missing predicate = allow (the no-op default). `false`
- * becomes a thrown `PermissionDeniedError`.
- */
-function gate(policy, method, actor, item, patch) {
-  if (!policy) return;
-  const fn = policy[method];
-  if (typeof fn !== 'function') return;
-  if (!fn(actor, item, patch)) {
-    throw new PermissionDeniedError({
-      action: method.replace(/^can/, '').toLowerCase(),
-      actor,
-      itemId: item?.id,
-    });
-  }
-}
-
-/** Fire the optional per-verb named event (the ItemStore-parity seam). */
-function emit(ctx, eventName, payload) {
-  if (ctx && typeof ctx.emit === 'function') ctx.emit(eventName, payload);
-}
+// ── lifecycle-specific helpers ───────────────────────────────────────────────
 
 /**
  * V2.7 DAG gate — parity with `ItemStore._assertDepsClosed`. Walk
@@ -116,16 +87,6 @@ async function assertDepsClosed(store, item) {
   if (open.length > 0) {
     throw new DependenciesOpenError({ itemId: item.id, openDeps: open });
   }
-}
-
-/** Resolve a markComplete/removeItems ref. Explicit id (`{id}` or a bare
- * string) only. Fuzzy-text resolution (`{match}`) was an ItemStore convenience
- * for conversational refs; in the dissolve model the interface projector
- * resolves text → id BEFORE dispatch, so args carry a resolved id. See TODO. */
-async function resolveById(store, ref) {
-  const id = typeof ref === 'string' ? ref : ref?.id;
-  if (typeof id !== 'string' || !id) return { id: null, item: null, explicit: false };
-  return { id, item: await store.get(id), explicit: true };
 }
 
 // ── Lifecycle verbs ──────────────────────────────────────────────────────────
