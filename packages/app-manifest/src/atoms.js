@@ -72,6 +72,35 @@ const BY_ANY = (() => {
 /** Canonical atom verbs only (no aliases). */
 export const ATOM_VERBS = Object.freeze(ATOMS.map((a) => a.verb));
 
+/**
+ * CANONICAL_ATOMS — the single authoritative verb set of the **verb × noun
+ * algebra** (uniforme-representatie). This is the named anchor the enforcement
+ * fitness (`test/verbAlgebra.test.js`) and `docs/conventions/manifest-standard.md`
+ * point at: a `manifest.nouns[noun].atoms` entry that is not one of these
+ * (in its CANONICAL spelling — aliases are declared via their canonical form)
+ * is a rogue verb and fails the guard.
+ *
+ * It is the AUTHORITATIVE SUPERSET: every atom any app manifest declares today
+ * is a subset of this list (add/list/get/update/remove/complete/claim/reassign/
+ * submit/approve/reject/revoke/archive/unarchive/share/move). Adding a new
+ * canonical verb to the algebra = adding one `Atom` to `ATOMS` above (with its
+ * category/aliases/semantics), which flows here automatically.
+ *
+ * Alias to `ATOM_VERBS` so there is ONE source (CLAUDE.md invariant #3) — this
+ * name exists to make the CONVENTION greppable under the plan's `CANONICAL_ATOMS`
+ * label (PLAN-capabilities-tasks-roles.md Phase 0).
+ *
+ * ⚠ `claim` here is the ATOM (lifecycle verb: self-assign an open item — a CAS
+ * on the item's assignee, in-place). It is DISTINCT from the `claim` **noun**
+ * (`@onderling/item-types` `claim` item-type — a standalone binding to an
+ * offer/request/job). Verb `claim` ≠ noun `claim`. See atoms.js `claim` above,
+ * `packages/item-types/src/types/claim.js`, and the manifest-standard "verb ×
+ * noun algebra" section.
+ *
+ * @type {ReadonlyArray<string>}
+ */
+export const CANONICAL_ATOMS = ATOM_VERBS;
+
 /** Every accepted spelling — canonical verbs AND aliases. */
 export const ATOM_VERBS_WITH_ALIASES = Object.freeze([...BY_ANY.keys()]);
 

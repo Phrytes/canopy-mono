@@ -35,6 +35,9 @@ export {
 export {
   ATOMS,
   ATOM_VERBS,
+  // The named anchor of the verb × noun algebra (alias of ATOM_VERBS) — the
+  // canonical verb set the enforcement fitness + manifest-standard reference.
+  CANONICAL_ATOMS,
   ATOM_VERBS_WITH_ALIASES,
   isAtom,
   canonicalAtom,

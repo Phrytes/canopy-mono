@@ -56,6 +56,72 @@ must turn the manifest into its surface without throwing. This is the literal re
 manifest that any projector chokes on is not, in fact, a single source of truth for every surface. One issue is
 raised per failing projector, tagged with the surface key.
 
+## The verb × noun algebra (uniforme-representatie)
+
+The construct behind atom discipline is a small **algebra**: an app's member-facing capability surface is a
+set of **`(verb × noun)`** pairs. The **noun** is a declared item-type; the **verb** is a *canonical SDK
+atom* drawn from one fixed vocabulary. `addTask` / `addItem` / `createBoard` are all *the `add` atom on a
+different noun*; `markComplete` / `done` are the one `complete` atom. Making the verb vocabulary
+authoritative means a new noun gets the standard verbs "for free" by declaring which atoms apply, the gate
+keys off `(atom × noun)` rather than 100+ opIds, and the LLM learns a tiny verb set instead of every op name.
+
+**The canonical atom set is one exported constant: `CANONICAL_ATOMS`** (`@onderling/app-manifest`, an alias of
+`ATOM_VERBS`, sourced from the `ATOMS` catalogue in `atoms.js`). It is the authoritative **superset** — every
+atom any app manifest declares today is one of:
+
+```
+add · list · get · update · remove          (crud)
+complete · claim · reassign · submit ·
+approve · reject · revoke · archive · unarchive   (lifecycle)
+share · move                                  (graph)
+```
+
+Each atom also carries **aliases** (`create`→`add`, `delete`→`remove`, `grab`→`claim`, `done`→`complete`,
+`edit`/`patch`→`update`, `assign`→`reassign`, `read`→`get`) that an op's `verb` may use — but a **declaration**
+must use the canonical spelling.
+
+**Where the surface is declared.** `manifest.nouns` maps each item-type to the atoms it exposes:
+
+```js
+nouns: {
+  task: { atoms: ['add', 'list', 'update', 'remove', 'complete', 'claim', 'reassign', 'submit', 'approve', 'reject', 'revoke'] },
+  circle: { atoms: ['list', 'archive', 'unarchive'] },
+}
+```
+
+This declaration IS the capability surface (declared-authoritative, `docs/decisions.md` 2026-07-02): a broad
+`appliesTo` can no longer silently mint capabilities on internal item-types. Verbs that genuinely don't reduce
+to an atom (the ~20% domain tail — folio `sync`, household `register`, tasks-v0 `tree`, `help`) are declared
+in `manifest.domainVerbs` instead, never in `nouns[].atoms`.
+
+**Enforcement (the convention is now GUARDED, not just documented):**
+- **Op side** — the `verb-not-atom` conformance rule (Rule 2 above): every `op.verb` must be a canonical atom
+  (or alias) OR a declared `domainVerb`.
+- **Declaration side** — `validateManifest` rejects a `nouns[noun].atoms` entry that isn't an SDK atom
+  (`unknown-atom`) or that uses an alias where the canonical spelling is required (`alias-in-nouns`).
+- **Cross-app fitness** — `packages/app-manifest/test/verbAlgebra.test.js` scans *every* `apps/*/manifest.js`
+  and fails CI if any declared atom is not a `CANONICAL_ATOM` (a rogue verb). It also asserts `CANONICAL_ATOMS`
+  covers every atom the manifests actually declare, so the constant stays derived-from-reality. Adding a new
+  verb to the algebra = adding one `Atom` to `ATOMS` in `atoms.js`.
+
+### `claim` — the verb vs the noun (disambiguation)
+
+The token **`claim` names two different things**; keep them apart:
+
+- the **`claim` ATOM** (a verb) — "self-assign an open item": a compare-and-swap on an EXISTING item's
+  assignee, **in-place**. Appears as `verb: 'claim'` on `task` / `post` / `calendar-event`. No new item is
+  created.
+- the **`claim` NOUN** — the `@onderling/item-types` `claim` item-type (`CLAIM_SCHEMA`): a NEW standalone
+  **binding item** that references another item (`itemRef` → an offer/request/job) and carries its own
+  lifecycle `status`. A distinct row in the store, not a mutation of the referenced item.
+
+So *"claim a task"* (verb) mutates the task's assignee; *"a claim on an offer"* (noun) mints a `claim` item.
+A `nouns` block listing `claim` under a type's `atoms` is using the VERB; listing `'claim'` in `itemTypes` is
+using the NOUN. The item-type is **deliberately not renamed** — its blast radius is large (a persisted
+`type: {const:'claim'}` discriminator, the registry's public API, and the `lend-request` legacy alias) — so
+the two are disambiguated by documentation (this section + JSDoc on `packages/item-types/src/types/claim.js`)
+rather than a rename, per the repo's code-preservation ethos.
+
 ## What is not a conformance failure
 
 The registry (`@onderling/item-types`) is the source of truth for nouns, but app-local (non-registry) item types
