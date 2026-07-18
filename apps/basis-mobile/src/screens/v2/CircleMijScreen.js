@@ -25,7 +25,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet, TextInput } from 'react-
 import { t, lang } from '../../core/localisation.js';
 import { theme } from './theme.js';
 import {
-  loadMijModel, setGeneralProperty, addGeneralSkill, createPersona,
+  loadMijModel, setGeneralProperty, addGeneralOffering, createPersona,
   toggleDisclosure, shareDisclosureToCircle,
 } from '../../core/mijHost.js';
 
@@ -79,11 +79,11 @@ export default function CircleMijScreen({ callSkill, sendPersonaUpdate, personaI
     await load();
   }, [callSkill, model?.defaultId, load]);
 
-  const onAddSkill = useCallback(async () => {
+  const onAddOffering = useCallback(async () => {
     const text = (skillForm?.text ?? '').trim();
     const tags = (skillForm?.tags ?? '').trim();
     if (!text && !tags) return;                            // nothing to match on
-    await addGeneralSkill({ callSkill, defaultId: model?.defaultId, text, tags });
+    await addGeneralOffering({ callSkill, defaultId: model?.defaultId, text, tags });
     setSkillForm(null);
     await load();
   }, [callSkill, model?.defaultId, skillForm, load]);
@@ -182,7 +182,7 @@ export default function CircleMijScreen({ callSkill, sendPersonaUpdate, personaI
           {/* skills & drivers — chips: bold text · mono tags · "≈ categorie" badge */}
           <View style={styles.propRow}>
             <View style={styles.propLine}>
-              <Text style={styles.key}>{t('circle.mij.skills_label')}</Text>
+              <Text style={styles.key}>{t('circle.mij.offerings_label')}</Text>
               <Text style={styles.ladder}>{ladderHint(['all', 'none'])}</Text>
             </View>
             <View style={styles.chips}>
@@ -210,29 +210,29 @@ export default function CircleMijScreen({ callSkill, sendPersonaUpdate, personaI
               <TextInput
                 style={styles.input}
                 value={skillForm.text}
-                placeholder={t('circle.mij.skill_text_ph')}
+                placeholder={t('circle.mij.offering_text_ph')}
                 placeholderTextColor={c.inkSoft}
                 onChangeText={(v) => setSkillForm((s) => ({ ...s, text: v }))}
               />
               <TextInput
                 style={styles.input}
                 value={skillForm.tags}
-                placeholder={t('circle.mij.skill_tags_ph')}
+                placeholder={t('circle.mij.offering_tags_ph')}
                 placeholderTextColor={c.inkSoft}
                 onChangeText={(v) => setSkillForm((s) => ({ ...s, tags: v }))}
               />
               <View style={styles.formActions}>
-                <Pressable style={styles.btnPrimary} accessibilityRole="button" onPress={onAddSkill}>
-                  <Text style={styles.btnPrimaryText}>{t('circle.mij.skill_save')}</Text>
+                <Pressable style={styles.btnPrimary} accessibilityRole="button" onPress={onAddOffering}>
+                  <Text style={styles.btnPrimaryText}>{t('circle.mij.offering_save')}</Text>
                 </Pressable>
                 <Pressable style={styles.btnGhost} accessibilityRole="button" onPress={() => setSkillForm(null)}>
-                  <Text style={styles.btnGhostText}>{t('circle.mij.skill_cancel')}</Text>
+                  <Text style={styles.btnGhostText}>{t('circle.mij.offering_cancel')}</Text>
                 </Pressable>
               </View>
             </View>
           ) : (
             <Pressable style={styles.addDashed} accessibilityRole="button" onPress={() => setSkillForm({ text: '', tags: '' })}>
-              <Text style={styles.addDashedText}>{t('circle.mij.skill_add')}</Text>
+              <Text style={styles.addDashedText}>{t('circle.mij.offering_add')}</Text>
             </Pressable>
           )}
         </View>

@@ -432,35 +432,47 @@ describe('createGroupState', () => {
     expect(s.keyRotationMode).toBe('admin-only');
   });
 
-  it('STEP_NAMES is the canonical 6-step list (5.5c — Skills slotted between Rules and Tech)', () => {
-    expect(CG.STEP_NAMES).toEqual(['Identity', 'Governance', 'Rules', 'Skills', 'Tech', 'Review']);
+  it('STEP_NAMES is the canonical 6-step list (5.5c — Offerings slotted between Rules and Tech)', () => {
+    expect(CG.STEP_NAMES).toEqual(['Identity', 'Governance', 'Rules', 'Offerings', 'Tech', 'Review']);
   });
 
-  // 5.5c — skills wiring into the rules blob.
-  it('buildRulesObjectFromState: empty skills array → no skills key', () => {
+  // 5.5c — offerings wiring into the rules blob.
+  it('buildRulesObjectFromState: empty offerings array → no offerings key', () => {
     const s = CG.initialState();
     const r = CG.buildRulesObjectFromState(s);
+    expect(r.offerings).toBeUndefined();
     expect(r.skills).toBeUndefined();
   });
 
-  it('buildRulesObjectFromState: drops unnamed skill rows + normalises kept ones', () => {
+  it('buildRulesObjectFromState: drops unnamed offering rows + normalises kept ones', () => {
     const s = CG.initialState();
-    s.skills = [
+    s.offerings = [
       { name: '',        openness: 'circle'   },     // dropped (no name)
       { name: 'gardening', openness: 'public', posture: 'negotiable', status: 'active', radius: 'street' },
       { name: 'plumbing',  openness: 'bogus'  },     // bogus axis falls back to default
     ];
     const r = CG.buildRulesObjectFromState(s);
+    expect(r.offerings).toHaveLength(2);
+    // Transitional `rules.skills` alias mirrors offerings (wire read-accept).
     expect(r.skills).toHaveLength(2);
-    expect(r.skills[0]).toEqual({
+    expect(r.offerings[0]).toEqual({
       name: 'gardening', openness: 'public', posture: 'negotiable', status: 'active', radius: 'street',
     });
-    expect(r.skills[1].name).toBe('plumbing');
-    expect(r.skills[1].openness).toBe('private');   // normalised default
+    expect(r.offerings[1].name).toBe('plumbing');
+    expect(r.offerings[1].openness).toBe('private');   // normalised default
   });
 
-  it('newSkillRow seeds a row with the SKILL default axes', () => {
-    const row = CG.newSkillRow();
+  it('buildRulesObjectFromState: read-accepts a legacy in-memory state.skills', () => {
+    const s = CG.initialState();
+    delete s.offerings;                       // un-migrated state: no offerings field
+    s.skills = [{ name: 'gardening', openness: 'public' }];
+    const r = CG.buildRulesObjectFromState(s);
+    expect(r.offerings).toHaveLength(1);
+    expect(r.offerings[0].name).toBe('gardening');
+  });
+
+  it('newOfferingRow seeds a row with the offering default axes', () => {
+    const row = CG.newOfferingRow();
     expect(row.name).toBe('');
     expect(CG.OFFERING_AXES.openness).toContain(row.openness);
   });

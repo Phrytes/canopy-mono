@@ -14,7 +14,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
 import {
-  loadMijModel, setGeneralProperty, addGeneralSkill, skillKeyFor,
+  loadMijModel, setGeneralProperty, addGeneralOffering, offeringKeyFor,
   createPersona, toggleDisclosure,
 } from '../src/core/mijHost.js';
 
@@ -131,14 +131,14 @@ describe('the edit ops — same calls the web host fires (verify the dispatch sh
     expect(callSkill).toHaveBeenCalledWith('agents', 'setProfileProperty', { id: 'default', key: 'place', value: 'Utrecht' });
   });
 
-  it('addGeneralSkill sends setProfileDriver kind=offering on the default profile, keyed by the phrase (web parity)', async () => {
+  it('addGeneralOffering sends setProfileDriver kind=offering on the default profile, keyed by the phrase (web parity)', async () => {
     const callSkill = vi.fn(async () => ({ ok: true }));
-    await addGeneralSkill({ callSkill, defaultId: 'default', text: 'Fietsen repareren', tags: 'fiets, gereedschap' });
+    await addGeneralOffering({ callSkill, defaultId: 'default', text: 'Fietsen repareren', tags: 'fiets, gereedschap' });
     expect(callSkill).toHaveBeenCalledWith('agents', 'setProfileDriver', {
       id: 'default', key: 'fietsen repareren', kind: 'offering', text: 'Fietsen repareren', tags: 'fiets, gereedschap',
     });
     // the exact web derivation: (text || tags) → trim → lowercase → first 40 chars
-    expect(skillKeyFor({ text: '', tags: 'X'.repeat(50) })).toBe('x'.repeat(40));
+    expect(offeringKeyFor({ text: '', tags: 'X'.repeat(50) })).toBe('x'.repeat(40));
   });
 
   it('createPersona / toggleDisclosure mirror createProfile / setProfileDisclosure', async () => {

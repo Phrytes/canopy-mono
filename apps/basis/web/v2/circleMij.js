@@ -13,7 +13,7 @@
  *
  * Pure render — the host (`circleApp.js`) owns the op calls:
  *   onSetProperty(key, value)                        → setProfileProperty (default profile)
- *   onAddSkill({text, tags})                         → setProfileDriver   (kind 'skill')
+ *   onAddOffering({text, tags})                         → setProfileDriver   (kind 'offering')
  *   onCreatePersona(name)                            → createProfile
  *   onToggleDisclosure(circleId, key, on, personaId) → setProfileDisclosure
  *   onShareToCircle(circleId, personaId)             → push the release to the roster
@@ -48,7 +48,7 @@ export function renderMij(container, {
   t,
   lang = 'nl',
   onSetProperty,
-  onAddSkill,
+  onAddOffering,
   onCreatePersona,
   onToggleDisclosure,
   onShareToCircle,
@@ -63,14 +63,14 @@ export function renderMij(container, {
     return container;
   }
 
-  container.appendChild(renderGeneral(tr, model, { onSetProperty, onAddSkill }));
+  container.appendChild(renderGeneral(tr, model, { onSetProperty, onAddOffering }));
   container.appendChild(renderPersonas(tr, model, { onCreatePersona }));
   container.appendChild(renderCircles(tr, model, { onToggleDisclosure, onShareToCircle }));
   return container;
 }
 
 // ── 1 · MIJN ALGEMENE PERSONA — de waarheidslaag ────────────────────────────
-function renderGeneral(tr, model, { onSetProperty, onAddSkill }) {
+function renderGeneral(tr, model, { onSetProperty, onAddOffering }) {
   const sec = section(tr, 'circle.mij.general_eyebrow', 'circle.mij.general_tagline');
   const panel = el('div', 'cc-mij__panel');
 
@@ -121,8 +121,8 @@ function renderGeneral(tr, model, { onSetProperty, onAddSkill }) {
   }
 
   // Skills & drivers — chips (bold text · mono tags · "≈ categorie" badge).
-  const skillsRow = el('div', 'cc-mij__row cc-mij__row--skills');
-  skillsRow.appendChild(el('span', 'cc-mij__key', tr('circle.mij.skills_label')));
+  const skillsRow = el('div', 'cc-mij__row cc-mij__row--offerings');
+  skillsRow.appendChild(el('span', 'cc-mij__key', tr('circle.mij.offerings_label')));
   const chips = el('div', 'cc-mij__chips');
   for (const d of (model.general?.drivers || [])) {
     const chip = el('span', 'cc-mij__chip');
@@ -141,8 +141,8 @@ function renderGeneral(tr, model, { onSetProperty, onAddSkill }) {
   skillsRow.appendChild(el('span', 'cc-mij__ladder', ladderHint(tr, ['all', 'none'])));
   panel.appendChild(skillsRow);
 
-  if (typeof onAddSkill === 'function') {
-    const add = el('button', 'cc-mij__add', tr('circle.mij.skill_add'));
+  if (typeof onAddOffering === 'function') {
+    const add = el('button', 'cc-mij__add', tr('circle.mij.offering_add'));
     add.type = 'button';
     add.addEventListener('click', () => {
       const open = panel.querySelector('.cc-mij__form');
@@ -150,19 +150,19 @@ function renderGeneral(tr, model, { onSetProperty, onAddSkill }) {
       const form = el('div', 'cc-mij__form');
       const text = el('input', 'cc-mij__input');
       text.type = 'text';
-      text.placeholder = tr('circle.mij.skill_text_ph');
+      text.placeholder = tr('circle.mij.offering_text_ph');
       const tags = el('input', 'cc-mij__input');
       tags.type = 'text';
-      tags.placeholder = tr('circle.mij.skill_tags_ph');
-      const save = el('button', 'cc-btn cc-btn--primary', tr('circle.mij.skill_save'));
+      tags.placeholder = tr('circle.mij.offering_tags_ph');
+      const save = el('button', 'cc-btn cc-btn--primary', tr('circle.mij.offering_save'));
       save.type = 'button';
       save.addEventListener('click', () => {
         const textV = text.value.trim();
         const tagsV = tags.value.trim();
         if (!textV && !tagsV) return;              // nothing to match on
-        onAddSkill({ text: textV, tags: tagsV });
+        onAddOffering({ text: textV, tags: tagsV });
       });
-      const cancel = el('button', 'cc-btn cc-btn--ghost', tr('circle.mij.skill_cancel'));
+      const cancel = el('button', 'cc-btn cc-btn--ghost', tr('circle.mij.offering_cancel'));
       cancel.type = 'button';
       cancel.addEventListener('click', () => form.remove());
       form.append(text, tags, save, cancel);

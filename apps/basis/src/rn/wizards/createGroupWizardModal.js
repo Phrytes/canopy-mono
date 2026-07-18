@@ -20,7 +20,7 @@ import {
   KEY_ROTATION_MODES, STEP_NAMES,
   initialState, slugify, isValidSlug, labelOf,
   buildRulesObjectFromState, finalSubmit, encodeMembershipCodeUrl,
-  newSkillRow, OFFERING_AXES,
+  newOfferingRow, OFFERING_AXES,
   // N1+E8 — kind picker + buurt size/chat advice + policy patch.
   KRING_KINDS, setKind, setSize, setChatEnabled, chatAdvice, policyPatchFromState,
   // N3 — extra role templates (admin opt-in).
@@ -257,16 +257,16 @@ export default function CreateGroupWizardModal({
             )}
             {/* 5.5c — Skills step (slotted between Rules and Tech). */}
             {state.step === 4 && (
-              <Body title="Skills (optional)" intro="What members can do / offer in this circle.  Each skill is named + has four axes.">
-                {state.skills.map((row, i) => (
+              <Body title="Offerings (optional)" intro="What members can do / offer in this circle.  Each skill is named + has four axes.">
+                {state.offerings.map((row, i) => (
                   <View key={i} style={{ borderWidth: 1, borderColor: '#d8d1bc', borderRadius: 6, padding: 10, marginBottom: 10 }}>
                     <Field
-                      label="Skill name"
+                      label="Offering name"
                       value={row.name}
                       onChangeText={(v) => setState((s) => {
-                        const skills = s.skills.slice();
-                        skills[i] = { ...skills[i], name: v };
-                        return { ...s, skills };
+                        const offerings = s.offerings.slice();
+                        offerings[i] = { ...offerings[i], name: v };
+                        return { ...s, offerings };
                       })}
                       placeholder="e.g. plumbing"
                     />
@@ -278,24 +278,24 @@ export default function CreateGroupWizardModal({
                         options={attachConsequences(axis,
                           OFFERING_AXES[axis].map((id) => ({ id, label: id })), t)}
                         onChange={(v) => setState((s) => {
-                          const skills = s.skills.slice();
-                          skills[i] = { ...skills[i], [axis]: v };
-                          return { ...s, skills };
+                          const offerings = s.offerings.slice();
+                          offerings[i] = { ...offerings[i], [axis]: v };
+                          return { ...s, offerings };
                         })}
                         consequenceLabel={t('common.consequences')}
                       />
                     ))}
                     <Pressable
-                      onPress={() => setState((s) => ({ ...s, skills: s.skills.filter((_, j) => j !== i) }))}
+                      onPress={() => setState((s) => ({ ...s, offerings: s.offerings.filter((_, j) => j !== i) }))}
                     >
-                      <Text style={{ color: '#b04a30', marginTop: 4 }}>Remove skill</Text>
+                      <Text style={{ color: '#b04a30', marginTop: 4 }}>Remove offering</Text>
                     </Pressable>
                   </View>
                 ))}
                 <Pressable
-                  onPress={() => setState((s) => ({ ...s, skills: [...s.skills, newSkillRow()] }))}
+                  onPress={() => setState((s) => ({ ...s, offerings: [...s.offerings, newOfferingRow()] }))}
                 >
-                  <Text style={{ color: '#b04a30' }}>+ Add skill</Text>
+                  <Text style={{ color: '#b04a30' }}>+ Add offering</Text>
                 </Pressable>
               </Body>
             )}
@@ -358,10 +358,11 @@ export default function CreateGroupWizardModal({
                       return [{ label, value: v, pre: true }];
                     }),
                     { label: 'Conflict',    value: labelOf(CONFLICT_POLICIES, state.conflictPolicy) },
-                    // 5.5c — surface named skills (axes inline).
-                    ...((rules.skills ?? []).length > 0
-                      ? [{ label: 'Skills',
-                          value: rules.skills.map((s) => `${s.name} — ${s.openness}/${s.posture}/${s.status}/${s.radius}`).join('\n'),
+                    // 5.5c — surface named offerings (axes inline). Read-accept
+                    // the legacy `rules.skills` field on an un-migrated rules blob.
+                    ...((rules.offerings ?? rules.skills ?? []).length > 0
+                      ? [{ label: 'Offerings',
+                          value: (rules.offerings ?? rules.skills).map((s) => `${s.name} — ${s.openness}/${s.posture}/${s.status}/${s.radius}`).join('\n'),
                           pre: true }]
                       : []),
                     { label: 'Key rotation',value: labelOf(KEY_ROTATION_MODES, state.keyRotationMode) },

@@ -29,13 +29,13 @@ export async function setGeneralProperty({ callSkill, defaultId, key, value }) {
   try { await callSkill('agents', 'setProfileProperty', { id: defaultId ?? 'default', key, value }); } catch { /* */ }
 }
 
-/** The shared skill key derivation — keyed by the phrase; re-using it edits. */
-export { skillKeyFor } from '../../../basis/src/core/skillsMigration.js';
-import { skillKeyFor as sharedSkillKeyFor } from '../../../basis/src/core/skillsMigration.js';
+/** The shared offering key derivation — keyed by the phrase; re-using it edits. */
+export { offeringKeyFor } from '../../../basis/src/core/offeringsMigration.js';
+import { offeringKeyFor as sharedOfferingKeyFor } from '../../../basis/src/core/offeringsMigration.js';
 
-/** Skills (#Q1) — add a skill-kind driver ({text, tags}) to the GENERAL persona. */
-export async function addGeneralSkill({ callSkill, defaultId, text, tags }) {
-  const key = sharedSkillKeyFor({ text, tags });
+/** Offerings (#Q1) — add an offering-kind driver ({text, tags}) to the GENERAL persona. */
+export async function addGeneralOffering({ callSkill, defaultId, text, tags }) {
+  const key = sharedOfferingKeyFor({ text, tags });
   try { await callSkill('agents', 'setProfileDriver', { id: defaultId ?? 'default', key, kind: 'offering', text, tags }); } catch { /* */ }
 }
 

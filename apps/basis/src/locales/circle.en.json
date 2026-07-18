@@ -2718,11 +2718,11 @@
       "text": "saving…",
       "doc": "S2 — transient save state."
     },
-    "skills": {
+    "offerings": {
       "text": "Offerings",
-      "doc": "S2 — personal skills section. (Web editor retired in fold-in phase C; mobile CircleProfileScreen still renders it until the mobile mirror lands.)"
+      "doc": "S2 — personal offerings section. (Web editor retired in fold-in phase C; mobile CircleProfileScreen still renders it until the mobile mirror lands.)"
     },
-    "skills_moved": {
+    "offerings_moved": {
       "text": "Offerings now live under Me → personas",
       "doc": "Fold-in phase C — quiet pointer row on the Profiel screen, replacing the retired skills editor; opens the Mij persona surface."
     },
@@ -3395,27 +3395,27 @@
       "text": "not set",
       "doc": "mij#personas — property without a value on the general persona."
     },
-    "skills_label": {
+    "offerings_label": {
       "text": "Offerings & drivers",
       "doc": "mij#personas — row label for the skills/drivers chips."
     },
-    "skill_add": {
+    "offering_add": {
       "text": "+ offering or driver",
       "doc": "mij#personas — dashed add button (potential-action grammar)."
     },
-    "skill_text_ph": {
+    "offering_text_ph": {
       "text": "what you can do or care about, in a sentence",
       "doc": "mij#personas — placeholder: the free text of a skill/driver."
     },
-    "skill_tags_ph": {
+    "offering_tags_ph": {
       "text": "tags, comma-separated",
       "doc": "mij#personas — placeholder: comma-separated tags."
     },
-    "skill_save": {
+    "offering_save": {
       "text": "Add",
       "doc": "mij#personas — save the skill/driver (setProfileDriver)."
     },
-    "skill_cancel": {
+    "offering_cancel": {
       "text": "Cancel",
       "doc": "mij#personas — close the inline form without saving."
     },

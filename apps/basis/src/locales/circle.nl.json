@@ -2718,11 +2718,11 @@
       "text": "opslaan…",
       "doc": "S2 — transient save state."
     },
-    "skills": {
+    "offerings": {
       "text": "Aanbod",
-      "doc": "S2 — personal skills section. (Web editor retired in fold-in phase C; mobile CircleProfileScreen still renders it until the mobile mirror lands.)"
+      "doc": "S2 — personal offerings section. (Web editor retired in fold-in phase C; mobile CircleProfileScreen still renders it until the mobile mirror lands.)"
     },
-    "skills_moved": {
+    "offerings_moved": {
       "text": "Aanbod staat nu bij Mij → persona's",
       "doc": "Fold-in phase C — quiet pointer row on the Profiel screen, replacing the retired skills editor; opens the Mij persona surface."
     },
@@ -3395,27 +3395,27 @@
       "text": "niet ingevuld",
       "doc": "mij#personas — eigenschap zonder waarde op de algemene persona."
     },
-    "skills_label": {
+    "offerings_label": {
       "text": "Aanbod & drijfveren",
       "doc": "mij#personas — rij-label voor de chips met vaardigheden/drijfveren."
     },
-    "skill_add": {
+    "offering_add": {
       "text": "+ aanbod of drijfveer",
       "doc": "mij#personas — gestippelde toevoeg-knop (potentiële-actie-grammatica)."
     },
-    "skill_text_ph": {
+    "offering_text_ph": {
       "text": "wat kun of wil je, in een zin",
       "doc": "mij#personas — placeholder: de vrije tekst van een vaardigheid/drijfveer."
     },
-    "skill_tags_ph": {
+    "offering_tags_ph": {
       "text": "tags, komma-gescheiden",
       "doc": "mij#personas — placeholder: komma-gescheiden tags."
     },
-    "skill_save": {
+    "offering_save": {
       "text": "Toevoegen",
       "doc": "mij#personas — vaardigheid/drijfveer opslaan (setProfileDriver)."
     },
-    "skill_cancel": {
+    "offering_cancel": {
       "text": "Annuleren",
       "doc": "mij#personas — het inline-formulier sluiten zonder op te slaan."
     },

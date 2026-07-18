@@ -32,7 +32,7 @@ describe('renderCircleProfile — skills moved to Mij → persona\'s (fold-in ph
     expect(el.querySelector('.cc-profile__skill-add-btn')).toBeNull();
     // The pointer row is there and clicks through.
     const link = el.querySelector('.cc-profile__skills-moved-link');
-    expect(link.textContent).toBe('circle.profile.skills_moved');
+    expect(link.textContent).toBe('circle.profile.offerings_moved');
     link.click();
     expect(onOpenMij).toHaveBeenCalled();
   });
@@ -40,7 +40,7 @@ describe('renderCircleProfile — skills moved to Mij → persona\'s (fold-in ph
   it('degrades to plain text without onOpenMij (older callers)', () => {
     const el = renderCircleProfile(document.createElement('div'), { profile: {}, t });
     const row = el.querySelector('.cc-profile__skills-moved');
-    expect(row.textContent).toBe('circle.profile.skills_moved');
+    expect(row.textContent).toBe('circle.profile.offerings_moved');
     expect(row.querySelector('button')).toBeNull();
   });
 });

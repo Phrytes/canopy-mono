@@ -60,10 +60,10 @@ export const KEY_ROTATION_MODES = Object.freeze([
 // 5.5c — Skills is now its own step between Rules and Tech.  Renderers
 // drive their step machinery off `STEP_NAMES.length`, so adding here
 // promotes Tech→5 and Review→6 without touching the increment logic.
-export const STEP_NAMES = Object.freeze(['Identity', 'Governance', 'Rules', 'Skills', 'Tech', 'Review']);
+export const STEP_NAMES = Object.freeze(['Identity', 'Governance', 'Rules', 'Offerings', 'Tech', 'Review']);
 
-/** A fresh blank skill row for the wizard's "+ Add skill" affordance. */
-export function newSkillRow() {
+/** A fresh blank offering row for the wizard's "+ Add offering" affordance. */
+export function newOfferingRow() {
   return { ...DEFAULT_OFFERING };
 }
 
@@ -222,9 +222,9 @@ export function initialState() {
     // 5.5a — structured v2 rules doc (purpose syncs from Step 1 at submit).
     rulesDoc:              { ...DEFAULT_RULES_DOC },
     conflictPolicy:        'mediation',
-    // Step 4 — skills (5.5c): a list of `{name,openness,posture,status,radius}`
+    // Step 4 — offerings (5.5c): a list of `{name,openness,posture,status,radius}`
     // rows; rows without a name are dropped at submit.
-    skills:                [],
+    offerings:             [],
     // Step 4 — tech & storage
     keyRotationMode:       'admin-only',
     rotationDays:          30,
@@ -263,13 +263,18 @@ export function buildRulesObjectFromState(state) {
   for (const k of RULES_FIELDS) {
     if (doc[k]) rules[k] = doc[k];
   }
-  // 5.5c — embed normalised skills (drop unnamed rows) in the rules
+  // 5.5c — embed normalised offerings (drop unnamed rows) in the rules
   // blob.  createGroupV2 spreads the blob verbatim, so the substrate
   // persists them under the group-rules item without needing its own
-  // skills arg (a dedicated substrate slot is a follow-up).
-  if (Array.isArray(state.skills) && state.skills.length > 0) {
-    const named = state.skills.map(normalizeOffering).filter((s) => s.name.trim() !== '');
-    if (named.length > 0) rules.skills = named;
+  // offerings arg (a dedicated substrate slot is a follow-up).
+  // Read-accept a legacy in-memory `state.skills`; write the new
+  // `rules.offerings` field + a transitional `rules.skills` alias so an
+  // un-migrated reader of the persisted rules blob keeps working.
+  const offeringRows = Array.isArray(state.offerings) ? state.offerings
+    : (Array.isArray(state.skills) ? state.skills : []);
+  if (offeringRows.length > 0) {
+    const named = offeringRows.map(normalizeOffering).filter((s) => s.name.trim() !== '');
+    if (named.length > 0) { rules.offerings = named; rules.skills = named; }
   }
   // N3 — persist the admin's opted-in extra roles (from templates) so
   // joiners receive them in the invite + consent screen.

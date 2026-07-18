@@ -77,9 +77,9 @@ export function renderCircleProfile(container, {
   const moved = document.createElement('p');
   moved.className = 'cc-profile__skills-moved';
   if (typeof onOpenMij === 'function') {
-    moved.appendChild(button(tr('circle.profile.skills_moved'), 'cc-profile__skills-moved-link', onOpenMij));
+    moved.appendChild(button(tr('circle.profile.offerings_moved'), 'cc-profile__skills-moved-link', onOpenMij));
   } else {
-    moved.textContent = tr('circle.profile.skills_moved');
+    moved.textContent = tr('circle.profile.offerings_moved');
   }
   container.appendChild(moved);
 

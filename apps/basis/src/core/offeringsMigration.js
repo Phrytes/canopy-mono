@@ -1,5 +1,5 @@
 /**
- * skillsMigration — one-time, per-circle lift of ROSTER skills into the
+ * offeringsMigration — one-time, per-circle lift of ROSTER offerings into the
  * root persona (the truth layer). Phase D of the skills→property fold-in
  * (plans/NOTE-skills-properties-audit.md §3c).
  *
@@ -21,10 +21,13 @@ import { OFFERINGS_TAXONOMY } from '@onderling/agent-registry';
 
 /** Marker property on the default profile: comma-joined migrated circle ids.
  *  Not a charter key and not a driver value, so no surface renders it. */
-export const SKILLS_MIGRATION_KEY = '_migrations.skillsRoster';
+export const OFFERINGS_MIGRATION_KEY = '_migrations.offeringsRoster';
+/** Legacy marker (pre-offering rename). Still honored on read so an already-
+ *  migrated circle never re-runs — no destructive migration. */
+export const LEGACY_SKILLS_MIGRATION_KEY = '_migrations.skillsRoster';
 
-/** The web/mobile UI's skill key derivation — keyed by the phrase; re-use edits. */
-export function skillKeyFor({ text, tags }) {
+/** The web/mobile UI's offering key derivation — keyed by the phrase; re-use edits. */
+export function offeringKeyFor({ text, tags }) {
   return (text || tags).trim().toLowerCase().slice(0, 40);
 }
 
@@ -45,15 +48,17 @@ function categoryLabelNl(categoryId) {
  * @param {string} [args.defaultId] the root persona id
  * @returns {Promise<{ok: boolean, migrated?: number, already?: boolean, reason?: string}>}
  */
-export async function migrateRosterSkills({ callSkill, circleId, defaultId = 'default' } = {}) {
+export async function migrateRosterOfferings({ callSkill, circleId, defaultId = 'default' } = {}) {
   if (typeof callSkill !== 'function' || !circleId) return { ok: false, reason: 'no-circle' };
 
-  // marker — which circles are already folded in
+  // marker — which circles are already folded in. Read-accept the legacy
+  // marker key too so a circle migrated before the rename never re-runs.
   let props = null;
   try { props = await callSkill('agents', 'getProfileProperties', { id: defaultId }); } catch { /* */ }
   if (!props || props.ok === false) return { ok: false, reason: 'no-profile' };
-  const done = new Set(String(unwrap(props?.properties?.[SKILLS_MIGRATION_KEY]) ?? '')
-    .split(',').filter(Boolean));
+  const markerValue = String(unwrap(props?.properties?.[OFFERINGS_MIGRATION_KEY]) ?? '')
+    + ',' + String(unwrap(props?.properties?.[LEGACY_SKILLS_MIGRATION_KEY]) ?? '');
+  const done = new Set(markerValue.split(',').filter(Boolean));
   if (done.has(circleId)) return { ok: true, migrated: 0, already: true };
 
   // this circle's roster: my own skills as every member of it already sees them
@@ -69,7 +74,7 @@ export async function migrateRosterSkills({ callSkill, circleId, defaultId = 'de
     const freeTags = Array.isArray(s?.freeTags) ? s.freeTags.filter(Boolean) : [];
     if (!s?.categoryId && freeTags.length === 0) continue;
     const text = freeTags.length ? freeTags.join(' ') : (categoryLabelNl(s.categoryId) ?? s.categoryId);
-    const key = skillKeyFor({ text, tags: freeTags.join(' ') });
+    const key = offeringKeyFor({ text, tags: freeTags.join(' ') });
     if (keys.includes(key)) continue; // same phrase twice on one roster — one item
     try {
       const res = await callSkill('agents', 'setProfileDriver', {
@@ -94,7 +99,7 @@ export async function migrateRosterSkills({ callSkill, circleId, defaultId = 'de
   // mark the circle done (also when it had zero skills — no rescan every load)
   try {
     await callSkill('agents', 'setProfileProperty', {
-      id: defaultId, key: SKILLS_MIGRATION_KEY, value: [...done, circleId].join(','),
+      id: defaultId, key: OFFERINGS_MIGRATION_KEY, value: [...done, circleId].join(','),
     });
   } catch { /* */ }
 

@@ -79,13 +79,13 @@ export default function CircleProfileScreen({ callSkill, onAvailability, onMyDat
           below stays functional on mobile until the fold-in completes here. */}
       {typeof onOpenMij === 'function' ? (
         <Pressable onPress={onOpenMij} accessibilityRole="button" testID="profile-skills-moved">
-          <Text style={styles.skillsMoved}>{t('circle.profile.skills_moved')}</Text>
+          <Text style={styles.skillsMoved}>{t('circle.profile.offerings_moved')}</Text>
         </Pressable>
       ) : (
-        <Text style={styles.skillsMoved} testID="profile-skills-moved">{t('circle.profile.skills_moved')}</Text>
+        <Text style={styles.skillsMoved} testID="profile-skills-moved">{t('circle.profile.offerings_moved')}</Text>
       )}
 
-      <Section title={t('circle.profile.skills')}>
+      <Section title={t('circle.profile.offerings')}>
         {mySkills.length === 0 ? <Text style={styles.muted}>{t('circle.profile.no_skills')}</Text> : (
           <View style={styles.chips}>
             {mySkills.map((s) => (

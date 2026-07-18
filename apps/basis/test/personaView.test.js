@@ -355,15 +355,15 @@ describe('renderMij', () => {
   });
 
   it('adds a skill through the dashed inline form (text + tags)', () => {
-    const onAddSkill = vi.fn();
-    const el = renderMij(document.createElement('div'), { model: build(), t, onAddSkill });
+    const onAddOffering = vi.fn();
+    const el = renderMij(document.createElement('div'), { model: build(), t, onAddOffering });
     el.querySelector('.cc-mij__add').click();
     const form = el.querySelector('.cc-mij__form');
     const [text, tags] = form.querySelectorAll('.cc-mij__input');
     text.value = 'banden plakken';
     tags.value = 'fiets, repareren';
     form.querySelector('.cc-btn--primary').click();
-    expect(onAddSkill).toHaveBeenCalledWith({ text: 'banden plakken', tags: 'fiets, repareren' });
+    expect(onAddOffering).toHaveBeenCalledWith({ text: 'banden plakken', tags: 'fiets, repareren' });
   });
 
   it('edits a general property and toggles disclosure from the circle table', () => {

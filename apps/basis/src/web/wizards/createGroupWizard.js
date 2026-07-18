@@ -25,7 +25,7 @@ import {
   STORAGE_POLICIES, KEY_ROTATION_MODES, STEP_NAMES,
   initialState, slugify, isValidSlug, labelOf,
   buildRulesObjectFromState, finalSubmit,
-  newSkillRow, OFFERING_AXES,
+  newOfferingRow, OFFERING_AXES,
   // N1+E8 — kind picker + buurt size/chat advice + policy patch.
   KRING_KINDS, setKind, setSize, setChatEnabled, chatAdvice, policyPatchFromState,
   // N3 — extra role templates (admin opt-in).
@@ -82,7 +82,7 @@ export function renderCreateGroupWizard(opts) {
     if (state.step === 1) renderIdentityStep(container, doc, state, advance, onClose, rerender);
     if (state.step === 2) renderGovernanceStep(container, doc, state, advance, back, onClose, rerender);
     if (state.step === 3) renderRulesStep(container, doc, state, advance, back, onClose, rerender);
-    if (state.step === 4) renderSkillsStep(container, doc, state, advance, back, onClose, rerender);
+    if (state.step === 4) renderOfferingsStep(container, doc, state, advance, back, onClose, rerender);
     if (state.step === 5) renderTechStep(container, doc, state, advance, back, onClose, rerender);
     if (state.step === 6) renderReviewStep(container, doc, state, back, onClose, rerender, async () => {
       rerender(); // show submitting state
@@ -271,16 +271,16 @@ function renderRulesStep(container, doc, state, onNext, onBack, onCancel, rerend
 // 5.5c — Skills step: list `{name, openness, posture, status, radius}`
 // rows.  Each row's four axes are radio groups over `OFFERING_AXES`.
 // Unnamed rows are dropped at submit (see buildRulesObjectFromState).
-function renderSkillsStep(container, doc, state, onNext, onBack, onCancel, rerender) {
-  const wrap = makeBody(doc, 'Skills (optional)',
+function renderOfferingsStep(container, doc, state, onNext, onBack, onCancel, rerender) {
+  const wrap = makeBody(doc, 'Offerings (optional)',
     'What members can do / offer in this circle.  Each skill is named + has four axes (openness / posture / status / radius).  You can skip this step or edit it later.');
 
-  state.skills.forEach((row, i) => {
+  state.offerings.forEach((row, i) => {
     const card = doc.createElement('div');
     card.className = 'cc-wizard-skill-row';
     card.style.cssText = 'border:1px solid var(--cc-line,#d8d1bc);border-radius:6px;padding:10px;margin-bottom:10px';
 
-    appendField(card, doc, 'Skill name', `skill-${i}-name`,
+    appendField(card, doc, 'Offering name', `skill-${i}-name`,
       row.name, (v) => { row.name = v; }, { placeholder: 'e.g. plumbing' });
 
     for (const axis of Object.keys(OFFERING_AXES)) {
@@ -292,9 +292,9 @@ function renderSkillsStep(container, doc, state, onNext, onBack, onCancel, reren
     const del = doc.createElement('button');
     del.type = 'button';
     del.className = 'cc-wizard-cta-secondary';
-    del.textContent = 'Remove skill';
+    del.textContent = 'Remove offering';
     del.addEventListener('click', () => {
-      state.skills.splice(i, 1);
+      state.offerings.splice(i, 1);
       rerender();
     });
     card.appendChild(del);
@@ -304,9 +304,9 @@ function renderSkillsStep(container, doc, state, onNext, onBack, onCancel, reren
   const add = doc.createElement('button');
   add.type = 'button';
   add.className = 'cc-wizard-cta-secondary';
-  add.textContent = '+ Add skill';
+  add.textContent = '+ Add offering';
   add.addEventListener('click', () => {
-    state.skills.push(newSkillRow());
+    state.offerings.push(newOfferingRow());
     rerender();
   });
   wrap.appendChild(add);
@@ -375,12 +375,12 @@ function renderReviewStep(container, doc, state, onBack, onCancel, rerender, onS
   }
   appendReview(dl, doc, 'Conflict policy', labelOf(CONFLICT_POLICIES, state.conflictPolicy));
   // 5.5c — list named skills with their axes.
-  const namedSkills = (state.skills ?? []).filter((s) => s?.name?.trim());
+  const namedSkills = (state.offerings ?? []).filter((s) => s?.name?.trim());
   if (namedSkills.length > 0) {
     const skillsSummary = namedSkills
       .map((s) => `${s.name} — ${s.openness}/${s.posture}/${s.status}/${s.radius}`)
       .join('\n');
-    appendReview(dl, doc, 'Skills', skillsSummary, { pre: true });
+    appendReview(dl, doc, 'Offerings', skillsSummary, { pre: true });
   }
   appendReview(dl, doc, 'Storage',        labelOf(STORAGE_POLICIES, state.storagePolicy));
   if (state.groupPodUri) appendReview(dl, doc, 'Group pod URI', state.groupPodUri);
