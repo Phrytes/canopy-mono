@@ -120,11 +120,11 @@
     },
     "skills_default": {
       "label": {
-        "text": "Deze kring draait om vaardigheden-matching — je vaardigheden (als categorie) delen staat aan.",
+        "text": "Deze kring draait om aanbod-matching — je aanbod (als categorie) delen staat aan.",
         "doc": "Fold-in phase C (Q3) — pre-checked, uncheckable wizard line when the joined circle's invite carries the skills-matching signal; checked = disclose skill keys at the coarse 'category' rung for the chosen persona."
       },
       "hint": {
-        "text": "Alleen de categorie wordt gedeeld, nooit de tekst of tags. Vink uit als je je vaardigheden hier niet wilt delen — later aanpassen kan bij Mij → persona's.",
+        "text": "Alleen de categorie wordt gedeeld, nooit de tekst of tags. Vink uit als je je aanbod hier niet wilt delen — later aanpassen kan bij Mij → persona's.",
         "doc": "Fold-in phase C (Q3) — explains the coarse rung + how to change it later; shown under the pre-checked line."
       }
     }
@@ -1811,7 +1811,7 @@
   },
   "skillMatches": {
     "title": {
-      "text": "Leden met passende vaardigheden:",
+      "text": "Leden met passend aanbod:",
       "doc": "Heading for the inline skill-match list (P6.7 #345)."
     }
   },
@@ -1831,7 +1831,7 @@
       "doc": "Board 8C — heading of the `HIER` screen (P6.8)."
     },
     "header": {
-      "text": "{{sharing}} van {{total}} delen skills met jou",
+      "text": "{{sharing}} van {{total}} delen aanbod met jou",
       "doc": "Header line."
     },
     "header_empty": {
@@ -1847,7 +1847,7 @@
       "doc": "Footer heading."
     },
     "own_profile_empty": {
-      "text": "Je hebt nog geen skills gepubliceerd.",
+      "text": "Je hebt nog geen aanbod gepubliceerd.",
       "doc": "Empty-skills footer."
     }
   },
@@ -2719,19 +2719,19 @@
       "doc": "S2 — transient save state."
     },
     "skills": {
-      "text": "Vaardigheden",
+      "text": "Aanbod",
       "doc": "S2 — personal skills section. (Web editor retired in fold-in phase C; mobile CircleProfileScreen still renders it until the mobile mirror lands.)"
     },
     "skills_moved": {
-      "text": "Vaardigheden staan nu bij Mij → persona's",
+      "text": "Aanbod staat nu bij Mij → persona's",
       "doc": "Fold-in phase C — quiet pointer row on the Profiel screen, replacing the retired skills editor; opens the Mij persona surface."
     },
     "no_skills": {
-      "text": "Nog geen vaardigheden.",
+      "text": "Nog geen aanbod.",
       "doc": "S2 — empty skills state."
     },
     "pick_skill": {
-      "text": "Kies een vaardigheid…",
+      "text": "Kies aanbod…",
       "doc": "S2 — skill-category select placeholder."
     },
     "add_skill": {
@@ -2739,7 +2739,7 @@
       "doc": "S2 — add a skill button."
     },
     "remove_skill": {
-      "text": "Vaardigheid verwijderen",
+      "text": "Aanbod verwijderen",
       "doc": "S2 — a11y label for the per-skill remove button."
     },
     "location": {
@@ -3396,11 +3396,11 @@
       "doc": "mij#personas — eigenschap zonder waarde op de algemene persona."
     },
     "skills_label": {
-      "text": "Vaardigheden & drijfveren",
+      "text": "Aanbod & drijfveren",
       "doc": "mij#personas — rij-label voor de chips met vaardigheden/drijfveren."
     },
     "skill_add": {
-      "text": "+ vaardigheid of drijfveer",
+      "text": "+ aanbod of drijfveer",
       "doc": "mij#personas — gestippelde toevoeg-knop (potentiële-actie-grammatica)."
     },
     "skill_text_ph": {

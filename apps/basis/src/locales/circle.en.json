@@ -120,11 +120,11 @@
     },
     "skills_default": {
       "label": {
-        "text": "This circle is about skills-matching — sharing your skills (as a category) is on.",
+        "text": "This circle is about offering-matching — sharing your offerings (as a category) is on.",
         "doc": "Fold-in phase C (Q3) — pre-checked, uncheckable wizard line when the joined circle's invite carries the skills-matching signal; checked = disclose skill keys at the coarse 'category' rung for the chosen persona."
       },
       "hint": {
-        "text": "Only the category is shared, never the text or tags. Uncheck if you'd rather not share your skills here — you can change this later under Me → personas.",
+        "text": "Only the category is shared, never the text or tags. Uncheck if you'd rather not share your offerings here — you can change this later under Me → personas.",
         "doc": "Fold-in phase C (Q3) — explains the coarse rung + how to change it later; shown under the pre-checked line."
       }
     }
@@ -1811,7 +1811,7 @@
   },
   "skillMatches": {
     "title": {
-      "text": "Members with matching skills:",
+      "text": "Members with matching offerings:",
       "doc": "Heading for the inline skill-match list (P6.7 #345) appended under /find replies."
     }
   },
@@ -1831,7 +1831,7 @@
       "doc": "Board 8C — heading of the dedicated `HIER` screen (P6.8)."
     },
     "header": {
-      "text": "{{sharing}} of {{total}} share skills with you",
+      "text": "{{sharing}} of {{total}} share offerings with you",
       "doc": "Header line above the row list."
     },
     "header_empty": {
@@ -1847,7 +1847,7 @@
       "doc": "Footer block heading; shows your own pseudonym + published-tier skills."
     },
     "own_profile_empty": {
-      "text": "You haven't published any skills yet.",
+      "text": "You haven't published any offerings yet.",
       "doc": "Footer when no skills are published."
     }
   },
@@ -2719,19 +2719,19 @@
       "doc": "S2 — transient save state."
     },
     "skills": {
-      "text": "Skills",
+      "text": "Offerings",
       "doc": "S2 — personal skills section. (Web editor retired in fold-in phase C; mobile CircleProfileScreen still renders it until the mobile mirror lands.)"
     },
     "skills_moved": {
-      "text": "Skills now live under Me → personas",
+      "text": "Offerings now live under Me → personas",
       "doc": "Fold-in phase C — quiet pointer row on the Profiel screen, replacing the retired skills editor; opens the Mij persona surface."
     },
     "no_skills": {
-      "text": "No skills yet.",
+      "text": "No offerings yet.",
       "doc": "S2 — empty skills state."
     },
     "pick_skill": {
-      "text": "Pick a skill…",
+      "text": "Pick an offering…",
       "doc": "S2 — skill-category select placeholder."
     },
     "add_skill": {
@@ -2739,7 +2739,7 @@
       "doc": "S2 — add a skill button."
     },
     "remove_skill": {
-      "text": "Remove skill",
+      "text": "Remove offering",
       "doc": "S2 — a11y label for the per-skill remove button."
     },
     "location": {
@@ -3396,11 +3396,11 @@
       "doc": "mij#personas — property without a value on the general persona."
     },
     "skills_label": {
-      "text": "Skills & drivers",
+      "text": "Offerings & drivers",
       "doc": "mij#personas — row label for the skills/drivers chips."
     },
     "skill_add": {
-      "text": "+ skill or driver",
+      "text": "+ offering or driver",
       "doc": "mij#personas — dashed add button (potential-action grammar)."
     },
     "skill_text_ph": {
