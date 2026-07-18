@@ -223,6 +223,30 @@ export const tasksManifest = {
         // (correctly) break that design contract.  Stays chat/role-driven.
       },
     },
+    /*
+     * P5 (2026-07-18) — "authority travels with the task" (journey J8).
+     * Attach a task-scoped, attenuated capability grant to a task for a
+     * member. Off by default (a task carries no authority unless attached);
+     * creator/admin-gated in the skill; revoked when the task
+     * completes/cancels. Verb rides the task `update` atom (it mutates the
+     * task's grant set) — no new capability atom minted. Chat-only surface:
+     * the rich "Toegang voor deze taak" composer picker is a later web step
+     * (volley 6), so no `ui`/`slash` here. The `grant` object is a complex
+     * param modelled only in the composer/skill (same policy as addTask's
+     * embeds/dependencies), so the LLM surface declares just taskId + member.
+     */
+    {
+      id:        'attachTaskGrant',
+      verb:      'update',
+      appliesTo: { type: 'task' },
+      params: [
+        { name: 'taskId', kind: 'string', required: true, ...ID_NONEMPTY  },
+        { name: 'member', kind: 'string', required: true, ...STR_NONEMPTY },
+      ],
+      surfaces: {
+        chat: { hint: 'Attach a task-scoped, attenuated capability grant to a task for a member (creator/admin only); revoked when the task completes.' },
+      },
+    },
     {
       id:        'reassignTask',
       verb:      'reassign',

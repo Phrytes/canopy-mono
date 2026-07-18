@@ -21,6 +21,7 @@
 
 import {
   MemorySource,
+  TaskGrantManager,
 } from '@onderling/core';
 import { CircleItemStore, createTaskStore } from '@onderling/item-store';
 import { MemberMap } from '@onderling/identity-resolver';
@@ -144,6 +145,20 @@ export async function createTasksAgent({
     agent: sharedAgent,
   });
 
+  // ── TaskGrantManager (P5 — "authority travels with the task") ────────────
+  // The agent's OWN identity is the granter/token-issuer. `attachTaskGrant`
+  // (skills/index.js) issues an attenuated, task-scoped cap-token per member;
+  // completeTask/removeTask revoke every grant materialized for the task, so a
+  // grant's authority expires WITH the task. OFF BY DEFAULT: a freshly-built
+  // manager has granted nothing — a task carries authority ONLY after an
+  // explicit attach. `installRevocationCheck` feeds the manager's revocation
+  // set into PolicyEngine so a revoked grant fails `checkInbound` at the
+  // verifier even if the holder still has the token stored.
+  const taskGrantManager = new TaskGrantManager({ identity: id });
+  if (typeof agent.policyEngine?.setRevocationCheck === 'function') {
+    taskGrantManager.installRevocationCheck(agent.policyEngine);
+  }
+
   // SkillMatch (Phase 4.2 — composes core.Agent + pubSub directly).
   let skillMatch = null;
   if (skillMatchOpts?.group) {
@@ -189,6 +204,9 @@ export async function createTasksAgent({
     itemStore,
     dataSource,
     members,
+    // P5 task-scoped grants — the granting authority skills reach via the
+    // resolved CircleState (like `itemStore`). Present on every path.
+    taskGrantManager,
     // V1+ wiring slots — left null on the V0 path; createCircleAgent
     // sets these post-construction.
     chatController:    null,
@@ -226,6 +244,7 @@ export async function createTasksAgent({
     members,
     notifier,
     skillMatch,
+    taskGrantManager,
     localStore: localStoreBundle ?? null,
     _circleState: circleState,
   };

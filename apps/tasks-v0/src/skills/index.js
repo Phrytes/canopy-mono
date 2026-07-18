@@ -213,6 +213,11 @@ async function completeTaskCore(circle, a, ctx) {
     // Phase 52.9.3 sub-slice 1 — fan-out the completion.
     if (completed) {
       circle?.tasksMirror?.publishTask?.(completed).catch(() => {});
+      // P5 "authority travels with the task" — the grant expires WITH the
+      // task. Revoke every task-scoped grant materialized for this task so any
+      // outstanding cap-token fails PolicyEngine.checkInbound. Best-effort:
+      // completion already succeeded; a revoke hiccup must not undo it.
+      try { circle?.taskGrantManager?.revokeTaskGrants?.(a.id); } catch { /* noop */ }
     }
     return { task: completed };
   } catch (err) {
@@ -241,6 +246,9 @@ async function removeTaskCore(circle, a, ctx) {
   const [id] = await circle.itemStore.removeItems([{ id: a.id }], { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
   // Phase 52.9.3 sub-slice 1 — fan-out the removal.
   circle?.tasksMirror?.publishTaskRemoved?.(originalId).catch(() => {});
+  // P5 — cancelling/removing a task is a task-end too: revoke its grants so no
+  // lingering authority survives the task (parity with completeTask).
+  try { circle?.taskGrantManager?.revokeTaskGrants?.(a.id); } catch { /* noop */ }
   return { id };
 }
 
@@ -545,6 +553,94 @@ export function buildSkills({ bundleResolver, circlesProvider } = {}) {
     }),
 
     // ── Hand-written skills (NOT wired — see per-skill note) ───────────────
+
+    /**
+     * attachTaskGrant({taskId, member, grant})  — P5 "authority travels with
+     * the task" (NOTE-skills-vs-capabilities volley 5; journey J8).
+     *
+     * Attach ONE task-scoped, attenuated capability grant to `taskId` for
+     * `member` (the grantee's pubKey). Delegates to the CircleState's
+     * `TaskGrantManager.attachGrant`, which issues a real cap-token from the
+     * agent's OWN identity — equal-or-narrower than what the granter holds
+     * (attenuation enforced by the primitive) — stamped `constraints.task =
+     * taskId` and tracked so completeTask/removeTask can revoke it.
+     *
+     * OFF BY DEFAULT: a task carries NO authority unless this op is called.
+     * Only the task CREATOR or a circle ADMIN may attach (the same authority
+     * that owns the task's lifecycle). Legibility: the granted tokenId is
+     * recorded on the task's `source.taskGrants` via the existing update()
+     * path — no bespoke whitelist field, so "this task may reach X" is visible.
+     *
+     * NOT wired: uses the `taskGrantManager` collaborator (not the item-store),
+     * has a return-shaped error contract, and its args (`member`, `grant`)
+     * diverge from the LLM-surface params — same reasons reassignTask/editTask
+     * stay hand-written.
+     */
+    defineSkill('attachTaskGrant', async ({ parts, from, envelope, actorDisplayName }) => {
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const mgr = circle.taskGrantManager;
+      if (!mgr) return { error: 'task-grants-unavailable' };
+
+      const a = argsFromParts(parts);
+      const { taskId, member, grant } = a;
+      if (typeof taskId !== 'string' || !taskId) return { error: 'taskId required' };
+      if (typeof member !== 'string' || !member) return { error: 'member required' };
+      if (!grant || typeof grant !== 'object' || Array.isArray(grant)) {
+        return { error: 'grant required' };
+      }
+
+      // Locate the task — it must exist AND it drives the creator gate.
+      const open   = await circle.itemStore.listOpen();
+      const closed = await circle.itemStore.listClosed();
+      const task   = [...open, ...closed].find((t) => t.id === taskId);
+      if (!task) return { error: 'task-not-found' };
+
+      // Gate (rides the same role map as the other admin-gated skills): only
+      // the task creator (addedBy / master) or a circle admin may attach.
+      const role = circle.liveCircle?.members?.find?.((m) => m.webid === from)?.role
+        ?? circle?.roles?.[from] ?? null;
+      const isCreator = task.addedBy === from || task.master === from;
+      if (role !== 'admin' && !isCreator) return { error: 'permission-denied' };
+
+      // Issue the attenuated, task-scoped grant. Attenuation / off-by-default
+      // are enforced by the primitive; a grant wider than the granter throws.
+      let token;
+      try {
+        token = await mgr.attachGrant({ taskId, memberPubKey: member, grant });
+      } catch (err) {
+        return { error: `grant-rejected:${err?.message ?? err}` };
+      }
+
+      // Legibility — record the granted tokenId on the task's `source` (merged,
+      // never clobbering existing source fields). Best-effort: the grant is
+      // already issued; a legibility-write hiccup must not fail the attach.
+      let grants = null;
+      try {
+        const prevSource = (task.source && typeof task.source === 'object') ? task.source : {};
+        const prevGrants = Array.isArray(prevSource.taskGrants) ? prevSource.taskGrants : [];
+        grants = [...prevGrants, { tokenId: token.id, member, skill: token.skill }];
+        const updated = await circle.itemStore.update(
+          taskId,
+          { source: { ...prevSource, taskGrants: grants } },
+          { actor: from, actorDisplayName },
+        );
+        circle?.tasksMirror?.publishTask?.(updated).catch(() => {});
+      } catch { /* legibility write is best-effort */ }
+
+      return {
+        ok:        true,
+        taskId,
+        member,
+        tokenId:   token.id,
+        skill:     token.skill,
+        expiresAt: token.expiresAt,
+        ...(grants ? { grants } : {}),
+      };
+    }, {
+      description: 'Attach a task-scoped, attenuated capability grant to a task for a member (creator/admin only). Revoked when the task completes or is cancelled.',
+      visibility:  'authenticated',
+    }),
 
     /**
      * reassignTask({id, newAssignee})

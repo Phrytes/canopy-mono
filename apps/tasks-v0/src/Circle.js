@@ -450,6 +450,16 @@ export async function createCircleAgent({
         })
       : null;
     circleState.botAgentRegistry = botAgentRegistry;
+    // BotAgentRegistry's constructor calls `policyEngine.setRevocationCheck`,
+    // which CLOBBERS the task-grant revocation check createTasksAgent wired.
+    // Re-install a UNION so BOTH bot-token and task-grant revocations are
+    // honoured at the verifier (a single PolicyEngine has one revocation hook).
+    const tgm = circleState.taskGrantManager;
+    if (botAgentRegistry && tgm && typeof bundle.agent.policyEngine?.setRevocationCheck === 'function') {
+      bundle.agent.policyEngine.setRevocationCheck(
+        (tokenId) => botAgentRegistry.isRevoked(tokenId) || tgm.isRevoked(tokenId),
+      );
+    }
     if (botAgentRegistry?.persisting) {
       try {
         const r = await botAgentRegistry.restoreAll();
