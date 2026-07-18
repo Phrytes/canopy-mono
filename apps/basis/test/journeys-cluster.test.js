@@ -467,10 +467,23 @@ describe('J8 — task-scoped grant (TODO: Phase 5 attenuated broker grant)', () 
 // Verifies: matchable ≠ disclosed ≠ requestable; on-device matcher;
 //   join/property-change trigger.
 // ═══════════════════════════════════════════════════════════════════════════
-describe('J9 — matchable-not-disclosed (TODO: Phase 4 three axes + matcher)', () => {
-  it.todo(
-    'A matchable/undisclosed hobby + B same → both get match-proposal; roster hides both hobbies; no request channel',
-  );
+// The end-to-end profile↔profile match + the basis match-proposal trigger are
+// covered in agent-registry's driverMatch/disclosure suites. Here we assert the
+// load-bearing invariant: a matchable-but-not-disclosed property MATCHES yet is
+// NEVER disclosed (the whole point of a separate matchable axis).
+describe('J9 — matchable-not-disclosed (GREEN: matches, never discloses)', () => {
+  it('a matchable+undisclosed hobby is in the matching set but not the released/roster set', async () => {
+    const { releasedForMatching, releasedValues, createDriver, createDisclosurePolicy, setDisclosure } = await import('@onderling/agent-registry');
+    const hobby = createDriver({ kind: 'hobby', text: 'gardening', tags: ['garden'] });
+    // profile properties are mode-entries { mode:'own', value }.
+    const ctx = { getProfile: () => ({ properties: { hobby: { mode: 'own', value: hobby } } }), profileId: 'p', defaultProfileId: 'p' };
+    // hobby is MATCHABLE but NOT disclosed (setDisclosure touches only the matchable axis).
+    const policy = setDisclosure(createDisclosurePolicy(), 'c', 'hobby', { matchable: true });
+    const req = { items: [{ key: 'hobby' }] };
+
+    expect(releasedForMatching(ctx, req, policy, 'c')).toEqual({ hobby }); // matchable → in the matching set
+    expect(releasedValues(ctx, req, policy, 'c')).toEqual({}); // not disclosed → hidden from the roster
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
