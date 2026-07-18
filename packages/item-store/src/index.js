@@ -32,6 +32,7 @@ export { wireCircleStoreInbound } from './circleStoreInbound.js';  // cluster L3
 export { causalWinner, causalRank } from './causalMerge.js';       // Objective L — origin-ts + writer-id causal LWW for inbound merge
 export { recoverCircleFromCaches, writeRecoveredInto } from './podRecovery.js';  // Objective S — pod-recovery: causal merge of device caches
 export { shareIntoAudience, resolveSharedRef, listShared } from './shareIntoAudience.js';  // cluster K2 — cross-circle share
+export { shareContainerTree, collectSubtree } from './shareContainerTree.js';  // journey J5 — SENDABLE LISTS: fan the single-item share over a container subtree
 export {                                                 // cluster K — injectable ACP/seal enforcement on the cross-circle read
   makeSharedRefPolicy, makePosturePolicy, makeShareGrantHook, makeCircleShareEnforcement,
   makeCanonicalShareHook,                                 // objective L — canonical share/revoke grant hook (createCanonicalShare-composed)

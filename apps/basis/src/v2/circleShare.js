@@ -21,7 +21,7 @@
  * SYNCHRONOUS `{ getStore }` facade over the pre-resolved per-circle stores — exactly the shape
  * shareIntoAudience / resolveSharedRef expect (they call getStore(circleId) synchronously).
  */
-import { shareIntoAudience, resolveSharedRef, listShared, unsealItem, isCanonicalPosture } from '@onderling/item-store';
+import { shareIntoAudience, resolveSharedRef, listShared, unsealItem, isCanonicalPosture, shareContainerTree } from '@onderling/item-store';
 import { normalizeCirclePolicy } from './circlePolicy.js';
 
 /**
@@ -152,6 +152,27 @@ export async function shareItemAcrossCircles({
   // Null ⇒ memory path: shareIntoAudience just writes the ref (unchanged behaviour).
   const enforcement = typeof enforcementFor === 'function' ? await enforcementFor(fromCircleId) : null;
 
+  return shareOneResolved({
+    stores, itemId, fromCircleId, toCircleId, by, posture,
+    recipient, recipients, recipientKeys, sealCopy, enforcement, postureOf,
+  });
+}
+
+/**
+ * The per-item WRITE path, factored so BOTH the single-item op (shareItemAcrossCircles) and the SENDABLE-LIST
+ * op (shareContainerAcrossCircles) fan EXACTLY the same three-branch mechanic over PRE-RESOLVED stores +
+ * enforcement + the source posture (already gated). No policy/resolve here — the caller gated + resolved once.
+ *
+ *   • CANONICAL → in-place revocable grant (no copy); the pod-tier `onShareCanonical` re-wraps + ACP-grants.
+ *   • COPY re-seal (copy/trusted/registered, when pod+sealer+keys present) → a SEPARATE sealed object shared.
+ *   • Fallback → plain `shared-ref` (memory path) or in-place re-seal via the enforcement's `onShare`.
+ *
+ * @returns {Promise<{ok:true, ref:object}|{ok:false, error:string, cause?:any}>}
+ */
+async function shareOneResolved({
+  stores, itemId, fromCircleId, toCircleId, by, posture,
+  recipient, recipients, recipientKeys, sealCopy, enforcement, postureOf,
+}) {
   const keys = Array.isArray(recipientKeys) ? recipientKeys.filter(Boolean) : [];
 
   // CANONICAL (objective L) — share the item IN PLACE, revocably, with NO copy. `usesCopyReseal` is false for
@@ -203,6 +224,63 @@ export async function shareItemAcrossCircles({
   return shareIntoAudience(stores, {
     itemId, fromCircleId, toCircleId, by, recipient, recipients, recipientKeys: keys, postureOf,
     onShare: enforcement?.onShare,
+  });
+}
+
+/**
+ * SENDABLE LISTS (journey J5) — send a WHOLE list (a container + its children, order preserved) into another
+ * circle. Today a bare container share is a single self-pointer whose children do NOT travel
+ * (shareItemAcrossCircles shares ONLY the named item). This op closes that gap WITHOUT a bundle format: it
+ * gates + resolves ONCE (same source circle/posture for every node), then FANS the SAME per-item write path
+ * (`shareOneResolved`) over the container subtree via item-store's `shareContainerTree` — the container plus
+ * every descendant (list-items, nested lists, tasks), each landing its own `shared-ref`. The recipient rebuilds
+ * the nesting from the shared items' own `embeds`/`containedBy` structure (see shareContainerTree).
+ *
+ * Mirrors `shareItemAcrossCircles`' shape + INITIATOR GATE exactly — `containerId` replaces `itemId`; the return
+ * is the fan report `{ ok, container, order, shared, failed }` (ok iff EVERY node shared).
+ *
+ * @param {object} args  — as shareItemAcrossCircles, but `containerId` (the list root) instead of `itemId`
+ * @param {number} [args.maxDepth]  subtree cycle/depth guard (forwarded to shareContainerTree)
+ * @returns {Promise<{ok:boolean, container?:string, order?:string[],
+ *                     shared?:Array<{itemId:string,ref:object}>, failed?:Array<object>, error?:string}>}
+ */
+export async function shareContainerAcrossCircles({
+  resolveService, containerId, fromCircleId, toCircleId, by,
+  recipient, recipients, recipientKeys, sealCopy, enforcementFor, postureOf, policyOf, maxDepth,
+} = {}) {
+  if (typeof resolveService !== 'function' || !containerId || !fromCircleId || !toCircleId) {
+    return { ok: false, error: 'missing-args' };
+  }
+  if (fromCircleId === toCircleId) return { ok: false, error: 'same-circle' };
+
+  // INITIATOR GATE — ONCE for the whole list (every node shares from the SAME source circle/policy).
+  let srcPolicy;
+  try { srcPolicy = typeof policyOf === 'function' ? await policyOf(fromCircleId) : undefined; }
+  catch { srcPolicy = undefined; }
+  const policy = normalizeCirclePolicy(srcPolicy);
+  const posture = policy.sharePosture;
+  if (posture === 'closed') return { ok: false, error: 'sharing-closed' };
+  if (posture === 'registered' && !policy.admins.includes(by)) {
+    return { ok: false, error: 'sharing-admin-only' };
+  }
+
+  const [fromSvc, toSvc] = await Promise.all([resolveService(fromCircleId), resolveService(toCircleId)]);
+  if (!fromSvc?.stores || !toSvc?.stores) return { ok: false, error: 'no-stores' };
+
+  const stores = makeCrossCircleStores(new Map([
+    [fromCircleId, fromSvc.stores.getStore(fromCircleId)],
+    [toCircleId,   toSvc.stores.getStore(toCircleId)],
+  ]));
+
+  const enforcement = typeof enforcementFor === 'function' ? await enforcementFor(fromCircleId) : null;
+
+  // Fan the SAME single-item write path over the subtree (container first, children in order; idempotent).
+  return shareContainerTree(stores, {
+    containerId, fromCircleId, toCircleId, maxDepth,
+    shareNode: (itemId) => shareOneResolved({
+      stores, itemId, fromCircleId, toCircleId, by, posture,
+      recipient, recipients, recipientKeys, sealCopy, enforcement, postureOf,
+    }),
   });
 }
 
