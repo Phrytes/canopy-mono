@@ -38,6 +38,11 @@ export { listContacts, peerToContactRow, stoopContactToRow, mergeContacts } from
 export { createCircleSealingIdentity } from './v2/circleSealingIdentity.js';
 export { createCircleControlAgent } from './v2/circleControlAgent.js';
 export { addBotToGraph } from './v2/addBot.js';
+// The pure, offline help-answer engine (ported onderling.org matcher + cards):
+// answerHelp routes a question to a human-written card over two deterministic
+// layers, returns null on a miss (where a consent-gated model may step in).
+export { answerHelp, helpTopics } from './v2/help/helpAnswer.js';
+export { helpDeck } from './v2/help/kaartjes.js';
 export { renderReply, formatText }   from './renderer.js';
 export { Thread, newThread }         from './thread.js';
 export {
