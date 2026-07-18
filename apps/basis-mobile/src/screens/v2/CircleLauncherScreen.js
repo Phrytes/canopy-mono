@@ -20,6 +20,8 @@ import {
   loadCircles, circleSourcesFromAgent, makeResolvingCallSkill,
   loadCircleItems, quickCreateCircle, setActiveCircle, normalizeCircleMembers,
   circleFilesFromListFiles,
+  // 1:1-bot chat gate — the assistant-header strip shows ONLY in a genuine 1:1-with-a-bot chat.
+  oneToOneBotLabel,
   // per-kring feature-flag consumption.
   isFeatureEnabled,
   // §4 — admin's policy.view → default Chat/Scherm landing surface.
@@ -1804,11 +1806,6 @@ function CircleDetail({
   eventLog, circles = [],
   recipeStore = null, onStoopEvent, sendPersonaUpdate,
   onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules, onRecipes, onAdmin, onLists, onShare, onInvite,
-  // Bulletin restyle — the label shown in the GESPREK chat-card's bot-header strip
-  // (green presence dot + this name). SEAM: no per-kring bot identity is plumbed to
-  // the screen yet, so it stays null and the strip falls back to a localized default
-  // (circle.kring.bot_header) — same botLabel seam as web. Wire a real name when it exists.
-  botLabel = null,
 }) {
   // Part D — scope the bot/suggest catalog to the circle's apps: drops basis's infra ops (/me etc.)
   // that the circle bot can't run (they threw `circle.bot.failed`) and keeps them out of the suggest list.
@@ -2111,9 +2108,15 @@ function CircleDetail({
   // fail-closed until resolved (a locally-authored row still offers it via isOwn).
   const [mandatePicker, setMandatePicker] = useState(null);
   const [mandateViewer, setMandateViewer] = useState({ viewerWebid: null, isAdmin: false });
+  // 1:1-bot chat gate (web≡mobile) — the assistant-header strip shows ONLY when this circle is
+  // you + exactly one participant, and that participant is a bot. Computed from THIS circle's raw
+  // roster (relation/webid rows) + my webid via the SHARED oneToOneBotLabel; null (roster not yet
+  // resolved, group, or 1:1-human) → NO strip (fail-closed). Rides the same listGroupMembers load.
+  const [botLabel, setBotLabel] = useState(null);
   useEffect(() => {
     let cancelled = false;
-    if (!circle?.id || typeof rawCallSkill !== 'function') { setMandateViewer({ viewerWebid: null, isAdmin: false }); return undefined; }
+    if (!circle?.id || typeof rawCallSkill !== 'function') { setMandateViewer({ viewerWebid: null, isAdmin: false }); setBotLabel(null); return undefined; }
+    setBotLabel(null);   // reset on circle change — fail-closed until the roster resolves
     (async () => {
       let webid = null;
       try { const r = await rawCallSkill('stoop', 'whoAmI', {}); webid = r?.webid ?? r?.webId ?? null; } catch { /* best-effort */ }
@@ -2123,6 +2126,8 @@ function CircleDetail({
         const mem = Array.isArray(res?.members) ? res.members : [];
         const me = mem.find((m) => (m?.webid ?? m?.id) === webid);
         isAdmin = me?.role === 'admin';
+        // Shared gate — decides the assistant-header strip from the raw roster (carries `relation`).
+        if (!cancelled) setBotLabel(oneToOneBotLabel({ members: mem, selfWebid: webid, fallbackLabel: t('circle.kring.bot_header') }));
       } catch { /* creator/own-row path still works; the handler gate is the real boundary */ }
       if (!cancelled) setMandateViewer({ viewerWebid: webid, isAdmin });
     })();
@@ -2801,10 +2806,10 @@ function CircleDetail({
           2px-ink border. The prikbord / scherm / leden tabs keep the plain body. The
           header + the bordered scroll are stacked siblings that read as one contiguous
           card (matching 2px-ink sides). */}
-      {viewMode !== 'scherm' && activeTab === 'gesprek' ? (
+      {viewMode !== 'scherm' && activeTab === 'gesprek' && botLabel ? (
         <View style={styles.chatHead} testID="circle-detail-bot-head">
           <View style={styles.chatDot} />
-          <Text style={styles.chatName}>{botLabel || t('circle.kring.bot_header')}</Text>
+          <Text style={styles.chatName}>{botLabel}</Text>
         </View>
       ) : null}
       <ScrollView
