@@ -305,11 +305,11 @@ describe('Stoop V1 — Agent factory exposes bundle.cache', () => {
     const bundle = await createNeighborhoodAgent({
       identity: id,
       transport: tx,
-      skillMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
+      offeringMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
       itemBackend,
       cache,
     });
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     return bundle;
   }
 

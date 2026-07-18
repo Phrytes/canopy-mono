@@ -20,7 +20,7 @@ describe('buildBootstrapBundle', () => {
       expect(bundle.isBootstrap).toBe(true);
       expect(bundle.agent).toBeTruthy();
       expect(typeof bundle.agent.invoke).toBe('function');
-      expect(bundle.skillMatch).toBeTruthy();
+      expect(bundle.offeringMatch).toBeTruthy();
       expect(bundle.itemStore).toBeTruthy();
       expect(bundle.members).toBeTruthy();
     } finally {
@@ -50,7 +50,7 @@ describe('buildBootstrapBundle', () => {
     }
   });
 
-  it('relabelBundleGroup swaps SkillMatch onto a new groupId in place', async () => {
+  it('relabelBundleGroup swaps OfferingMatch onto a new groupId in place', async () => {
     const identity = await AgentIdentity.generate(new VaultMemory());
     const bundle   = await buildBootstrapBundle({ identity });
     try {
@@ -61,14 +61,14 @@ describe('buildBootstrapBundle', () => {
         data: { groupId: 'real-group', name: 'Real', rules: {} },
       }]);
 
-      const originalSkillMatch = bundle.skillMatch;
+      const originalOfferingMatch = bundle.offeringMatch;
       const same = await relabelBundleGroup({
         bundle,
         newGroupId: 'real-group',
         localActor: `webid:local:${identity.pubKey}`,
       });
       expect(same).toBe(bundle);
-      expect(same.skillMatch).not.toBe(originalSkillMatch);
+      expect(same.offeringMatch).not.toBe(originalOfferingMatch);
       expect(same.agent).toBe(bundle.agent);
     } finally {
       await bundle.stop?.();

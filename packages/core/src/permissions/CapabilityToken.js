@@ -198,7 +198,7 @@ export class CapabilityToken {
  * Returns `false` for any other shape; callers should treat unknown
  * patterns as "no match" so a malformed token can never widen access.
  */
-export function skillMatches(pattern, skillId) {
+export function offeringMatches(pattern, skillId) {
   if (typeof pattern !== 'string' || typeof skillId !== 'string') return false;
   if (pattern === '*') return true;
   if (pattern === skillId) return true;

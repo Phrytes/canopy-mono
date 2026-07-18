@@ -23,11 +23,11 @@ import { normalizeCircleMembers } from './circleMembers.js';
  * @param {string}   a.circleId                     active circle id
  * @param {(opId:string, args:object)=>Promise<any>} a.callSkill  origin-resolving skill caller
  * @param {Function} a.t                            translator (for the hop card copy)
- * @returns {Promise<{skillMatches:Array<{label:string,skill:string}>, hopCard:{title:string,body:string}|null}>}
+ * @returns {Promise<{offeringMatches:Array<{label:string,skill:string}>, hopCard:{title:string,body:string}|null}>}
  */
 export async function buildFindExtras({ query, groups, circleId, callSkill, t } = {}) {
   const q = typeof query === 'string' ? query.trim() : '';
-  if (!q || typeof callSkill !== 'function') return { skillMatches: [], hopCard: null };
+  if (!q || typeof callSkill !== 'function') return { offeringMatches: [], hopCard: null };
 
   const itemCount = (Array.isArray(groups) ? groups : [])
     .reduce((n, g) => n + (Array.isArray(g.items) ? g.items.length : 0), 0);
@@ -54,5 +54,5 @@ export async function buildFindExtras({ query, groups, circleId, callSkill, t } 
     if (decision.prompt) hopCard = buildHopPromptCard({ skillQuery: q, hopEligibleContactsCount, t });
   }
 
-  return { skillMatches: matches.slice(0, 5).map((m) => ({ label: m.label, skill: m.skill })), hopCard };
+  return { offeringMatches: matches.slice(0, 5).map((m) => ({ label: m.label, skill: m.skill })), hopCard };
 }

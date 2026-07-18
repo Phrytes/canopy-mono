@@ -5,7 +5,7 @@
  *
  * The mobile OfferingMatchInboxScreen subscribes to
  * `agent.on('offering-match-suggestion', ...)` events that the bundle
- * emits via the SkillMatch substrate's `appHandler` bridge.  Each
+ * emits via the OfferingMatch substrate's `appHandler` bridge.  Each
  * event carries `{request, decide}` — `request` is the published
  * payload + a `fromExtraAudience` flag (Phase 40.20 substrate
  * extension), `decide('claim'|'decline')` is the substrate-supplied

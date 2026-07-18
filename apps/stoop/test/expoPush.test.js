@@ -23,7 +23,7 @@ async function buildBundle({ pushSender = null, expoPushSender = null } = {}) {
   const id = await AgentIdentity.generate(new VaultMemory());
   return createNeighborhoodAgent({
     identity: id, transport: new InternalTransport(new InternalBus(), id.pubKey),
-    skillMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
+    offeringMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
     members: [{ webid: ANNE }],
     pushSender, expoPushSender,
   });

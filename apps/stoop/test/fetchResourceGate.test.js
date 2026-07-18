@@ -21,10 +21,10 @@ async function makeBundle() {
   const bundle = await createNeighborhoodAgent({
     identity:   id,
     transport:  tx,
-    skillMatch: { group: GROUP, localActor: ANNE, peers: [] },
+    offeringMatch: { group: GROUP, localActor: ANNE, peers: [] },
     members:    [{ webid: ANNE }],
   });
-  await bundle.skillMatch.start();
+  await bundle.offeringMatch.start();
   return bundle;
 }
 

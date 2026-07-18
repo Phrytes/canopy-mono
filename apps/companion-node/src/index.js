@@ -37,7 +37,7 @@
  *   `checkInbound`'s issuer-trust check; the device's default tier
  *   ('authenticated') clears the visibility gate; the token's subject == the
  *   calling peer defeats theft/forwarding; per-skill scope is enforced by
- *   `skillMatches`; and revocation is the host's issuer-side list
+ *   `offeringMatches`; and revocation is the host's issuer-side list
  *   (`host.revokeToken(id)` → the PolicyEngine's `isRevoked` consults
  *   `TokenRegistry.isRevoked`).  Expiry rides on the token.  What R2 does NOT do:
  *   pod-side credential delegation (still the R1 dev pod client held directly —

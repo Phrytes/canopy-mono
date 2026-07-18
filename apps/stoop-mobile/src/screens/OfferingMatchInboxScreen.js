@@ -4,7 +4,7 @@
  * Stoop V3 Phase 40.20 (2026-05-08).
  *
  * Subscribes to `agent.on('offering-match-suggestion', ...)` events that
- * the Stoop bundle (Agent.js) emits via the SkillMatch substrate's
+ * the Stoop bundle (Agent.js) emits via the OfferingMatch substrate's
  * appHandler bridge.  Each event carries `{request, decide}`.  The
  * receive-side privacy gate (Phase 22 `notifyWorthy` filter) already
  * ran inside the substrate; what reaches this screen is "this matches

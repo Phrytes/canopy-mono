@@ -43,7 +43,7 @@ describe('Stoop V1 Phase 15 — persistPath wires FilePersist into the factory',
       const tx = new InternalTransport(new InternalBus(), id.pubKey);
       const bundle = await createNeighborhoodAgent({
         identity: id, transport: tx,
-        skillMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
+        offeringMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
         members:    [{ webid: ANNE }],
         persistPath: dir,
       });
@@ -57,7 +57,7 @@ describe('Stoop V1 Phase 15 — persistPath wires FilePersist into the factory',
     const tx = new InternalTransport(new InternalBus(), id.pubKey);
     const bundle = await createNeighborhoodAgent({
       identity: id, transport: tx,
-      skillMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
+      offeringMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
       members:    [{ webid: ANNE }],
     });
     expect(bundle.persist).toBeNull();
@@ -71,11 +71,11 @@ describe('Stoop V1 Phase 15 — persistPath wires FilePersist into the factory',
       const tx1 = new InternalTransport(new InternalBus(), id1.pubKey);
       const b1 = await createNeighborhoodAgent({
         identity: id1, transport: tx1,
-        skillMatch: { group: 'g', localActor: ANNE, peers: [] },
+        offeringMatch: { group: 'g', localActor: ANNE, peers: [] },
         members:    [{ webid: ANNE }],
         persistPath: dir,
       });
-      await b1.skillMatch.start();
+      await b1.offeringMatch.start();
       await callSkill(b1.agent, 'postRequest',
         { text: 'paint the fence', kind: 'ask', expectClaims: 0, timeoutMs: 1 });
 
@@ -87,11 +87,11 @@ describe('Stoop V1 Phase 15 — persistPath wires FilePersist into the factory',
       const tx2 = new InternalTransport(new InternalBus(), id2.pubKey);
       const b2 = await createNeighborhoodAgent({
         identity: id2, transport: tx2,
-        skillMatch: { group: 'g', localActor: ANNE, peers: [] },
+        offeringMatch: { group: 'g', localActor: ANNE, peers: [] },
         members:    [{ webid: ANNE }],
         persistPath: dir,
       });
-      await b2.skillMatch.start();
+      await b2.offeringMatch.start();
 
       const list = await callSkill(b2.agent, 'listOpen', { kind: 'ask' });
       expect(list.items.some(i => i.text === 'paint the fence')).toBe(true);

@@ -149,7 +149,7 @@ export { StateManager } from './state/StateManager.js';
 // ── Permissions ───────────────────────────────────────────────────────────────
 export { TrustRegistry, TIER_LEVEL } from './permissions/TrustRegistry.js';
 export { PolicyEngine }     from './permissions/PolicyEngine.js';
-export { CapabilityToken, skillMatches, skillAttenuates } from './permissions/CapabilityToken.js';
+export { CapabilityToken, offeringMatches, skillAttenuates } from './permissions/CapabilityToken.js';
 export { PodCapabilityToken } from './permissions/PodCapabilityToken.js';
 export { TokenRegistry }    from './permissions/TokenRegistry.js';
 export { GroupManager }     from './permissions/GroupManager.js';

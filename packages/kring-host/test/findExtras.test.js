@@ -9,9 +9,9 @@ const t = (k) => k;
 
 describe('buildFindExtras', () => {
   it('returns empty extras for no query or no callSkill (guards)', async () => {
-    expect(await buildFindExtras({ query: '', circleId: 'c', callSkill: async () => null, t })).toEqual({ skillMatches: [], hopCard: null });
-    expect(await buildFindExtras({ query: '   ', circleId: 'c', callSkill: async () => null, t })).toEqual({ skillMatches: [], hopCard: null });
-    expect(await buildFindExtras({ query: 'x', circleId: 'c', t })).toEqual({ skillMatches: [], hopCard: null }); // no callSkill
+    expect(await buildFindExtras({ query: '', circleId: 'c', callSkill: async () => null, t })).toEqual({ offeringMatches: [], hopCard: null });
+    expect(await buildFindExtras({ query: '   ', circleId: 'c', callSkill: async () => null, t })).toEqual({ offeringMatches: [], hopCard: null });
+    expect(await buildFindExtras({ query: 'x', circleId: 'c', t })).toEqual({ offeringMatches: [], hopCard: null }); // no callSkill
   });
 
   it('fetches the roster (+ hop info when the search is short) via the injected callSkill', async () => {
@@ -25,7 +25,7 @@ describe('buildFindExtras', () => {
     const r = await buildFindExtras({ query: 'plumbing', groups: [], circleId: 'c1', callSkill, t });
     expect(calls).toContain('listGroupMembers');
     expect(calls).toContain('getHopMode');          // short search → hop decision attempted
-    expect(r).toEqual({ skillMatches: [], hopCard: null }); // no members → no matches; hop off → no card
+    expect(r).toEqual({ offeringMatches: [], hopCard: null }); // no members → no matches; hop off → no card
   });
 
   it('does NOT prompt to hop when items + in-circle matches already satisfied the search', async () => {

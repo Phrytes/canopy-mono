@@ -27,10 +27,10 @@ async function makeBundle(actor = ANNE, memberSeed = [{ webid: ANNE, role: 'admi
   const bundle = await createNeighborhoodAgent({
     identity:   id,
     transport:  tx,
-    skillMatch: { group: GROUP, localActor: actor, peers: [] },
+    offeringMatch: { group: GROUP, localActor: actor, peers: [] },
     members:    memberSeed,
   });
-  await bundle.skillMatch.start();
+  await bundle.offeringMatch.start();
   await attachSubstrateMirror(bundle, { group: GROUP });
   return bundle;
 }

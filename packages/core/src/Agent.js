@@ -668,7 +668,7 @@ export class Agent extends Emitter {
    * keypair we briefly held).
    *
    * Caller is responsible for any app-level resubscription that
-   * depends on the agent's address (e.g. `SkillMatch.start` should
+   * depends on the agent's address (e.g. `OfferingMatch.start` should
    * be called again to re-bind topics keyed by `agent.address`).
    *
    * @param {AgentIdentity} newIdentity  freshly constructed identity

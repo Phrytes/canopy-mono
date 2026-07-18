@@ -132,8 +132,8 @@ export function GroupScreen() {
   // member count so the user can see whether mDNS / relay actually
   // found the other phone before scratching their head about why
   // posts haven't replicated.
-  const skillMatchPeers = (() => {
-    try { return svc.activeBundle.skillMatch?.listPeers?.() ?? []; }
+  const offeringMatchPeers = (() => {
+    try { return svc.activeBundle.offeringMatch?.listPeers?.() ?? []; }
     catch { return []; }
   })();
   const mirrorPeers = (() => {
@@ -243,14 +243,14 @@ export function GroupScreen() {
         <Text style={styles.value}>
           {t('group.peers_value',
              '{sm} match · {mr} mirror · transports: {tx}')
-            .replace('{sm}', String(skillMatchPeers.length))
+            .replace('{sm}', String(offeringMatchPeers.length))
             .replace('{mr}', String(mirrorPeers.length))
             .replace('{tx}', transportNames.length > 0 ? transportNames.join(', ') : '—')}
         </Text>
-        {skillMatchPeers.length > 0 ? (
+        {offeringMatchPeers.length > 0 ? (
           <Text style={[styles.hint, styles.mono]} selectable>
             {t('group.match_peers', 'match: {pks}')
-              .replace('{pks}', skillMatchPeers.map(_shortPk).join(', '))}
+              .replace('{pks}', offeringMatchPeers.map(_shortPk).join(', '))}
           </Text>
         ) : null}
         {mirrorPeers.length > 0 ? (

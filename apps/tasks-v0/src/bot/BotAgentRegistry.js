@@ -153,7 +153,7 @@ export class BotAgentRegistry {
     //    V1.5 follow-up A — scope to `bot.*` instead of wildcard so
     //    a stolen token can only invoke the chat-bot surface, not
     //    arbitrary tasks skills. PolicyEngine + TokenRegistry both
-    //    honour the prefix via `skillMatches` (core).
+    //    honour the prefix via `offeringMatches` (core).
     const expiresIn = ttlDays * MS_PER_DAY;
     const token = await this.#tasksAgent.issueCapabilityToken({
       subject:    identity.pubKey,

@@ -13,7 +13,7 @@
  * Throws PolicyDeniedError on any denial; returns { tier, allowed: true } otherwise.
  */
 import { TIER_LEVEL }    from './TrustRegistry.js';
-import { CapabilityToken, skillMatches } from './CapabilityToken.js';
+import { CapabilityToken, offeringMatches } from './CapabilityToken.js';
 import { roleRank }        from './Roles.js';
 
 export class PolicyDeniedError extends Error {
@@ -252,7 +252,7 @@ export class PolicyEngine {
     }
 
     // Skill must match: exact, wildcard '*', or `prefix.*` pattern.
-    if (!skillMatches(parsed.skill, skillId)) {
+    if (!offeringMatches(parsed.skill, skillId)) {
       throw new PolicyDeniedError(
         'INVALID_TOKEN',
         `Token grants skill "${parsed.skill}", not "${skillId}"`,

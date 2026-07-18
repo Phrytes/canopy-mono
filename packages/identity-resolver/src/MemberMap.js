@@ -57,7 +57,7 @@ export class MemberMap extends Emitter {
    *       ]
    *     }
    *
-   * The `pubKey` slot is required by L1e (`@onderling/skill-match`) for
+   * The `pubKey` slot is required by L1e (`@onderling/offering-match`) for
    * `pubSub.subscribe(agent, peerAddress, ...)` against group members.
    * Apps that don't use skill-match over pubSub can omit it.
    *

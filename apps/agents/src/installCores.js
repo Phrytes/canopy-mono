@@ -29,7 +29,7 @@
  * through the P2 `grantAgent` path (token issued FIRST, then mirrored),
  * so an installed agent holds only signed, scoped, revocable tokens for
  * exactly what the user picked. An ungranted skill has NO token → it is
- * denied at the invoke gate (PolicyEngine.checkInbound / skillMatches).
+ * denied at the invoke gate (PolicyEngine.checkInbound / offeringMatches).
  *
  * Uninstall = the P2 `purgeAgent` (hard delete, sweeps live tokens
  * first) or `revokeAgent` (soft, keep for audit) — reused, not
@@ -44,7 +44,7 @@
 import { grantAgent, viewAgent } from './cores.js';
 
 /**
- * Local skill-cover test — a mirror of core's `skillMatches` kept inline
+ * Local skill-cover test — a mirror of core's `offeringMatches` kept inline
  * so this module stays import-free. `pattern` covers `skillId` when they
  * are equal, `pattern` is `'*'`, or `pattern` is a `prefix.*` wildcard.
  */

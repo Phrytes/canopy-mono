@@ -41,10 +41,10 @@ describe('Stoop V1 Phase 19 — closed-beta smoke', () => {
     const tx = new InternalTransport(new InternalBus(), id.pubKey);
     const bundle = await createNeighborhoodAgent({
       identity: id, transport: tx,
-      skillMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
+      offeringMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
       members:    [{ webid: ANNE }],
     });
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
 
     // 1. Gated redeem accepts both flags.
     const gate = await callSkill(bundle.agent, 'redeemInviteWithGate', {

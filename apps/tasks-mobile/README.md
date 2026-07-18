@@ -79,7 +79,7 @@ This app composes the following substrate packages
 |---|---|---|
 | `@onderling/item-store` (L1b) | Per-circle task ledger with audit + DoD lifecycle + V2.7 dependency gating. | Pod write paths, role-policy gates, and `enforceDependencies` are reused unchanged from the desktop app. |
 | `@onderling/identity-resolver` (L1h) | Member webid map + `MemberMapCache` write-through; canonical user-skills profile. | Same as desktop; substrate amortises across H4/H5/H7. |
-| `@onderling/skill-match` (L1e) | Pubsub-of-skills broadcast for circle-wide skill availability. | Same primitive as the desktop. |
+| `@onderling/offering-match` (L1e) | Pubsub-of-skills broadcast for circle-wide skill availability. | Same primitive as the desktop. |
 | `@onderling/notifier` (L1f) | `PushChannel` + `PushPolicy` (humanInTheLoop, daily-cap, quiet hours). | The whole notifier surface is shared with stoop and the desktop tasks app. |
 | `@onderling/chat-p2p` | Appeal flow chat threads (V1 master-revoke recourse). | Shared with stoop V1. |
 | `@onderling/local-store` | `CachingDataSource` + `Settings` split (per-device + shared). | Local-only mode is a hard rule in V1; substrate guarantees offline-first. |

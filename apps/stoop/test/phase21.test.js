@@ -42,7 +42,7 @@ async function buildBundle({ pushSender = null, webPush = null } = {}) {
   const tx = new InternalTransport(new InternalBus(), id.pubKey);
   return createNeighborhoodAgent({
     identity: id, transport: tx,
-    skillMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
+    offeringMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
     members:    [{ webid: ANNE }],
     pushSender,
     webPush,

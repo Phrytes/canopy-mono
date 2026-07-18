@@ -52,7 +52,7 @@
     "@onderling/pseudo-pod": "file:../../packages/pseudo-pod",
     "@onderling/relay": "file:../../packages/relay",
     "@onderling/sdk": "file:../../packages/sdk",
-    "@onderling/skill-match": "file:../../packages/skill-match",
+    "@onderling/offering-match": "file:../../packages/offering-match",
     "i18next": "^23.15.0",
     "tweetnacl": "^1.0.3"
   },

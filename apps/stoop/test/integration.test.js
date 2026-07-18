@@ -2,10 +2,10 @@
  * H5 V0 integration test — non-anonymous closed-group matchmaking.
  *
  * Migrated 2026-05-04 (Phase 4.2 of substrate refactor) to the new
- * SkillMatch shape: every agent runs a real `core.Agent` over a shared
- * `InternalBus`; SkillMatch composes `pubSub.publish/subscribe` directly,
+ * OfferingMatch shape: every agent runs a real `core.Agent` over a shared
+ * `InternalBus`; OfferingMatch composes `pubSub.publish/subscribe` directly,
  * NOT a synthetic `transport`. Cross-agent peer wiring (each agent's
- * `addPeer(addr, pubKey)` plus the SkillMatch peers roster) replaces
+ * `addPeer(addr, pubKey)` plus the OfferingMatch peers roster) replaces
  * the pre-2026-05-04 "shared InMemoryTransport" pattern.
  *
  * Skills are still invoked via `agent.skills.get(id).handler({parts, from})` —
@@ -37,7 +37,7 @@ async function callSkill(agent, skillId, args, fromWebid) {
 /**
  * Build N H5 agents over a shared bus + wire them together as a
  * closed-group cluster (each knows every other's pubKey, both via
- * `core.Agent.addPeer` AND via `SkillMatch.addPeer`).
+ * `core.Agent.addPeer` AND via `OfferingMatch.addPeer`).
  *
  * @param {Array<{
  *   group?:   string,                                     // default 'g'
@@ -60,7 +60,7 @@ async function buildCluster(specs) {
       transport: new InternalTransport(bus, id.pubKey),
       label:     `H5-${s.actor}`,
       members:   s.members,
-      skillMatch: {
+      offeringMatch: {
         group:      s.group ?? 'g',
         localActor: s.actor,
         peers:      identities
@@ -74,8 +74,8 @@ async function buildCluster(specs) {
 
   // Cross-register peer pubkeys at the core.Agent layer (SecurityLayer
   // requires this before sendOneWay can reach a peer). MUST happen
-  // BEFORE skillMatch.start() — that's why the factory leaves
-  // SkillMatch stopped.
+  // BEFORE offeringMatch.start() — that's why the factory leaves
+  // OfferingMatch stopped.
   for (let i = 0; i < bundles.length; i++) {
     for (let j = 0; j < bundles.length; j++) {
       if (i === j) continue;
@@ -83,9 +83,9 @@ async function buildCluster(specs) {
     }
   }
 
-  // Now safe to start SkillMatch on each.
+  // Now safe to start OfferingMatch on each.
   for (const b of bundles) {
-    await b.skillMatch.start();
+    await b.offeringMatch.start();
   }
 
   return bundles;
@@ -104,7 +104,7 @@ describe('H5 — postRequest + claim flow', () => {
         skills: ['paint'], posture: { paint: 'always' },
       },
     ]);
-    responderAgent.skillMatch.subscribe(async () => {});
+    responderAgent.offeringMatch.subscribe(async () => {});
 
     const result = await callSkill(
       requesterAgent.agent,
@@ -125,7 +125,7 @@ describe('H5 — postRequest + claim flow', () => {
       { actor: ALICE },
       { actor: BOB, skills: ['plumb'], posture: { plumb: 'always' } },
     ]);
-    otherAgent.skillMatch.subscribe(async () => {});
+    otherAgent.offeringMatch.subscribe(async () => {});
 
     const result = await callSkill(
       requesterAgent.agent,
@@ -228,7 +228,7 @@ describe('H5 — group isolation', () => {
         skills: ['paint'], posture: { paint: 'always' },
       },
     ]);
-    bobB.skillMatch.subscribe(async () => {});
+    bobB.offeringMatch.subscribe(async () => {});
 
     const r = await callSkill(
       aliceA.agent, 'postRequest',

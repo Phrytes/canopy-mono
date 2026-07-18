@@ -120,13 +120,13 @@ export async function startStoopWeb(opts = {}) {
     transport,
     label:     `stoop-web-${actor}`,
     members:   [{ webid: actor, displayName: actor.split('/').pop() || actor }],
-    skillMatch: {
+    offeringMatch: {
       group,
       localActor: actor,
       peers:      [],
     },
   });
-  await bundle.skillMatch.start();
+  await bundle.offeringMatch.start();
 
   // Pre-compute the NavModel from the manifest.  Static for the life
   // of the server (manifest is module-scope const).  E.1 + E.2 + E.3
@@ -174,7 +174,7 @@ export async function startStoopWeb(opts = {}) {
     bundle,
     navModel,
     async stop() {
-      try { await bundle.skillMatch.stop(); } catch { /* swallow */ }
+      try { await bundle.offeringMatch.stop(); } catch { /* swallow */ }
       await ui.stop();
     },
   };

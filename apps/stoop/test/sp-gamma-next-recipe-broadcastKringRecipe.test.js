@@ -42,7 +42,7 @@ async function buildBundle(members) {
   const tx = new InternalTransport(new InternalBus(), id.pubKey);
   return createNeighborhoodAgent({
     identity: id, transport: tx,
-    skillMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
+    offeringMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
     members:    members ?? [
       { webid: ANNE,  role: 'member' },
       { webid: BOB,   role: 'member', stableId: 'sid-bob' },
@@ -60,7 +60,7 @@ const SAMPLE_RECIPE = {
 describe('Stoop γ-next.recipe — broadcastKringRecipe', () => {
   it('fans the recipe envelope out to every other member via chat.send', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     const calls = [];
     bundle.chat.send = vi.fn(async (args) => { calls.push(args); return { ok: true }; });
 
@@ -89,7 +89,7 @@ describe('Stoop γ-next.recipe — broadcastKringRecipe', () => {
 
   it('skips the caller (does not echo back to self)', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     const calls = [];
     bundle.chat.send = vi.fn(async (args) => { calls.push(args); return { ok: true }; });
     await callSkill(bundle.agent, 'broadcastKringRecipe',
@@ -99,7 +99,7 @@ describe('Stoop γ-next.recipe — broadcastKringRecipe', () => {
 
   it('counts per-recipient failures in errors[] but never throws', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     bundle.chat.send = vi.fn(async (args) => {
       if (args.toWebid === BOB) return { ok: false, reason: 'recipient-pubkey-unknown' };
       throw new Error('boom');
@@ -116,7 +116,7 @@ describe('Stoop γ-next.recipe — broadcastKringRecipe', () => {
 
   it('rejects when recipe is missing or non-object', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     expect(await callSkill(bundle.agent, 'broadcastKringRecipe',
       { groupId: 'oosterpoort', msgId: 'm' })).toEqual({ error: 'recipe-required' });
     expect(await callSkill(bundle.agent, 'broadcastKringRecipe',
@@ -125,7 +125,7 @@ describe('Stoop γ-next.recipe — broadcastKringRecipe', () => {
 
   it('rejects missing msgId', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     expect(await callSkill(bundle.agent, 'broadcastKringRecipe',
       { groupId: 'oosterpoort', recipe: SAMPLE_RECIPE })).toEqual({ error: 'msgId-required' });
   });
@@ -144,7 +144,7 @@ describe('Stoop γ-next.recipe — cross-agent: Anne → Bob.pendingStore', () =
       { webid: ANNE, role: 'member' },
       { webid: BOB,  role: 'member', stableId: 'sid-bob' },
     ]);
-    await anne.skillMatch.start();
+    await anne.offeringMatch.start();
     const captured = [];
     anne.chat.send = vi.fn(async (args) => { captured.push(args); return { ok: true }; });
 

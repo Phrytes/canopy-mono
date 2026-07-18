@@ -184,7 +184,7 @@ describe('H4 — reassign + remove (role-policy-gated)', () => {
   });
 });
 
-describe('H4 — skill-tagged claim flow + SkillMatch wiring', () => {
+describe('H4 — skill-tagged claim flow + OfferingMatch wiring', () => {
   it('listClaimable filters to unassigned + skill-matching tasks', async () => {
     await callSkill(bundle.agent, 'addTask',
       { type: 'task', text: 'paint A', requiredSkills: ['paint'] }, ANNE);

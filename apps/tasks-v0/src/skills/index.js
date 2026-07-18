@@ -31,7 +31,7 @@
  * at dispatch time. Single registration on the process-wide meshAgent.
  *
  * `from` carries the caller's identifier (the actor webid).  Skill
- * matching for skill-tagged tasks remains via L1e SkillMatch.
+ * matching for skill-tagged tasks remains via L1e OfferingMatch.
  *
  * `resolveMember` lives in `@onderling/identity-resolver`'s
  * `buildIdentitySkills` and is registered alongside these by wireSkills.

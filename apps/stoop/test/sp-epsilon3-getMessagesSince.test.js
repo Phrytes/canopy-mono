@@ -32,7 +32,7 @@ async function buildBundle() {
   const tx = new InternalTransport(new InternalBus(), id.pubKey);
   return createNeighborhoodAgent({
     identity: id, transport: tx,
-    skillMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
+    offeringMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
     members:    [{ webid: ANNE, role: 'member' }],
   });
 }
@@ -60,7 +60,7 @@ async function seedChats(bundle, chats) {
 describe('Stoop ε.3 — getMessagesSince', () => {
   it('returns {items: [], truncated: false} on an empty store', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     const r = await callSkill(bundle.agent, 'getMessagesSince', { groupId: 'g1' });
     expect(r.items).toEqual([]);
     expect(r.truncated).toBe(false);
@@ -68,7 +68,7 @@ describe('Stoop ε.3 — getMessagesSince', () => {
 
   it('returns every matching envelope in ts asc order when all messages are after sinceTs', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     await seedChats(bundle, [
       { circleId: 'g1', msgId: 'a', text: 'first',  ts: 100 },
       { circleId: 'g1', msgId: 'b', text: 'middle', ts: 200 },
@@ -91,7 +91,7 @@ describe('Stoop ε.3 — getMessagesSince', () => {
 
   it('sinceTs filter excludes older messages (inclusive boundary)', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     await seedChats(bundle, [
       { circleId: 'g1', msgId: 'a', text: 'old',     ts: 100 },
       { circleId: 'g1', msgId: 'b', text: 'cutoff',  ts: 200 },
@@ -107,7 +107,7 @@ describe('Stoop ε.3 — getMessagesSince', () => {
 
   it('max cap → truncated:true + only last N messages', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     await seedChats(bundle, [
       { circleId: 'g1', msgId: '1', text: 'one',   ts: 100 },
       { circleId: 'g1', msgId: '2', text: 'two',   ts: 200 },
@@ -124,7 +124,7 @@ describe('Stoop ε.3 — getMessagesSince', () => {
 
   it('returns empty when the requested groupId has no chats', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     await seedChats(bundle, [
       { circleId: 'g1', msgId: 'a', text: 'hi g1', ts: 100 },
       { circleId: 'g1', msgId: 'b', text: 'still g1', ts: 200 },
@@ -138,7 +138,7 @@ describe('Stoop ε.3 — getMessagesSince', () => {
 
   it('returns empty {items, truncated:false} when groupId is missing', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     await seedChats(bundle, [
       { circleId: 'g1', msgId: 'a', text: 'hi', ts: 100 },
     ]);
@@ -149,7 +149,7 @@ describe('Stoop ε.3 — getMessagesSince', () => {
 
   it('defaults sinceTs to 0 and max to 200 when omitted', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     // Seed 250 messages — over the 200 default cap.
     const chats = [];
     for (let i = 1; i <= 250; i += 1) {
@@ -167,7 +167,7 @@ describe('Stoop ε.3 — getMessagesSince', () => {
 
   it('hard-caps max at 1000', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     await seedChats(bundle, [
       { circleId: 'g1', msgId: 'a', text: 'hi', ts: 100 },
     ]);
@@ -183,7 +183,7 @@ describe('Stoop ε.3 — getMessagesSince', () => {
 
   it('carries a stored media pointer on the envelope — absent stays absent (media P1)', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     const media = {
       kind: 'media-card', pointer: { type: 'media', ref: 'urn:dec:item:mx' },
       snapshot: { type: 'media', id: 'mx', source: { type: 'blob', ref: 'blob://kx', enc: { sealed: true } } },
@@ -201,7 +201,7 @@ describe('Stoop ε.3 — getMessagesSince', () => {
 
   it('filters by groupId across multiple circles', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     await seedChats(bundle, [
       { circleId: 'g1', msgId: 'a', text: 'in g1',    ts: 100 },
       { circleId: 'g2', msgId: 'b', text: 'in g2',    ts: 200 },

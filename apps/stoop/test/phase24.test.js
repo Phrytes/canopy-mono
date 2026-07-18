@@ -30,10 +30,10 @@ async function buildBundle(actor = ANNE, peers = []) {
   const tx = new InternalTransport(new InternalBus(), id.pubKey);
   const bundle = await createNeighborhoodAgent({
     identity: id, transport: tx,
-    skillMatch: { group: 'oosterpoort', localActor: actor, peers },
+    offeringMatch: { group: 'oosterpoort', localActor: actor, peers },
     members:    [{ webid: actor }],
   });
-  await bundle.skillMatch.start();
+  await bundle.offeringMatch.start();
   return { bundle, id };
 }
 
@@ -43,20 +43,20 @@ async function buildPair() {
   const bobId  = await AgentIdentity.generate(new VaultMemory());
   const anne = await createNeighborhoodAgent({
     identity: anneId, transport: new InternalTransport(bus, anneId.pubKey),
-    skillMatch: { group: 'oosterpoort', localActor: ANNE,
+    offeringMatch: { group: 'oosterpoort', localActor: ANNE,
                   peers: [{ pubKey: bobId.pubKey }] },
     members: [{ webid: ANNE }, { webid: BOB, pubKey: bobId.pubKey }],
   });
   const bob = await createNeighborhoodAgent({
     identity: bobId, transport: new InternalTransport(bus, bobId.pubKey),
-    skillMatch: { group: 'oosterpoort', localActor: BOB,
+    offeringMatch: { group: 'oosterpoort', localActor: BOB,
                   peers: [{ pubKey: anneId.pubKey }] },
     members: [{ webid: ANNE, pubKey: anneId.pubKey }, { webid: BOB }],
   });
   anne.agent.addPeer(bobId.pubKey, bobId.pubKey);
   bob.agent.addPeer(anneId.pubKey, anneId.pubKey);
-  await anne.skillMatch.start();
-  await bob.skillMatch.start();
+  await anne.offeringMatch.start();
+  await bob.offeringMatch.start();
   return { anne, bob, anneId, bobId };
 }
 

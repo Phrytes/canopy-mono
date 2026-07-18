@@ -115,7 +115,7 @@ This app composes the following substrate packages
 | Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
 | `@onderling/item-store` (L1b) | Records every Vraag / Aanbod / Te leen as a structured pod-backed item with attribution + audit. Stoop-vocabulary `type: 'ask' \| 'offer' \| 'lend' \| 'report'` slots into existing `Item.type`; lend lifecycle uses the existing `dueAt` field. | Pod write paths + per-field merge are shared with H4/H7; Stoop adds no new substrate fields. |
-| `@onderling/skill-match` (L1e) | Pubsub-of-skills broadcast over the closed buurt group + posture flag (`always` / `negotiable` / `humanInTheLoop`) + claim collection. | Pubsub-of-skills + posture is the H4/H7 shared primitive. |
+| `@onderling/offering-match` (L1e) | Pubsub-of-skills broadcast over the closed buurt group + posture flag (`always` / `negotiable` / `humanInTheLoop`) + claim collection. | Pubsub-of-skills + posture is the H4/H7 shared primitive. |
 | `@onderling/identity-resolver` (L1h) | Member-WebID map + per-group display config + handle / displayName-on-reveal via the new `Reveals` + `resolve()` primitives (Phase 1B). | Cross-app identity reconciliation; Telegram-style reveal pattern reused by any future social app. |
 | `@onderling/agent-ui` (L1d) | Hosts the prikbord UI via `mountLocalUi` — same-origin REST + SSE so the page POSTs to skill endpoints without CORS. | UI host pattern shared with future agent-fronted web UIs. |
 | `@onderling/notifier` (L1f) | Push wake when a human needs to decide; lend return-reminders via `scheduleBefore({ dueAt, leadMs, ... })` (Phase 1C). | Scheduling + push channel shared with H4/H7. |

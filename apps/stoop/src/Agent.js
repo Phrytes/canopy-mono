@@ -8,7 +8,7 @@
  *   - L1b ItemStore (open requests, attribution, audit)
  *   - L1h MemberMap (closed-group identity resolution; pubKey-aware after
  *     Phase 4.1 — `MemberMap.fromPodConfig` includes the pubKey slot)
- *   - L1e SkillMatch (broadcast requests + collect claims) — now
+ *   - L1e OfferingMatch (broadcast requests + collect claims) — now
  *     consumes a real `core.Agent` + `core/protocol/pubSub.js` directly
  *     (Phase 4.2 of substrate refactor, 2026-05-04). The previous
  *     `transport` abstraction is gone.
@@ -20,7 +20,7 @@ import { Agent, AgentIdentity, InternalBus, InternalTransport, MemorySource } fr
 import { VaultMemory } from '@onderling/vault';
 import { CircleItemStore, createTaskStore } from '@onderling/item-store';
 import { MemberMap, Reveals, buildIdentitySkills }    from '@onderling/identity-resolver';
-import { OfferingMatch }                                 from '@onderling/skill-match';
+import { OfferingMatch }                                 from '@onderling/offering-match';
 
 import { buildSkills } from './skills/index.js';
 import { CachingDataSource } from './lib/CachingDataSource.js';
@@ -44,12 +44,12 @@ import { EvictionRoster }    from './lib/EvictionRoster.js';
 
 /**
  * @param {object} args
- * @param {object} args.skillMatch
- * @param {string} args.skillMatch.group                  closed-group identifier
- * @param {string} args.skillMatch.localActor             this member's webid
- * @param {Array<{pubKey: string}>} [args.skillMatch.peers]  closed-group roster (pubKey-keyed). Source: `MemberMap.fromPodConfig`.
- * @param {string[]} [args.skillMatch.skills]
- * @param {Object<string, 'always'|'negotiable'|'never'>} [args.skillMatch.posture]
+ * @param {object} args.offeringMatch
+ * @param {string} args.offeringMatch.group                  closed-group identifier
+ * @param {string} args.offeringMatch.localActor             this member's webid
+ * @param {Array<{pubKey: string}>} [args.offeringMatch.peers]  closed-group roster (pubKey-keyed). Source: `MemberMap.fromPodConfig`.
+ * @param {string[]} [args.offeringMatch.skills]
+ * @param {Object<string, 'always'|'negotiable'|'never'>} [args.offeringMatch.posture]
  * @param {Array<object>} [args.members]                  initial roster for MemberMap (used when `pod` is not supplied)
  * @param {object} [args.pod]                             pod-backed roster (alternative to `members`)
  * @param {object} args.pod.client                        duck-typed PodClient with `.read(uri, {decode}) → {content}`
@@ -87,14 +87,14 @@ import { EvictionRoster }    from './lib/EvictionRoster.js';
  *   agent:      Agent,
  *   itemStore:  ItemStore,
  *   members:    MemberMap,
- *   skillMatch: SkillMatch,
+ *   offeringMatch: OfferingMatch,
  *   notifier:   object | null,
  *   reveals:    Reveals | null,
  *   muted:      Set<string>,
  * }>}
  */
 export async function createNeighborhoodAgent({
-  skillMatch:    skillMatchOpts,
+  offeringMatch:    offeringMatchOpts,
   members:       initialMembers,
   pod:           podCfg,
   itemBackend,
@@ -170,8 +170,8 @@ export async function createNeighborhoodAgent({
   registerSkills = true,
   label = 'NeighborhoodAgent',
 }) {
-  if (!skillMatchOpts?.group || !skillMatchOpts?.localActor) {
-    throw new TypeError('createNeighborhoodAgent: skillMatch.{group, localActor} required');
+  if (!offeringMatchOpts?.group || !offeringMatchOpts?.localActor) {
+    throw new TypeError('createNeighborhoodAgent: offeringMatch.{group, localActor} required');
   }
   if (podCfg && initialMembers) {
     throw new TypeError('createNeighborhoodAgent: pass either `pod` or `members`, not both');
@@ -329,12 +329,12 @@ export async function createNeighborhoodAgent({
   // resolveByWebid round-trips work the moment the bundle is up
   // (with no dependency on setMyHandle).  Browsers also call the
   // `whoAmI` skill for the canonical {webid, pubKey, stableId} tuple.
-  if (skillMatchOpts.localActor) {
-    const existing = await members.resolveByWebid(skillMatchOpts.localActor);
+  if (offeringMatchOpts.localActor) {
+    const existing = await members.resolveByWebid(offeringMatchOpts.localActor);
     if (!existing?.pubKey || !existing?.stableId) {
       try {
         await members.addMember({
-          ...(existing ?? { webid: skillMatchOpts.localActor }),
+          ...(existing ?? { webid: offeringMatchOpts.localActor }),
           pubKey:   id.pubKey,
           stableId: id.stableId ?? existing?.stableId,
         });
@@ -342,14 +342,14 @@ export async function createNeighborhoodAgent({
     }
   }
 
-  // ── L1e SkillMatch — composes the real agent + pubSub ─────────────────────
-  const skillMatch = new OfferingMatch({
+  // ── L1e OfferingMatch — composes the real agent + pubSub ─────────────────────
+  const offeringMatch = new OfferingMatch({
     agent,
-    peers:      skillMatchOpts.peers ?? [],
-    group:      skillMatchOpts.group,
-    localActor: skillMatchOpts.localActor,
-    offerings:  skillMatchOpts.skills  ?? [],
-    posture:    skillMatchOpts.posture ?? {},
+    peers:      offeringMatchOpts.peers ?? [],
+    group:      offeringMatchOpts.group,
+    localActor: offeringMatchOpts.localActor,
+    offerings:  offeringMatchOpts.skills  ?? [],
+    posture:    offeringMatchOpts.posture ?? {},
   });
 
   // ── Per-bundle local state (Stoop V1 Phase 3) ─────────────────────────────
@@ -422,7 +422,7 @@ export async function createNeighborhoodAgent({
     members,
     muted,
     metrics,
-    localActor:    skillMatchOpts.localActor,
+    localActor:    offeringMatchOpts.localActor,
     localStableId: id?.stableId ?? null,
     evictionRoster,                  // Phase 35 — drop broadcast-posts from evicted members
     dataSource:    cache,            // Phase 39 — read/write attachment bytes from the cache
@@ -440,7 +440,7 @@ export async function createNeighborhoodAgent({
     evictionRosterDetach,              // call on shutdown to detach the item-added listener
     itemStore,
     members,
-    skillMatch,
+    offeringMatch,
     notifier: providedNotifier ?? null,
     reveals,
     muted,
@@ -524,14 +524,14 @@ export async function createNeighborhoodAgent({
     for (const def of buildIdentitySkills({ members })) agent.skills.register(def);
     for (const def of buildSkills({
       store:    itemStore,
-      skillMatch,
+      offeringMatch,
       notifier: providedNotifier,
       reveals,
       members,
       controlAgent,   // household sealed-pod membership hooks (no-op when absent)
       muted,
-      localActor: skillMatchOpts.localActor,
-      groupId:    skillMatchOpts.group,
+      localActor: offeringMatchOpts.localActor,
+      groupId:    offeringMatchOpts.group,
       dataLocationConfig,
       chat,           // Phase 14 — used by sendChatMessage / respondToItem
       metrics,        // Phase 18 — record() called from key handlers
@@ -546,8 +546,8 @@ export async function createNeighborhoodAgent({
   // intermediate hop bridge sees opaque blobs only (`nacl.box`-sealed
   // to the destination's pubkey).  Idempotent at the SDK level.
   try {
-    if (skillMatchOpts.group) {
-      agent.enableSealedForwardFor(skillMatchOpts.group);
+    if (offeringMatchOpts.group) {
+      agent.enableSealedForwardFor(offeringMatchOpts.group);
     }
   } catch { /* SDK may surface "already enabled" or similar; non-fatal */ }
 
@@ -564,23 +564,23 @@ export async function createNeighborhoodAgent({
 
   // **Caller responsibility**: register peer pubkeys at the core.Agent
   // SecurityLayer (`agent.addPeer(addr, pubKey)`) BEFORE calling
-  // `bundle.skillMatch.start()`. SkillMatch's `start()` issues
+  // `bundle.offeringMatch.start()`. OfferingMatch's `start()` issues
   // pubSub.subscribe envelopes to each peer; the SecurityLayer rejects
   // sends to unknown pubkeys with `UNKNOWN_RECIPIENT — send HI first`.
   //
-  // For single-agent setups (no peers), `bundle.skillMatch.start()` is
+  // For single-agent setups (no peers), `bundle.offeringMatch.start()` is
   // a no-op and can be skipped.
 
-  // Phase 40.20 (Stoop V3 mobile, 2026-05-08): bridge the SkillMatch
+  // Phase 40.20 (Stoop V3 mobile, 2026-05-08): bridge the OfferingMatch
   // appHandler to a regular `agent.on('offering-match-suggestion', ...)`
   // event so consumers (the mobile OfferingMatchInboxScreen, future
   // notifier hooks, etc.) can subscribe via the standard event
-  // surface instead of hand-rolling `skillMatch.subscribe(...)`.
+  // surface instead of hand-rolling `offeringMatch.subscribe(...)`.
   //
   // The substrate's auto-claim path is unchanged: extra-audience
   // requests (contacts / hops) NEVER auto-claim — they always reach
   // the appHandler so the user can opt in.
-  skillMatch.subscribe(async ({ request, decide }) => {
+  offeringMatch.subscribe(async ({ request, decide }) => {
     try {
       agent.emit?.('offering-match-suggestion', { request, decide });
     } catch { /* swallow — emit failures shouldn't block the substrate */ }

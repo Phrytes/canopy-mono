@@ -535,7 +535,7 @@ export function ServiceProvider({ children, boot = {} }) {
         circleId:    cs.circleId,
         members:   cs.members,
         itemStore: cs.itemStore,
-        skillMatch: null,
+        offeringMatch: null,
       };
     })();
 

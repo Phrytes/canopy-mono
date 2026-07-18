@@ -61,7 +61,7 @@ export default defineConfig({
       '@onderling/identity-resolver':           path.resolve(repoRoot, 'packages/identity-resolver/src/index.js'),
       '@onderling/item-store':                  path.resolve(repoRoot, 'packages/item-store/src/index.js'),
       '@onderling/notifier':                    path.resolve(repoRoot, 'packages/notifier/src/index.js'),
-      '@onderling/skill-match':                 path.resolve(repoRoot, 'packages/skill-match/src/index.js'),
+      '@onderling/offering-match':                 path.resolve(repoRoot, 'packages/offering-match/src/index.js'),
       '@onderling/chat-p2p':                    path.resolve(repoRoot, 'packages/chat-p2p/index.js'),
 
       // @scure/bip39 ESM exports not auto-resolved by Vitest's Node

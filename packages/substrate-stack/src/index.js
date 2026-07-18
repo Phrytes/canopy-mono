@@ -179,7 +179,7 @@ export function createAgentTransportAdapter(agent) {
           const t = await agent.transportFor(to);
           await t.publishOneWay(to, topic, wire);
         } catch (_err) {
-          // best-effort fan-out (parity with skillMatch.broadcast)
+          // best-effort fan-out (parity with offeringMatch.broadcast)
         }
       }));
     },

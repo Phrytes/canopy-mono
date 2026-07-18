@@ -17,7 +17,7 @@
  *     ServiceContext if available)
  *
  * Returns the bundle shape `createNeighborhoodAgent` returns:
- *   { agent, itemStore, members, skillMatch, notifier?, reveals?, muted }
+ *   { agent, itemStore, members, offeringMatch, notifier?, reveals?, muted }
  */
 
 import {
@@ -31,7 +31,7 @@ import {
   PeerGraph, RoutingStrategy,
 } from '@onderling/core';
 import { RelayTransport } from '@onderling/transports';
-import { OfferingMatch }                      from '@onderling/skill-match';
+import { OfferingMatch }                      from '@onderling/offering-match';
 // Subpath imports — pulling from `@onderling/react-native`'s barrel
 // would re-evaluate KeychainVault, whose `react-native-keychain` TS
 // import vitest can't parse.  Subpath bypass.
@@ -56,7 +56,7 @@ import { AsyncStorageAdapter } from '@onderling/react-native/src/storage/AsyncSt
  *   agent: object,
  *   itemStore: object,
  *   members: object,
- *   skillMatch: object,
+ *   offeringMatch: object,
  *   notifier: object | null,
  *   reveals: object | null,
  *   muted: Set<string>,
@@ -119,7 +119,7 @@ export async function buildBundleForGroup({
     identity,
     agent: meshAgent,
     label: label ?? `stoop-mobile:${groupId}`,
-    skillMatch: {
+    offeringMatch: {
       group:      groupId,
       localActor,
       peers:      members,
@@ -178,7 +178,7 @@ export async function buildBundleForGroup({
     opts:        { capabilities: ['stoop', 'stoop-mobile', 'mdns', 'ble'] },
   });
 
-  // Bridge mDNS peer-discovered → SkillMatch.addPeer + mirror.addPeer
+  // Bridge mDNS peer-discovered → OfferingMatch.addPeer + mirror.addPeer
   // so when the other phone advertises itself, both the matchmaking
   // path AND the broadcast-mirror subscribe to it.  We add only
   // stable pubkeys (skip BLE MAC shaped strings — colon-containing
@@ -188,7 +188,7 @@ export async function buildBundleForGroup({
     if (!pk || typeof pk !== 'string') return;
     if (pk.includes(':')) return;          // BLE MAC, not a pubkey
     if (pk === meshAgent.address) return;  // self
-    try { bundle.skillMatch?.addPeer?.({ pubKey: pk }); } catch { /* best effort */ }
+    try { bundle.offeringMatch?.addPeer?.({ pubKey: pk }); } catch { /* best effort */ }
     mirror?.addPeer?.(pk).catch(() => { /* swallow — already-added etc. */ });
   };
   meshAgent.on('peer', _onAgentPeer);
@@ -220,7 +220,7 @@ export async function buildBundleForGroup({
   }
 
   // Start broadcasting / receiving on the skill-match channel.
-  await bundle.skillMatch.start();
+  await bundle.offeringMatch.start();
 
   // Compose a `stop()` that tears down the bundle in the right order.
   // agent.stop() disconnects every named transport (mDNS, internal),
@@ -230,7 +230,7 @@ export async function buildBundleForGroup({
     try { meshAgent.off('peer', _onAgentPeer);   } catch { /* swallow */ }
     try { await bundle.mirror?.stop?.();         } catch { /* swallow */ }
     try { bundle._substrateStop?.();             } catch { /* swallow */ }
-    try { await bundle.skillMatch.stop?.();      } catch { /* swallow */ }
+    try { await bundle.offeringMatch.stop?.();      } catch { /* swallow */ }
     try { await bundle.agent.stop?.();           } catch { /* swallow */ }
   };
 
@@ -246,10 +246,10 @@ export async function buildBundleForGroup({
  * or its own transport stack. Instead, the caller passes a pre-built
  * `meshAgent` (one for the whole app process, see `buildMeshAgent`)
  * and this factory layers a per-group `{ itemStore, members,
- * skillMatch, mirror, … }` on top of it.
+ * offeringMatch, mirror, … }` on top of it.
  *
  * The returned bundle's `stop()` tears down the per-group wiring
- * (skillMatch, mirror, listeners) but DOES NOT stop the agent — the
+ * (offeringMatch, mirror, listeners) but DOES NOT stop the agent — the
  * shared agent's lifecycle is owned by the caller (ServiceContext).
  *
  * Skills are NOT registered on the agent here; ServiceContext
@@ -293,7 +293,7 @@ export async function buildGroupState({
     throw new Error('buildGroupState: localActor required');
   }
 
-  // Build the per-group state (ItemStore + MemberMap + SkillMatch +
+  // Build the per-group state (ItemStore + MemberMap + OfferingMatch +
   // chat etc.) on the SHARED agent. `registerSkills: false` tells
   // the factory to skip skill registration + agent.start — those are
   // ServiceContext's responsibility now.
@@ -302,7 +302,7 @@ export async function buildGroupState({
     agent: meshAgent,
     registerSkills: false,
     label: label ?? `stoop-mobile:${groupId}`,
-    skillMatch: {
+    offeringMatch: {
       group:      groupId,
       localActor,
       peers:      members,
@@ -353,9 +353,9 @@ export async function buildGroupState({
     opts:        { capabilities: ['stoop', 'stoop-mobile', 'mdns', 'ble'] },
   });
 
-  // Bridge agent.peer → this bundle's skillMatch + mirror addPeer.
+  // Bridge agent.peer → this bundle's offeringMatch + mirror addPeer.
   // Multiple bundles each register their own listener on the shared
-  // agent; when a peer is discovered, every group's skillMatch and
+  // agent; when a peer is discovered, every group's offeringMatch and
   // mirror gets the addPeer call so cross-group reach works without
   // needing membership intersection logic.
   const _onAgentPeer = ({ address, pubKey }) => {
@@ -363,7 +363,7 @@ export async function buildGroupState({
     if (!pk || typeof pk !== 'string') return;
     if (pk.includes(':')) return;          // BLE MAC, not a pubkey
     if (pk === meshAgent.address) return;  // self
-    try { bundle.skillMatch?.addPeer?.({ pubKey: pk }); } catch { /* best effort */ }
+    try { bundle.offeringMatch?.addPeer?.({ pubKey: pk }); } catch { /* best effort */ }
     mirror?.addPeer?.(pk).catch(() => { /* swallow */ });
   };
   meshAgent.on('peer', _onAgentPeer);
@@ -393,19 +393,19 @@ export async function buildGroupState({
     const known = (await meshAgent.peers?.all?.().catch(() => [])) ?? [];
     for (const p of known) {
       if (!p?.pubKey || p.pubKey === meshAgent.address) continue;
-      try { bundle.skillMatch.addPeer({ pubKey: p.pubKey }); } catch { /* best effort */ }
+      try { bundle.offeringMatch.addPeer({ pubKey: p.pubKey }); } catch { /* best effort */ }
       try { await mirror.addPeer(p.pubKey);                  } catch { /* best effort */ }
     }
   } catch { /* swallow */ }
 
-  await bundle.skillMatch.start();
+  await bundle.offeringMatch.start();
 
   // Per-bundle stop — does NOT stop the agent (ServiceContext owns it).
   const stop = async () => {
     try { meshAgent.off('peer', _onAgentPeer);   } catch { /* swallow */ }
     try { await bundle.mirror?.stop?.();         } catch { /* swallow */ }
     try { bundle._substrateStop?.();             } catch { /* swallow */ }
-    try { await bundle.skillMatch.stop?.();      } catch { /* swallow */ }
+    try { await bundle.offeringMatch.stop?.();      } catch { /* swallow */ }
     // Detach itemStore bridge listeners.
     try { bundle.itemStore.off?.('item-added',     _bridgeItemArrive); } catch { /* swallow */ }
     try { bundle.itemStore.off?.('item-updated',   _bridgeItemArrive); } catch { /* swallow */ }
@@ -432,7 +432,7 @@ export async function buildGroupState({
  *     advertised on the LAN).  When mDNS doesn't know the peer,
  *     RoutingStrategy returns null, Agent falls back to the primary
  *     InternalTransport — which silently drops sends to non-self
- *     peers (the right behaviour: SkillMatch only addPeer's known
+ *     peers (the right behaviour: OfferingMatch only addPeer's known
  *     peers, so a fall-through to internal means the broadcast is a
  *     no-op rather than an error).
  *   - **Named** (nkn slot, #248 2026-05-27): `NknTransport` — global
@@ -712,10 +712,10 @@ export function defaultLocalActor(identity) {
  * the user's just-created group-rules + membership-code items + the
  * admin promotion in MemberMap survive without copying state.
  *
- * Stops the current SkillMatch and constructs a fresh one over the
+ * Stops the current OfferingMatch and constructs a fresh one over the
  * SAME agent, attached to the new groupId. The bundle's `agent`,
  * `itemStore`, `members`, `chat`, `cache`, `metrics`, `reveals` etc.
- * are unchanged. Mutates `bundle.skillMatch` in place + returns the
+ * are unchanged. Mutates `bundle.offeringMatch` in place + returns the
  * (same) bundle.
  *
  * @param {object} args
@@ -726,7 +726,7 @@ export function defaultLocalActor(identity) {
  * @param {string[]} [args.skills]
  * @param {Object<string, 'always'|'negotiable'|'never'>} [args.posture]
  *
- * @returns {Promise<object>}  the same bundle, with `skillMatch` swapped
+ * @returns {Promise<object>}  the same bundle, with `offeringMatch` swapped
  */
 export async function relabelBundleGroup({
   bundle, newGroupId, localActor,
@@ -742,14 +742,14 @@ export async function relabelBundleGroup({
     throw new Error('relabelBundleGroup: localActor required');
   }
 
-  // Stop the existing SkillMatch + mirror + substrate stack (on
+  // Stop the existing OfferingMatch + mirror + substrate stack (on
   // `_bootstrap` or whatever the old group was). Best-effort —
   // failures shouldn't block the transition.
-  try { await bundle.skillMatch?.stop?.(); } catch { /* swallow */ }
+  try { await bundle.offeringMatch?.stop?.(); } catch { /* swallow */ }
   try { await bundle.mirror?.stop?.();      } catch { /* swallow */ }
   try { bundle._substrateStop?.();          } catch { /* swallow */ }
 
-  const skillMatch = new OfferingMatch({
+  const offeringMatch = new OfferingMatch({
     agent:      bundle.agent,
     peers,
     group:      newGroupId,
@@ -757,7 +757,7 @@ export async function relabelBundleGroup({
     offerings:  skills,
     posture,
   });
-  await skillMatch.start();
+  await offeringMatch.start();
 
   // Fresh substrate stack + substrate mirror on the new group. The
   // mirror filters by URI prefix `/stoop/<newGroupId>/requests/`
@@ -778,7 +778,7 @@ export async function relabelBundleGroup({
     selfPubKey:     bundle.agent?.address ?? null,
   });
 
-  bundle.skillMatch = skillMatch;
+  bundle.offeringMatch = offeringMatch;
   bundle.mirror     = mirror;
 
   // C3 — re-register on the (potentially) new pseudoPod after relabel.
@@ -789,7 +789,7 @@ export async function relabelBundleGroup({
     opts:        { capabilities: ['stoop', 'stoop-mobile', 'mdns', 'ble'] },
   });
 
-  // Seed the new SkillMatch + mirror with peers the agent has
+  // Seed the new OfferingMatch + mirror with peers the agent has
   // ALREADY discovered before the relabel.  The bootstrap bundle's
   // `agent.on('peer')` handler called addPeer on the OLD instances;
   // those events don't re-fire after relabel, so without this
@@ -801,7 +801,7 @@ export async function relabelBundleGroup({
     const selfAddr = bundle.agent.address ?? bundle.agent.identity?.pubKey;
     for (const p of known) {
       if (!p?.pubKey || p.pubKey === selfAddr) continue;
-      try { skillMatch.addPeer({ pubKey: p.pubKey }); } catch { /* best effort */ }
+      try { offeringMatch.addPeer({ pubKey: p.pubKey }); } catch { /* best effort */ }
       try { await mirror.addPeer(p.pubKey);          } catch { /* best effort */ }
     }
   } catch { /* swallow — peer-graph is best-effort hint here */ }

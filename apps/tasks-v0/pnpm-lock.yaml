@@ -62,9 +62,9 @@ importers:
       '@onderling/relay':
         specifier: file:../../packages/relay
         version: file:../../packages/relay(@onderling/core@file:../../packages/core)
-      '@onderling/skill-match':
-        specifier: file:../../packages/skill-match
-        version: file:../../packages/skill-match
+      '@onderling/offering-match':
+        specifier: file:../../packages/offering-match
+        version: file:../../packages/offering-match
       '@onderling/web-adapter':
         specifier: file:../../packages/web-adapter
         version: file:../../packages/web-adapter
@@ -166,8 +166,8 @@ packages:
     peerDependencies:
       '@onderling/core': ^0.1.0
 
-  '@onderling/skill-match@file:../../packages/skill-match':
-    resolution: {directory: ../../packages/skill-match, type: directory}
+  '@onderling/offering-match@file:../../packages/offering-match':
+    resolution: {directory: ../../packages/offering-match, type: directory}
 
   '@onderling/vault@file:../../packages/vault':
     resolution: {directory: ../../packages/vault, type: directory}
@@ -1088,7 +1088,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@onderling/skill-match@file:../../packages/skill-match':
+  '@onderling/offering-match@file:../../packages/offering-match':
     dependencies:
       '@onderling/core': file:../../packages/core
 

@@ -196,7 +196,7 @@ export function ServiceProvider({ children, deps = {} }) {
           if (!state) return null;
           return {
             store:      state.itemStore,
-            skillMatch: state.skillMatch,
+            offeringMatch: state.offeringMatch,
             notifier:   state.notifier ?? null,
             reveals:    state.reveals  ?? null,
             members:    state.members,
@@ -341,8 +341,8 @@ export function ServiceProvider({ children, deps = {} }) {
 
     setBgRunOnce(async () => {
       try {
-        if (typeof activeBundleForBridge.skillMatch?.tick === 'function') {
-          await activeBundleForBridge.skillMatch.tick();
+        if (typeof activeBundleForBridge.offeringMatch?.tick === 'function') {
+          await activeBundleForBridge.offeringMatch.tick();
         }
         return { uploads: 0, downloads: 0, deletes: 0 }; // shape the task expects
       } catch {

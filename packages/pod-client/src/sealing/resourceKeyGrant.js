@@ -13,7 +13,7 @@
 //   • the sealing CEK-wrap  (`sealWithGroupKey`/`openWithGroupKey` for the body; `seal`/`open` to wrap the
 //     per-resource CEK to a requester's sealing pubkey — the same recipient-mode envelope groupKeyResource
 //     uses to distribute a group key, but for ONE resource and gated by a token), and
-//   • the ocap primitives from `@onderling/core` (`CapabilityToken.issue`/`.verify`/`skillMatches`,
+//   • the ocap primitives from `@onderling/core` (`CapabilityToken.issue`/`.verify`/`offeringMatches`,
 //     `TokenRegistry.revoke`/`.isRevoked`).
 //
 // Placement (layering): pod-client is the substrate that already owns `sealing/` AND already depends on
@@ -27,16 +27,16 @@
 // pubkey. Deny-by-default: any failure returns `{ denied }` and never a key.
 
 import { seal, open, sealWithGroupKey, openWithGroupKey, generateGroupKey } from './envelope.js';
-import { CapabilityToken, skillMatches } from '@onderling/core';
+import { CapabilityToken, offeringMatches } from '@onderling/core';
 
 // A per-resource read capability is named in the token's `skill` slot as `res.read:<resourceId>`. Reusing
-// the `skill` slot means the token model's OWN matcher (`skillMatches`) enforces per-resource isolation:
+// the `skill` slot means the token model's OWN matcher (`offeringMatches`) enforces per-resource isolation:
 // `res.read:A` matches `res.read:A` (exact) and nothing else — a B-token can never unwrap A. A full `'*'`
 // token still matches (an intentional super-grant); everything else is denied.
 const SCOPE_PREFIX = 'res.read:';
 /**
  * Build the capability `skill` string naming per-resource read access: `res.read:<resourceId>`.
- * `skillMatches` enforces exact-match isolation — a token for resource B never covers resource A
+ * `offeringMatches` enforces exact-match isolation — a token for resource B never covers resource A
  * (only a full `'*'` token also matches, as an intentional super-grant).
  * @param {string} resourceId — non-empty resource id
  * @returns {string} the scope string
@@ -204,7 +204,7 @@ export function createResourceKeyGrant({
           if (parsed.subject !== requesterPubKey) return deny('subject-mismatch');
 
           // Resource scope — per-resource isolation via the token model's own matcher.
-          if (!skillMatches(parsed.skill, resourceScope(resourceId))) return deny('wrong-scope');
+          if (!offeringMatches(parsed.skill, resourceScope(resourceId))) return deny('wrong-scope');
 
           // Revocation.
           if (await isRevoked(parsed.id)) return deny('revoked');

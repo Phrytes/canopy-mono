@@ -99,7 +99,7 @@ peer deps; apps compose freely.
 | `@onderling/notifier` | Scheduler for recurring digests + one-shot nudges. V2 hook: `createEnvelopeBridge` for time-shifted envelope delivery. | 52.9 |
 | `@onderling/chat-agent` | Chat-with-LLM helpers + bridge interface. | unchanged |
 | `@onderling/chat-p2p` | P2P chat threads. Ephemeral content stays on relay-fan-out. | unchanged |
-| `@onderling/skill-match` | Pubsub-of-skills broadcast. Routes via `notifier`. | unchanged surface |
+| `@onderling/offering-match` | Pubsub-of-skills broadcast. Routes via `notifier`. | unchanged surface |
 | `@onderling/online-cadence` | Heartbeat / online-status. | unchanged |
 
 ### Direction-only (Hub V2 territory)

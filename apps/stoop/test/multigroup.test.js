@@ -3,7 +3,7 @@
  *
  * Validates the "one identity, many groups" V0 model: a single
  * `AgentIdentity` (stable pubkey) drives N `core.Agent` instances, one
- * per group, each with its own SkillMatch. Item-stores are per-group so
+ * per group, each with its own OfferingMatch. Item-stores are per-group so
  * a request posted in group A is invisible in group B.
  *
  * Also exercises the launcher's `extraStaticFiles: {'/groups.json'}`
@@ -47,8 +47,8 @@ describe('createNeighborhoodCluster', () => {
     expect(aBundle.agent.identity.pubKey).toBe(bBundle.agent.identity.pubKey);
     expect(aBundle.agent.identity.pubKey).toBe(cluster.identity.pubKey);
 
-    // SkillMatch must be started before postRequest can broadcast.
-    for (const b of cluster.groups.values()) await b.skillMatch.start();
+    // OfferingMatch must be started before postRequest can broadcast.
+    for (const b of cluster.groups.values()) await b.offeringMatch.start();
 
     // No peers — broadcast times out immediately. We're testing the
     // store isolation and the post path, not the matchmaking loop.
@@ -88,7 +88,7 @@ describe('multi-group launcher (mountLocalUi extraStaticFiles)', () => {
         { groupId: 'book-club', localActor: ANNE },
       ],
     });
-    for (const b of cluster.groups.values()) await b.skillMatch.start();
+    for (const b of cluster.groups.values()) await b.offeringMatch.start();
 
     // Shared mutable map — all instances see updates by reference.
     const sharedExtras = { '/groups.json': '[]' };

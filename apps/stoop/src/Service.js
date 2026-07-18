@@ -40,24 +40,24 @@ import { MemorySource } from '@onderling/core';
 import { buildSkills, buildStoopScope, STOOP_CORES } from './skills/index.js';
 import { stoopManifest } from '../manifest.js';
 
-/** A no-op SkillMatch stub: posts store locally + "broadcast" resolves to no claims (no transport wired). */
-const noopSkillMatch = () => ({ broadcast: async () => ({ claims: [] }), addPeer() {} });
+/** A no-op OfferingMatch stub: posts store locally + "broadcast" resolves to no claims (no transport wired). */
+const noopOfferingMatch = () => ({ broadcast: async () => ({ claims: [] }), addPeer() {} });
 
 /**
  * createStoopService — build the stoop skill set (via the existing `buildSkills`, unchanged) and expose the
  * §1b entries. In-memory defaults make it standalone-runnable (tests + future gated wiring); a real boot
- * injects the same `store`/`skillMatch`/`members`/… `Agent.js` wires (single-bundle mode).
+ * injects the same `store`/`offeringMatch`/`members`/… `Agent.js` wires (single-bundle mode).
  *
  * @param {object}  [deps]
  * @param {object}  [deps.store]        an `ItemStore` (defaults to an in-memory MemorySource-backed one)
- * @param {object}  [deps.skillMatch]   L1e SkillMatch (defaults to a no-op broadcast stub)
+ * @param {object}  [deps.offeringMatch]   L1e OfferingMatch (defaults to a no-op broadcast stub)
  * @param {object}  [deps.manifest]     defaults to the real `stoopManifest`
  *  …plus the remaining `buildSkills` deps (notifier, reveals, members, controlAgent, muted, localActor,
  *    groupId, dataLocationConfig, chat, metrics, bundle) — all optional, forwarded verbatim.
  */
 export function createStoopService({
   store,
-  skillMatch,
+  offeringMatch,
   notifier,
   reveals,
   members,
@@ -75,12 +75,12 @@ export function createStoopService({
     new CircleItemStore({ dataSource: new MemorySource(), rootContainer: 'mem://neighborhood/' }),
   );
 
-  // Build the dep bag ONCE (hoisting the skillMatch/muted defaults) so the wire
+  // Build the dep bag ONCE (hoisting the offeringMatch/muted defaults) so the wire
   // route (buildSkills) and the local route (the direct-core scope) share the
   // exact same instances — a call routed either way sees identical state.
   const deps = {
     store:      itemStore,
-    skillMatch: skillMatch ?? noopSkillMatch(),
+    offeringMatch: offeringMatch ?? noopOfferingMatch(),
     notifier:   notifier ?? null,
     reveals:    reveals ?? null,
     members:    members ?? null,

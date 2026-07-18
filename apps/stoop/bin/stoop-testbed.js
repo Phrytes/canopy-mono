@@ -108,7 +108,7 @@ async function spawnAgent({ webid, role, displayName }) {
       role:        m.role,
       pubKey:      m.identity.pubKey,
     })),
-    skillMatch: { group: groupId, localActor: webid, peers },
+    offeringMatch: { group: groupId, localActor: webid, peers },
   });
 
   // Determine port for this UI. If user passed --port N, allocate
@@ -141,13 +141,13 @@ async function spawnAgent({ webid, role, displayName }) {
   //   2. Wire the new agent's group-broadcast mirror over the now-known
   //      peer set. The mirror writes inbound requests from any peer into
   //      THIS agent's itemStore, so the H5 web UI's "Open in the group"
-  //      list shows them — independent of SkillMatch's matchmaking
+  //      list shows them — independent of OfferingMatch's matchmaking
   //      filter (which silently drops requests whose `requiredSkills`
   //      don't intersect the local profile).
-  //   3. Tell every PRE-EXISTING SkillMatch + group-mirror about the
+  //   3. Tell every PRE-EXISTING OfferingMatch + group-mirror about the
   //      new arrival, and push the metadata into every member's
   //      MemberMap so `resolveMember` round-trips work cluster-wide.
-  //   4. Start the new SkillMatch (subscribes to existing peers'
+  //   4. Start the new OfferingMatch (subscribes to existing peers'
   //      `<group>/requests` topics for the matchmaking path).
   crossRegister();
 
@@ -170,7 +170,7 @@ async function spawnAgent({ webid, role, displayName }) {
 
   for (const [otherWebid, m] of cluster) {
     if (otherWebid === webid) continue;
-    m.bundle.skillMatch.addPeer({ pubKey: id.pubKey });
+    m.bundle.offeringMatch.addPeer({ pubKey: id.pubKey });
     await m.mirror.addPeer(id.pubKey);
     await m.bundle.members.addMember({
       webid, displayName, role, pubKey: id.pubKey,
@@ -184,7 +184,7 @@ async function spawnAgent({ webid, role, displayName }) {
       await mirror.backfillFrom(m.identity.pubKey, existing);
     } catch { /* best-effort */ }
   }
-  await bundle.skillMatch.start();
+  await bundle.offeringMatch.start();
 
   return { webid, role, url: ui.url, pubKey: id.pubKey };
 }

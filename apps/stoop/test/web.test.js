@@ -42,7 +42,7 @@ beforeAll(async () => {
     transport: new InternalTransport(bus, aliceId.pubKey),
     label:     'H5-alice',
     members:   [{ webid: ALICE, displayName: 'Alice' }, { webid: BOB, displayName: 'Bob' }],
-    skillMatch: {
+    offeringMatch: {
       group:      'block-42',
       localActor: ALICE,
       peers:      [{ pubKey: bobId.pubKey }],
@@ -52,7 +52,7 @@ beforeAll(async () => {
     identity:  bobId,
     transport: new InternalTransport(bus, bobId.pubKey),
     label:     'H5-bob',
-    skillMatch: {
+    offeringMatch: {
       group:      'block-42',
       localActor: BOB,
       peers:      [{ pubKey: aliceId.pubKey }],
@@ -64,9 +64,9 @@ beforeAll(async () => {
 
   alice.agent.addPeer(bobId.pubKey,   bobId.pubKey);
   bob.agent.addPeer(aliceId.pubKey,   aliceId.pubKey);
-  await alice.skillMatch.start();
-  await bob.skillMatch.start();
-  bob.skillMatch.subscribe(async () => {});
+  await alice.offeringMatch.start();
+  await bob.offeringMatch.start();
+  bob.offeringMatch.subscribe(async () => {});
 
   ui = await mountLocalUi(alice.agent, {
     port:        0,

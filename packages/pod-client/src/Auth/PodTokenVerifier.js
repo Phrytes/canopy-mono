@@ -13,7 +13,7 @@
 //
 // This CLONES `packages/blob-gateway/src/adapters/capabilityVerifier.js`'s
 // deny-by-default orchestration, retargeted from `CapabilityToken` (skill-scoped)
-// to `PodCapabilityToken` (path-scoped): `skillMatches` → `matchesScope` against
+// to `PodCapabilityToken` (path-scoped): `offeringMatches` → `matchesScope` against
 // a request-derived `requiredScope`.
 //
 // Trust model — INVERTED from blob-gateway's self-attestation. Pod delegation is

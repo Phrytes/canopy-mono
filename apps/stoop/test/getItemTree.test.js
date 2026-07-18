@@ -15,7 +15,7 @@ function skillsWith(itemMap) {
   const store = { getById: async (id) => itemMap[id] ?? null };
   const arr = buildSkills({
     store,
-    skillMatch: { broadcast: vi.fn(async () => ({ claims: [] })), addPeer: vi.fn() },
+    offeringMatch: { broadcast: vi.fn(async () => ({ claims: [] })), addPeer: vi.fn() },
     notifier:   null,
     reveals:    null,
     members:    null,

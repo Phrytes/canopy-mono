@@ -32,7 +32,7 @@ async function buildBundle() {
   const tx = new InternalTransport(new InternalBus(), id.pubKey);
   return createNeighborhoodAgent({
     identity: id, transport: tx,
-    skillMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
+    offeringMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
     members:    [
       { webid: ANNE,  role: 'member' },
       { webid: BOB,   role: 'member', stableId: 'sid-bob' },
@@ -44,7 +44,7 @@ async function buildBundle() {
 describe('Stoop SP-13.2.1 — broadcastKringMessage', () => {
   it('fans the envelope out to every other member via chat.send', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
 
     // Replace the real chat.send (which would try to ship over NKN)
     // with a capturing stub.  Returns ok=true so the skill counts
@@ -77,7 +77,7 @@ describe('Stoop SP-13.2.1 — broadcastKringMessage', () => {
 
   it('skips the caller (does not echo back to self)', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     const calls = [];
     bundle.chat.send = vi.fn(async (args) => { calls.push(args); return { ok: true }; });
 
@@ -90,7 +90,7 @@ describe('Stoop SP-13.2.1 — broadcastKringMessage', () => {
 
   it('counts per-recipient failures in errors[] but never throws', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     bundle.chat.send = vi.fn(async (args) => {
       if (args.toWebid === BOB) return { ok: false, reason: 'recipient-pubkey-unknown' };
       throw new Error('boom');
@@ -109,7 +109,7 @@ describe('Stoop SP-13.2.1 — broadcastKringMessage', () => {
 
   it('rejects empty / whitespace-only text', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     expect(await callSkill(bundle.agent, 'broadcastKringMessage',
       { groupId: 'oosterpoort', text: '  ', msgId: 'm' })).toEqual({ error: 'text-required' });
     expect(await callSkill(bundle.agent, 'broadcastKringMessage',
@@ -118,14 +118,14 @@ describe('Stoop SP-13.2.1 — broadcastKringMessage', () => {
 
   it('rejects missing msgId', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     expect(await callSkill(bundle.agent, 'broadcastKringMessage',
       { groupId: 'oosterpoort', text: 'hi' })).toEqual({ error: 'msgId-required' });
   });
 
   it('trims surrounding whitespace from the body before sending', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     const calls = [];
     bundle.chat.send = vi.fn(async (args) => { calls.push(args); return { ok: true }; });
     await callSkill(bundle.agent, 'broadcastKringMessage',
@@ -139,7 +139,7 @@ describe('Stoop SP-13.2.1 — broadcastKringMessage', () => {
 
   it('writes the outgoing chat to itemStore as a kring-chat-message item', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     bundle.chat.send = vi.fn(async () => ({ ok: true }));
     const r = await callSkill(bundle.agent, 'broadcastKringMessage', {
       groupId: 'oosterpoort', text: 'Hoi buurt!', msgId: 'm-local-1', ts: 1735_000_000_000,
@@ -159,7 +159,7 @@ describe('Stoop SP-13.2.1 — broadcastKringMessage', () => {
 
   it('carries an optional media pointer on extras AND persists it on the local mirror', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     const calls = [];
     bundle.chat.send = vi.fn(async (args) => { calls.push(args); return { ok: true }; });
     const media = {
@@ -177,7 +177,7 @@ describe('Stoop SP-13.2.1 — broadcastKringMessage', () => {
 
   it('WITHOUT media the envelope + mirror stay byte-identical to the legacy shape (no media key)', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     const calls = [];
     bundle.chat.send = vi.fn(async (args) => { calls.push(args); return { ok: true }; });
     const r = await callSkill(bundle.agent, 'broadcastKringMessage', {
@@ -190,7 +190,7 @@ describe('Stoop SP-13.2.1 — broadcastKringMessage', () => {
 
   it('a non-object media arg is ignored (shape guard at the skill boundary)', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     const calls = [];
     bundle.chat.send = vi.fn(async (args) => { calls.push(args); return { ok: true }; });
     await callSkill(bundle.agent, 'broadcastKringMessage', {
@@ -201,7 +201,7 @@ describe('Stoop SP-13.2.1 — broadcastKringMessage', () => {
 
   it('deduplicates the local mirror by msgId across resends', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     bundle.chat.send = vi.fn(async () => ({ ok: true }));
     const r1 = await callSkill(bundle.agent, 'broadcastKringMessage', {
       groupId: 'oosterpoort', text: 'first', msgId: 'dup-id',
@@ -218,7 +218,7 @@ describe('Stoop SP-13.2.1 — broadcastKringMessage', () => {
 describe('Stoop SP-13.2.1 — ingestKringMessage', () => {
   it('mirrors a remote envelope to itemStore as a kring-chat-message item', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     const r = await callSkill(bundle.agent, 'ingestKringMessage', {
       payload: {
         subtype: 'kring-chat-message',
@@ -242,7 +242,7 @@ describe('Stoop SP-13.2.1 — ingestKringMessage', () => {
 
   it('persists an envelope media pointer to source.media — a LEGACY envelope (no media) still ingests unchanged', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     const media = {
       kind: 'media-card', pointer: { type: 'media', ref: 'urn:dec:item:mm' },
       snapshot: { type: 'media', id: 'mm', source: { type: 'blob', ref: 'blob://kk', enc: { sealed: true } } },
@@ -282,7 +282,7 @@ describe('Stoop SP-13.2.1 — ingestKringMessage', () => {
 
   it('dedupes by msgId on resend (idempotent ingest)', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     const payload = {
       subtype: 'kring-chat-message',
       circleId: 'oosterpoort', msgId: 'dedup-1',
@@ -298,7 +298,7 @@ describe('Stoop SP-13.2.1 — ingestKringMessage', () => {
 
   it('drops chats from peers muted via mutePeer skill', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     // Mute BOB via the regular skill (mirrors how a user would do it
     // from the UI; populates the same internal muted Set).
     await callSkill(bundle.agent, 'mutePeer', { peerWebid: BOB });
@@ -321,7 +321,7 @@ describe('Stoop SP-13.2.1 — ingestKringMessage', () => {
 
   it('rejects malformed payloads', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     expect(await callSkill(bundle.agent, 'ingestKringMessage', {})).toEqual({ error: 'payload required' });
     expect(await callSkill(bundle.agent, 'ingestKringMessage',
       { payload: { msgId: 'x', text: 't', ts: 1 } })).toEqual({ error: 'circleId required' });
@@ -341,7 +341,7 @@ describe('Stoop SP-13.2.1 — ingestKringMessage', () => {
 describe('Stoop E1 drift-guard — ingestRemotePost honours mute (parity with kring chat)', () => {
   it('drops buurt-posts from a peer muted via mutePeer', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     // Mute BOB (resolves BOB → 'sid-bob' via MemberMap; muted set keyed by stableId).
     await callSkill(bundle.agent, 'mutePeer', { peerWebid: BOB });
     const r = await callSkill(bundle.agent, 'ingestRemotePost', {
@@ -358,7 +358,7 @@ describe('Stoop E1 drift-guard — ingestRemotePost honours mute (parity with kr
 
   it('still ingests buurt-posts from a non-muted peer', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     const r = await callSkill(bundle.agent, 'ingestRemotePost', {
       payload: {
         requestId: 'buurt-ok-1', type: 'request', text: 'Free lemons',
@@ -389,15 +389,15 @@ describe('Stoop SP-13.2.1 — cross-agent journey: Anne → Bob', () => {
     const anneTx = new InternalTransport(new InternalBus(), anneId.pubKey);
     const anne = await createNeighborhoodAgent({
       identity: anneId, transport: anneTx,
-      skillMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
+      offeringMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
       members: [
         { webid: ANNE, role: 'member' },
         { webid: BOB,  role: 'member', stableId: 'sid-bob' },
       ],
     });
     const bob = await buildBundle();
-    await anne.skillMatch.start();
-    await bob.skillMatch.start();
+    await anne.offeringMatch.start();
+    await bob.offeringMatch.start();
 
     // Capture the wire payload Anne would ship to BOB.  In production
     // chat.send routes via agent.transport.sendOneWay → Bob's wireChat
@@ -452,7 +452,7 @@ describe('Stoop SP-13.2.1 — cross-agent journey: Anne → Bob', () => {
 
   it('a duplicate envelope from a replay is idempotent on Bob (no duplicate bubble)', async () => {
     const bob = await buildBundle();
-    await bob.skillMatch.start();
+    await bob.offeringMatch.start();
     const payload = {
       subtype: 'kring-chat-message',
       circleId: 'oosterpoort', msgId: 'replay-1',
@@ -490,7 +490,7 @@ async function seedChats(bundle, chats) {
 describe('Stoop SP-13.2.2 — listKringChats', () => {
   it('returns all stored kring chats ordered oldest → newest', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     await seedChats(bundle, [
       { circleId: 'g1', msgId: 'a', text: 'first',  ts: 100 },
       { circleId: 'g1', msgId: 'b', text: 'middle', ts: 200 },
@@ -503,7 +503,7 @@ describe('Stoop SP-13.2.2 — listKringChats', () => {
 
   it('filters by groupId when supplied', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     await seedChats(bundle, [
       { circleId: 'g1', msgId: 'a', text: 'hi g1', ts: 100 },
       { circleId: 'g2', msgId: 'b', text: 'hi g2', ts: 200 },
@@ -515,7 +515,7 @@ describe('Stoop SP-13.2.2 — listKringChats', () => {
 
   it('filters by sinceTs (strict, exclusive)', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     await seedChats(bundle, [
       { circleId: 'g1', msgId: 'a', text: 'old',    ts: 100 },
       { circleId: 'g1', msgId: 'b', text: 'cutoff', ts: 200 },
@@ -527,7 +527,7 @@ describe('Stoop SP-13.2.2 — listKringChats', () => {
 
   it('respects limit (returns the most recent N when over the cap)', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     await seedChats(bundle, [
       { circleId: 'g1', msgId: '1', text: 'one',   ts: 100 },
       { circleId: 'g1', msgId: '2', text: 'two',   ts: 200 },
@@ -542,7 +542,7 @@ describe('Stoop SP-13.2.2 — listKringChats', () => {
 
   it('returns empty when there are no kring chats yet', async () => {
     const bundle = await buildBundle();
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     const r = await callSkill(bundle.agent, 'listKringChats');
     expect(r.items).toEqual([]);
   });

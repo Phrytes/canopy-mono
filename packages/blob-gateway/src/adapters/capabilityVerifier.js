@@ -26,7 +26,7 @@
 //   1. shape           — the wire fields must be present and well-typed
 //   2. signature       — `verifySignature(raw)` must be exactly `true`
 //   3. expiry          — `now()` (injectable clock) vs `expiresAt` (unix-ms)
-//   4. skill           — `skillMatches(token.skill, requiredSkill)` (supports
+//   4. skill           — `offeringMatches(token.skill, requiredSkill)` (supports
 //                        '*' and 'media.*'-style prefixes; default 'media.read')
 //   5. issuer trust    — when `trustedIssuers` (the circle's known member/owner
 //                        keys) is a non-empty list, `token.issuer` must be in it
@@ -41,7 +41,7 @@
 //   7. revocation      — when `isRevoked(tokenId)` is injected (e.g.
 //                        TokenRegistry#isRevoked), a revoked id denies
 
-import { CapabilityToken, skillMatches } from '@onderling/core';
+import { CapabilityToken, offeringMatches } from '@onderling/core';
 
 const DEFAULT_SKILL = 'media.read';
 
@@ -130,7 +130,7 @@ export function createCapabilityVerifier({
       if (clock() >= raw.expiresAt) return null;
 
       // 4. skill — the capability must cover what this gate protects.
-      if (!skillMatches(raw.skill, requiredSkill)) return null;
+      if (!offeringMatches(raw.skill, requiredSkill)) return null;
 
       // 5. issuer trust — when a list is configured, the issuer must be on it.
       if (allow.mode === 'list' && !allow.set.has(raw.issuer)) return null;

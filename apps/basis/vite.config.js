@@ -77,7 +77,7 @@ export default defineConfig({
   // workspace deps don't use the same export form + pre-bundle fine.
   // See slice-4 smoke fix (2026-05-23).
   optimizeDeps: {
-    // `@onderling/app-manifest` + `@onderling/skill-match` are EXCLUDED (served as
+    // `@onderling/app-manifest` + `@onderling/offering-match` are EXCLUDED (served as
     // source) because they carry the reply-shape/op VALIDATOR, and this repo's
     // broken install means @onderling/* resolve as COPIES that we hand-sync after a
     // shared-source edit (see memory `feedback-no-pnpm-install-here`). A pre-
@@ -87,7 +87,7 @@ export default defineConfig({
     // and the circle bot fails to build. Serving them as source makes a source/
     // copy edit always live (no stale prebundle). Both are pure ESM, so there's
     // no esbuild-only export form to lose by skipping the prebundle.
-    exclude: ['@onderling/core', '@onderling/app-manifest', '@onderling/skill-match'],
+    exclude: ['@onderling/core', '@onderling/app-manifest', '@onderling/offering-match'],
     // `@onderling/core` is served as SOURCE (excluded above), so Vite resolves its
     // transitive CJS crypto deps (tweetnacl/ed2curve, imported by AgentIdentity)
     // at request time. When they resolve to a workspace copy OUTSIDE the app root

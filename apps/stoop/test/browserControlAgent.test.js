@@ -32,7 +32,7 @@ async function buildBrowserBundle({ controlAgent } = {}) {
     members:       [{ webid: ADMIN, role: 'admin' }],
     controlAgent,
   });
-  await bundle.skillMatch.start();
+  await bundle.offeringMatch.start();
   return bundle;
 }
 

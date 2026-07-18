@@ -36,10 +36,10 @@ async function buildBundle({ actor = ADMIN, role = 'admin' } = {}) {
   const tx = new InternalTransport(new InternalBus(), id.pubKey);
   const bundle = await createNeighborhoodAgent({
     identity: id, transport: tx,
-    skillMatch: { group: 'oosterpoort', localActor: actor, peers: [] },
+    offeringMatch: { group: 'oosterpoort', localActor: actor, peers: [] },
     members:    [{ webid: actor, role }],
   });
-  await bundle.skillMatch.start();
+  await bundle.offeringMatch.start();
   return bundle;
 }
 

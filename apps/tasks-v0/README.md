@@ -142,7 +142,7 @@ This app composes the following substrate packages
 | Package | Used for | Notes |
 |---|---|---|
 | `@onderling/item-store` (L1b) | Open/closed tasks with attribution + audit + per-field merge contracts + DoD lifecycle (`submitted`/`rejected` states); plugs `buildStandardRolePolicy(roles)` into the substrate's role-policy gate. | Phase 5 extended the substrate with the DoD lifecycle (used by Tasks V1; Stoop's lend-flow is the second consumer). |
-| `@onderling/skill-match` (L1e) | Pubsub-of-skills claim flow when a skill-tagged task is added; composes a real `core.Agent` + `core.protocol.pubSub`. | Optional in V1 (skillMatch parameter to `createTasksAgent`). |
+| `@onderling/offering-match` (L1e) | Pubsub-of-skills claim flow when a skill-tagged task is added; composes a real `core.Agent` + `core.protocol.pubSub`. | Optional in V1 (skillMatch parameter to `createTasksAgent`). |
 | `@onderling/identity-resolver` (L1h) | `MemberMap` + `MemberMapCache` (auto-persist roster) + `buildOnboardingSkills` (issueInvite/redeemInvite) + `TAXONOMY` / `normaliseTag` / `matchesProfile` (skill canonicalisation). | Lifted from Stoop 2026-05-08 (rule of two). |
 | `@onderling/notifier` (L1f) | `Notifier` for scheduled jobs (missed-deadline) + `InMemoryScheduleStore` + `NoopChannel`/`PushChannel` + `UsageMetrics` (Phase 9 counters). | Per-recipient `InAppInboxBridge` channels added at runtime via the shared `channels` map. |
 | `@onderling/agent-ui` (L1d) | `mountLocalUi(bundle.agent)` exposes skills over A2A's standard wire shape on `127.0.0.1`. | Web UI pages are static files in `web/`. |

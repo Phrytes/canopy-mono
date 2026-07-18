@@ -230,7 +230,7 @@ Don't introduce a per-group Agent. Concrete plan + rationale:
 | `@onderling/item-store` | `ItemStore` for posts, chat-messages, claims, redemptions. |
 | `@onderling/chat-p2p` | `wireChat({...})` peer-to-peer chat. |
 | `@onderling/notifier` | `Notifier`, `UsageMetrics`, push channels, scheduled reminders. |
-| `@onderling/skill-match` | Pubsub-of-skills broadcast over the closed group + claim flow. **Phase 40.20:** broadcast-scope extension (`extraAudience` constructor + `scope: 'group'\|'group+contacts'\|'group+contacts+hops'` on broadcast). |
+| `@onderling/offering-match` | Pubsub-of-skills broadcast over the closed group + claim flow. **Phase 40.20:** broadcast-scope extension (`extraAudience` constructor + `scope: 'group'\|'group+contacts'\|'group+contacts+hops'` on broadcast). |
 | `@onderling/pod-client` | Pod read/write/list when the user signs in with their Solid pod. |
 
 ## Direct kernel use

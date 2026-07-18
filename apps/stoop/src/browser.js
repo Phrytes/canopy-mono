@@ -92,7 +92,7 @@ export async function createBrowserStoopAgent({
     identity,
     transport: new InternalTransport(bus, identity.pubKey),
     members:   seedMembers,
-    skillMatch: { group, localActor },
+    offeringMatch: { group, localActor },
     persistDb,
     label,
     controlAgent,   // sealed-pod membership hooks (no-op when absent) — see the param doc above

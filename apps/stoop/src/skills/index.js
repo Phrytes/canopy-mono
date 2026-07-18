@@ -361,7 +361,7 @@ async function hydrateItems(items, ctx) {
 /**
  * @param {object} args
  * @param {import('@onderling/item-store').ItemStore} args.store
- * @param {import('@onderling/skill-match').OfferingMatch} args.skillMatch
+ * @param {import('@onderling/offering-match').OfferingMatch} args.offeringMatch
  * @param {object} [args.notifier]                            optional Notifier (lend reminders)
  * @param {object} [args.reveals]                             optional Reveals (author hydration)
  * @param {object} [args.members]                             optional MemberMap (author hydration)
@@ -463,7 +463,7 @@ function _peerIngestVerdict({ evictionRoster, muted, evictWebid, muteKeys } = {}
 //
 // `scope`  the resolved per-bundle dep bag (what `buildSkills` closes over):
 //          `{ store, members, reveals, notifier, muted, metrics, groupId,
-//             chat, bundle, controlAgent, skillMatch, localActor, … }`.
+//             chat, bundle, controlAgent, offeringMatch, localActor, … }`.
 // `a`      the decoded args object (wireSkill's decodeArgs; identical to the old
 //          `dataArgs(parts)` for the single-DataPart wire convention).
 // `ctx`    the full core skill context — `{ from, parts, envelope, agent, … }`.
@@ -713,16 +713,16 @@ export const STOOP_CORES = Object.freeze({
  * shape both `buildSkills` (wire route) and `createStoopService` (local route)
  * use, so the direct-core call and the wire call operate on an IDENTICAL scope.
  * `groupId` is defaulted exactly as the single-bundle path always did
- * (`explicitGroupId ?? skillMatch?.group ?? null`).
+ * (`explicitGroupId ?? offeringMatch?.group ?? null`).
  */
 export function buildStoopScope(deps = {}) {
   const {
-    store, skillMatch, notifier, reveals, members, controlAgent,
+    store, offeringMatch, notifier, reveals, members, controlAgent,
     muted, localActor, groupId: explicitGroupId, dataLocationConfig, chat, metrics, bundle,
   } = deps;
-  const groupId = explicitGroupId ?? skillMatch?.group ?? null;
+  const groupId = explicitGroupId ?? offeringMatch?.group ?? null;
   return {
-    store, skillMatch, notifier, reveals, members, controlAgent,
+    store, offeringMatch, notifier, reveals, members, controlAgent,
     muted, localActor, groupId, dataLocationConfig, chat, metrics, bundle,
   };
 }
@@ -739,7 +739,7 @@ function withLegacyIds(def, ...legacyIds) {
 
 export function buildSkills({
   store,
-  skillMatch,
+  offeringMatch,
   notifier,
   reveals,
   members,
@@ -761,7 +761,7 @@ export function buildSkills({
   // time the wrapper resolves the right per-group bundle from
   // `args.groupId` (or the envelope's pubsub topic) via getBundle, then
   // delegates to a per-group cached skill array built with that bundle's
-  // store/members/skillMatch/etc.  Apps with multiple groups (Stoop
+  // store/members/offeringMatch/etc.  Apps with multiple groups (Stoop
   // mobile, future Tasks-mobile) pass `getBundle`; single-bundle callers
   // (testbed, web Stoop) keep using the bundle args above.
   //
@@ -772,9 +772,9 @@ export function buildSkills({
     return _buildScopedSkills({ getBundle, dataLocationConfig });
   }
 
-  // SkillMatch's #group is private; Agent.js passes the configured
+  // OfferingMatch's #group is private; Agent.js passes the configured
   // groupId through here so list-shaped skills can scope reveal lookups.
-  const groupId = explicitGroupId ?? skillMatch?.group ?? null;
+  const groupId = explicitGroupId ?? offeringMatch?.group ?? null;
 
   // B★ B3 — the per-bundle dep bag every skill closes over, packaged as the
   // `scope` wireSkill hands each core.  Stoop's single-bundle path has no
@@ -784,7 +784,7 @@ export function buildSkills({
   // op up in `stoopManifest`, generates the `defineSkill`-shaped handler via
   // `wireSkill`, and re-attaches the same description/visibility.
   const scope = buildStoopScope({
-    store, skillMatch, notifier, reveals, members, controlAgent,
+    store, offeringMatch, notifier, reveals, members, controlAgent,
     muted, localActor, groupId, dataLocationConfig, chat, metrics, bundle,
   });
   const storeFor = () => scope;
@@ -982,7 +982,7 @@ export function buildSkills({
       // Phase 40.20 (2026-05-08): caller can request a wider
       // broadcast audience via `scope: 'group+contacts' |
       // 'group+contacts+hops'`.  When the scope is wider than
-      // 'group', the SkillMatch substrate also subscribes to the
+      // 'group', the OfferingMatch substrate also subscribes to the
       // user's `extraAudience` peers (resolved from ContactBook
       // entries / MemberMap hop-flags by the bundle bring-up).  The
       // `scope` field is published in the request payload so
@@ -1023,7 +1023,7 @@ export function buildSkills({
       // Phase 52.9.2 / Q-B (2026-05-14) — substrate-mirror fan-out.
       // The legacy `groupMirror` pubsub-tap retired in favour of
       // `notify-envelope` + `pseudo-pod` (kind=`request` envelopes).
-      // We dual-publish: `skillMatch.broadcast` still runs the
+      // We dual-publish: `offeringMatch.broadcast` still runs the
       // claim-flow on the pubsub topic; the substrate path replicates
       // the post into every group member's local pseudo-pod with the
       // Q-D Lamport version compare on receive.
@@ -1054,14 +1054,14 @@ export function buildSkills({
                 circleId:     groupId,
               });
             } catch (_err) {
-              // best-effort fan-out (parity with skillMatch.broadcast)
+              // best-effort fan-out (parity with offeringMatch.broadcast)
             }
           })();
         }
       }
 
       const broadcastP = hasGroupTarget
-        ? skillMatch.broadcast({
+        ? offeringMatch.broadcast({
             // The task-item field stays `requiredSkills`; map it into the
             // renamed broadcast wire arg `requiredOfferings`.
             requiredOfferings: a.requiredSkills ?? [],
@@ -2836,7 +2836,7 @@ export function buildSkills({
     /**
      * setSkillsHolidayMode({on: bool})
      *   — bulk-flip every active skill to `'paused'`; flipping
-     *   back restores them to `'active'`.  Net effect: SkillMatch
+     *   back restores them to `'active'`.  Net effect: OfferingMatch
      *   and Layer-1 matching ignore my profile while paused.
      *   Note: distinct from `setHolidayMode` (which sets a single
      *   cross-device flag without touching per-skill status).  Apps
@@ -4519,7 +4519,7 @@ export function buildSkills({
       //
       // V3 mobile note: when the restore flow lands on a device with
       // pre-existing peer subscriptions (rejoining a buurt), this is
-      // where we'd `await skillMatch.stop(); await skillMatch.start()`
+      // where we'd `await offeringMatch.stop(); await offeringMatch.start()`
       // to re-bind topic listeners.  Today it's a no-op.
 
       metrics?.record?.('identity-restored');
@@ -4894,7 +4894,7 @@ export function buildSkills({
  */
 const _SENTINEL_BUNDLE = Object.freeze({
   store:      null,
-  skillMatch: null,
+  offeringMatch: null,
   notifier:   null,
   reveals:    null,
   members:    null,

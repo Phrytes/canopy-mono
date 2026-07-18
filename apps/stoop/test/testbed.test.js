@@ -62,12 +62,12 @@ beforeAll(async () => {
   }
 
   // Mirrors `bin/stoop-testbed.js`'s post-spawn step: tell every pre-existing
-  // SkillMatch + group-mirror about the new arrival + push the metadata
+  // OfferingMatch + group-mirror about the new arrival + push the metadata
   // into every member's MemberMap.
   async function announceNewMember(newWebid, newId, role, displayName) {
     for (const [otherWebid, m] of cluster) {
       if (otherWebid === newWebid) continue;
-      m.bundle.skillMatch.addPeer({ pubKey: newId.pubKey });
+      m.bundle.offeringMatch.addPeer({ pubKey: newId.pubKey });
       await m.mirror.addPeer(newId.pubKey);
       await m.bundle.members.addMember({
         webid: newWebid, displayName, role, pubKey: newId.pubKey,
@@ -84,7 +84,7 @@ beforeAll(async () => {
       members:   [...cluster.values()].map((m) => ({
         webid: m.webid, displayName: m.displayName, role: m.role, pubKey: m.identity.pubKey,
       })),
-      skillMatch: { group: GROUP_ID, localActor: webid, peers },
+      offeringMatch: { group: GROUP_ID, localActor: webid, peers },
     });
     const ui = await mountLocalUi(bundle.agent, {
       port:        0,
@@ -104,7 +104,7 @@ beforeAll(async () => {
     });
     cluster.get(webid).mirror = mirror;
     await announceNewMember(webid, id, role, displayName);
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     return { webid, role, url: ui.url, identity: id };
   }
 
@@ -213,7 +213,7 @@ describe('H5 testbed — multi-user onboarding flow', () => {
 
   it('a posted request appears in EVERY member\'s itemStore (visibility regression)', async () => {
     // The user-reported bug: a request posted by one member never showed
-    // up on other members' "Open in the group" lists. Root cause: SkillMatch
+    // up on other members' "Open in the group" lists. Root cause: OfferingMatch
     // is matchmaking-shaped — its inbound dispatcher silently drops
     // requests whose `requiredSkills` don't intersect the receiver's
     // local skill profile, AND it never writes to the receiver's
@@ -254,9 +254,9 @@ describe('H5 testbed — multi-user onboarding flow', () => {
 
   it('post-spawn broadcasts reach existing members (regression: addPeer fan-out)', async () => {
     // Charlie (spawned in an earlier test) broadcasts a request via her
-    // own UI. Admin's SkillMatch must be subscribed to Charlie — that's
+    // own UI. Admin's OfferingMatch must be subscribed to Charlie — that's
     // the bug fixed by `announceNewMember` in the testbed wiring. Without
-    // the fix, admin would have started with an empty SkillMatch peer
+    // the fix, admin would have started with an empty OfferingMatch peer
     // roster (cluster was empty when admin spawned) and would still hold
     // an empty roster after Charlie joined.
     const charlie = cluster.get('https://id.example/charlie');
@@ -265,14 +265,14 @@ describe('H5 testbed — multi-user onboarding flow', () => {
     // Wire admin to claim paint requests via the appHandler. We use
     // `negotiable` so the handler actually runs — `always` would
     // short-circuit straight to auto-claim and bypass our observation
-    // hook (matching SkillMatch's documented behavior).
+    // hook (matching OfferingMatch's documented behavior).
     const adminBundle = cluster.get(ADMIN_WEBID).bundle;
     const heard = [];
-    adminBundle.skillMatch.subscribe(async ({request, decide}) => {
+    adminBundle.offeringMatch.subscribe(async ({request, decide}) => {
       heard.push(request);
       await decide('claim');
     });
-    adminBundle.skillMatch.setLocalProfile({
+    adminBundle.offeringMatch.setLocalProfile({
       skills:  ['paint'],
       posture: { paint: 'negotiable' },
     });
@@ -285,7 +285,7 @@ describe('H5 testbed — multi-user onboarding flow', () => {
       expectClaims:   1,             // wait for admin's claim
     });
 
-    // The publish reached admin's appHandler (proves admin's SkillMatch
+    // The publish reached admin's appHandler (proves admin's OfferingMatch
     // is subscribed to Charlie's request topic) AND admin's claim made
     // it back to Charlie's broadcast collector (proves the round-trip).
     expect(heard.some((req) => req.payload?.text === 'Charlie needs paint')).toBe(true);

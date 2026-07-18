@@ -50,7 +50,7 @@ SUITE('stoop attachPod → real pod (CSS)', () => {
       bus: new InternalBus(), identityVault: new VaultMemory(), localActor: me,
       group: `rpa-${Date.now()}`, members: [{ webid: me, role: 'admin' }],
     });
-    await stoop.bundle.skillMatch.start();
+    await stoop.bundle.offeringMatch.start();
 
     // attach the real pod (builds a SolidPodSource + activates pod-routing write-through)
     const res = await stoop.attachPod({ podRoot, webid: me, fetch: authedFetch });

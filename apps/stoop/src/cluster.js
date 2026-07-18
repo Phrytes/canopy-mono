@@ -7,14 +7,14 @@
  * existing substrates without protocol changes:
  *
  *   - One `AgentIdentity` is shared across N agents (stable pubkey).
- *   - Each group gets its own `core.Agent` with its own SkillMatch.
+ *   - Each group gets its own `core.Agent` with its own OfferingMatch.
  *   - Each agent registers separately at the relay (today the relay's
  *     `register` accepts one `groupProof` per connection, so one connection
  *     per group is the V0 contract).
  *
  * The cluster is otherwise just a thin wrapper around N
  * `createNeighborhoodAgent` calls — each per-group bundle is the same
- * shape `{agent, itemStore, members, skillMatch, notifier}` that
+ * shape `{agent, itemStore, members, offeringMatch, notifier}` that
  * single-group consumers already get, so apps can keep treating each
  * group's bundle as an independent neighborhood agent.
  *
@@ -87,7 +87,7 @@ export async function createNeighborhoodCluster({
       ...(g.pod
         ? { pod: g.pod }
         : { members: g.members }),
-      skillMatch: {
+      offeringMatch: {
         group:      g.groupId,
         localActor: g.localActor,
         peers:      g.peers   ?? [],
@@ -99,12 +99,12 @@ export async function createNeighborhoodCluster({
   }
 
   /**
-   * Convenience: stop all SkillMatch subscriptions across the cluster.
+   * Convenience: stop all OfferingMatch subscriptions across the cluster.
    * Apps that wired their own additional teardown should chain it after.
    */
   const stop = async () => {
     for (const b of bundles.values()) {
-      try { await b.skillMatch?.stop?.(); } catch { /* swallow */ }
+      try { await b.offeringMatch?.stop?.(); } catch { /* swallow */ }
     }
   };
 

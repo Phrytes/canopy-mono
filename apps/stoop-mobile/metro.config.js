@@ -32,7 +32,7 @@ module.exports = withCanopyPreset({
     path.resolve(repoRoot, 'packages/local-store'),
     path.resolve(repoRoot, 'packages/notifier'),
     path.resolve(repoRoot, 'packages/oidc-session-rn'),
-    path.resolve(repoRoot, 'packages/skill-match'),
+    path.resolve(repoRoot, 'packages/offering-match'),
     path.resolve(repoRoot, 'packages/sync-engine-rn'),
   ],
 
@@ -78,7 +78,7 @@ module.exports = withCanopyPreset({
     '@onderling/identity-resolver': path.resolve(repoRoot, 'packages/identity-resolver'),
     '@onderling/item-store':        path.resolve(repoRoot, 'packages/item-store'),
     '@onderling/notifier':          path.resolve(repoRoot, 'packages/notifier'),
-    '@onderling/skill-match':       path.resolve(repoRoot, 'packages/skill-match'),
+    '@onderling/offering-match':       path.resolve(repoRoot, 'packages/offering-match'),
     '@onderling/sync-engine-rn':    path.resolve(repoRoot, 'packages/sync-engine-rn'),
     '@onderling/oidc-session-rn':   path.resolve(repoRoot, 'packages/oidc-session-rn'),
 

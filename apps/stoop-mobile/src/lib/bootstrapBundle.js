@@ -4,14 +4,14 @@
  * Stoop V3 Phase 40.23 follow-up (2026-05-08).
  *
  * **The chicken-and-egg:** Stoop's `createNeighborhoodAgent` factory
- * is per-group — it requires `skillMatch.group` to be set, and the
+ * is per-group — it requires `offeringMatch.group` to be set, and the
  * skill bus is registered under that group's topic prefix. Onboarding
  * flows (Welcome → CreateGroup, OnboardScan, OnboardRestore) need
  * SOME bundle to dispatch `createGroupV2` / `redeemInvite` /
  * `restoreFromMnemonic` against, but the user has no group yet.
  *
  * Solution: build a bundle with a **placeholder** `groupId: '_bootstrap'`
- * + zero peers. SkillMatch.start() is a no-op (no peers to subscribe
+ * + zero peers. OfferingMatch.start() is a no-op (no peers to subscribe
  * to); broadcasts go nowhere (fine — the user can't receive yet either).
  * The full Stoop skill bus IS registered, so the onboarding skills
  * resolve cleanly.
@@ -20,7 +20,7 @@
  * a real group, ServiceContext.addGroup spins up a real bundle with
  * the same `itemStore` + `members` instances (via `seedFromBundle`)
  * so the just-written group-rules + membership-code items don't
- * evaporate. The `_bootstrap` skillMatch is torn down; the agent
+ * evaporate. The `_bootstrap` offeringMatch is torn down; the agent
  * + cache + roster carry forward.
  */
 
@@ -42,7 +42,7 @@ export const BOOTSTRAP_GROUP_ID = '_bootstrap';
  *   agent: object,
  *   itemStore: object,
  *   members: object,
- *   skillMatch: object,
+ *   offeringMatch: object,
  *   notifier: object | null,
  *   reveals: object | null,
  *   muted: Set<string>,
@@ -69,10 +69,10 @@ export async function buildBootstrapBundle({ identity, label, relayUrl } = {}) {
     identity,
     agent: meshAgent,
     label: label ?? 'stoop-mobile:_bootstrap',
-    skillMatch: {
+    offeringMatch: {
       group:      BOOTSTRAP_GROUP_ID,
       localActor,
-      peers:      [],   // no peers → SkillMatch.start() is a no-op
+      peers:      [],   // no peers → OfferingMatch.start() is a no-op
       skills:     [],
       posture:    {},
     },
@@ -120,31 +120,31 @@ export async function buildBootstrapBundle({ identity, label, relayUrl } = {}) {
     opts:        { capabilities: ['stoop', 'stoop-mobile', 'bootstrap'] },
   });
 
-  // Bridge mDNS → SkillMatch + mirror (mirror of buildBundleForGroup).
-  // Bootstrap's SkillMatch is on the `_bootstrap` topic; cross-device
+  // Bridge mDNS → OfferingMatch + mirror (mirror of buildBundleForGroup).
+  // Bootstrap's OfferingMatch is on the `_bootstrap` topic; cross-device
   // discovery still happens, but broadcasts on `_bootstrap` reach
   // nobody (peers only subscribe once they share a real group).
   // After relabel to a real group, the same agent + peers carry
-  // forward and the new group's SkillMatch + mirror pick them up.
+  // forward and the new group's OfferingMatch + mirror pick them up.
   const _onAgentPeer = ({ address, pubKey }) => {
     const pk = pubKey ?? address;
     if (!pk || typeof pk !== 'string') return;
     if (pk.includes(':')) return;
     if (pk === meshAgent.address) return;
-    try { bundle.skillMatch?.addPeer?.({ pubKey: pk }); } catch { /* best effort */ }
+    try { bundle.offeringMatch?.addPeer?.({ pubKey: pk }); } catch { /* best effort */ }
     bundle.mirror?.addPeer?.(pk).catch(() => { /* swallow */ });
   };
   meshAgent.on('peer', _onAgentPeer);
 
-  // SkillMatch.start() with zero peers does no subscribe work but
+  // OfferingMatch.start() with zero peers does no subscribe work but
   // still flips the `started` flag so broadcasts don't throw.
-  await bundle.skillMatch.start();
+  await bundle.offeringMatch.start();
 
   const stop = async () => {
     try { meshAgent.off('peer', _onAgentPeer);   } catch { /* swallow */ }
     try { await bundle.mirror?.stop?.();         } catch { /* swallow */ }
     try { bundle._substrateStop?.();             } catch { /* swallow */ }
-    try { await bundle.skillMatch.stop?.();      } catch { /* swallow */ }
+    try { await bundle.offeringMatch.stop?.();      } catch { /* swallow */ }
     try { await bundle.agent.stop?.();           } catch { /* swallow */ }
   };
 

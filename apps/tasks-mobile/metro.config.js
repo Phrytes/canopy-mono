@@ -32,7 +32,7 @@ module.exports = withCanopyPreset({
     path.resolve(repoRoot, 'packages/notifier'),
     path.resolve(repoRoot, 'packages/oidc-session-rn'),
     path.resolve(repoRoot, 'packages/online-cadence'),
-    path.resolve(repoRoot, 'packages/skill-match'),
+    path.resolve(repoRoot, 'packages/offering-match'),
     path.resolve(repoRoot, 'packages/sync-engine-rn'),
   ],
 
@@ -80,7 +80,7 @@ module.exports = withCanopyPreset({
       `^${path.resolve(repoRoot, 'packages/local-store/node_modules').replace(/[/\\]/g, '[/\\\\]')}.*`,
     ),
     new RegExp(
-      `^${path.resolve(repoRoot, 'packages/skill-match/node_modules').replace(/[/\\]/g, '[/\\\\]')}.*`,
+      `^${path.resolve(repoRoot, 'packages/offering-match/node_modules').replace(/[/\\]/g, '[/\\\\]')}.*`,
     ),
     new RegExp(
       `^${path.resolve(repoRoot, 'packages/oidc-session-rn/node_modules').replace(/[/\\]/g, '[/\\\\]')}.*`,
@@ -121,7 +121,7 @@ module.exports = withCanopyPreset({
     '@onderling/item-store':        path.resolve(repoRoot, 'packages/item-store'),
     '@onderling/notifier':          path.resolve(repoRoot, 'packages/notifier'),
     '@onderling/online-cadence':    path.resolve(repoRoot, 'packages/online-cadence'),
-    '@onderling/skill-match':       path.resolve(repoRoot, 'packages/skill-match'),
+    '@onderling/offering-match':       path.resolve(repoRoot, 'packages/offering-match'),
     '@onderling/sync-engine-rn':    path.resolve(repoRoot, 'packages/sync-engine-rn'),
     '@onderling/oidc-session-rn':   path.resolve(repoRoot, 'packages/oidc-session-rn'),
 

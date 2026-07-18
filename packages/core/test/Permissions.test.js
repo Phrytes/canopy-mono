@@ -221,30 +221,30 @@ describe('CapabilityToken', () => {
   });
 });
 
-// ── skillMatches / skillAttenuates (V1.5 follow-up A) ────────────────────────
+// ── offeringMatches / skillAttenuates (V1.5 follow-up A) ────────────────────────
 
-import { skillMatches, skillAttenuates } from '../src/permissions/CapabilityToken.js';
+import { offeringMatches, skillAttenuates } from '../src/permissions/CapabilityToken.js';
 
-describe('skillMatches', () => {
+describe('offeringMatches', () => {
   it('exact match', () => {
-    expect(skillMatches('bot.listOpen', 'bot.listOpen')).toBe(true);
-    expect(skillMatches('bot.listOpen', 'bot.claim')).toBe(false);
+    expect(offeringMatches('bot.listOpen', 'bot.listOpen')).toBe(true);
+    expect(offeringMatches('bot.listOpen', 'bot.claim')).toBe(false);
   });
   it('wildcard matches anything', () => {
-    expect(skillMatches('*', 'literally.anything')).toBe(true);
-    expect(skillMatches('*', '')).toBe(true);
+    expect(offeringMatches('*', 'literally.anything')).toBe(true);
+    expect(offeringMatches('*', '')).toBe(true);
   });
   it('prefix-star matches its namespace', () => {
-    expect(skillMatches('bot.*', 'bot.listOpen')).toBe(true);
-    expect(skillMatches('bot.*', 'bot.x')).toBe(true);
-    expect(skillMatches('bot.*', 'botanist')).toBe(false);     // no dot
-    expect(skillMatches('bot.*', 'addTask')).toBe(false);
-    expect(skillMatches('bot.*', 'bot.')).toBe(false);          // empty tail
+    expect(offeringMatches('bot.*', 'bot.listOpen')).toBe(true);
+    expect(offeringMatches('bot.*', 'bot.x')).toBe(true);
+    expect(offeringMatches('bot.*', 'botanist')).toBe(false);     // no dot
+    expect(offeringMatches('bot.*', 'addTask')).toBe(false);
+    expect(offeringMatches('bot.*', 'bot.')).toBe(false);          // empty tail
   });
   it('rejects malformed patterns/skills', () => {
-    expect(skillMatches(undefined, 'bot.x')).toBe(false);
-    expect(skillMatches('bot.*', undefined)).toBe(false);
-    expect(skillMatches(123, 'bot.x')).toBe(false);
+    expect(offeringMatches(undefined, 'bot.x')).toBe(false);
+    expect(offeringMatches('bot.*', undefined)).toBe(false);
+    expect(offeringMatches(123, 'bot.x')).toBe(false);
   });
 });
 

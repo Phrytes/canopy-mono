@@ -7,7 +7,7 @@
  *   - L1b ItemStore (open/closed tasks, audit, role-policy gate at the
  *     item level via `buildStandardRolePolicy(roles)`)
  *   - L1h MemberMap (webid ↔ external-id resolution; resolveMember skill)
- *   - L1e SkillMatch (claim flow via pubsub-of-skills) — optional
+ *   - L1e OfferingMatch (claim flow via pubsub-of-skills) — optional
  *   - L1f Notifier (deadline reminders, daily digest) — optional
  *
  * V2.8: Skills register ONCE via `wireSkills` against a per-process
@@ -25,7 +25,7 @@ import {
 } from '@onderling/core';
 import { CircleItemStore, createTaskStore } from '@onderling/item-store';
 import { MemberMap } from '@onderling/identity-resolver';
-import { OfferingMatch } from '@onderling/skill-match';
+import { OfferingMatch } from '@onderling/offering-match';
 
 import { buildStandardRolePolicy } from './rolePolicy.js';
 import { buildMeshAgent } from './MeshAgent.js';
@@ -46,7 +46,7 @@ const V0_DEFAULT_CIRCLE_ID = 'household';
  * @param {object} args.pod.client
  * @param {string} args.pod.configUri
  * @param {Array<object>} [args.pod.fallback]
- * @param {object} [args.skillMatch]
+ * @param {object} [args.offeringMatch]
  * @param {object} [args.notifier]
  * @param {object} [args.identity]
  * @param {object} [args.transport]
@@ -58,7 +58,7 @@ const V0_DEFAULT_CIRCLE_ID = 'household';
  * @param {string} [args.identityVault]
  * @returns {Promise<{
  *   agent: object, itemStore: object, members: MemberMap,
- *   notifier: object | null, skillMatch: OfferingMatch | null,
+ *   notifier: object | null, offeringMatch: OfferingMatch | null,
  *   localStore: object | null, _circleState: object,
  * }>}
  *   `_circleState` is exposed so `createCircleAgent` can enrich the
@@ -71,7 +71,7 @@ export async function createTasksAgent({
   roles,
   members:    initialMembers,
   pod:        podCfg,
-  skillMatch: skillMatchOpts,
+  offeringMatch: offeringMatchOpts,
   notifier:   providedNotifier,
   identity,
   transport,
@@ -159,16 +159,16 @@ export async function createTasksAgent({
     taskGrantManager.installRevocationCheck(agent.policyEngine);
   }
 
-  // SkillMatch (Phase 4.2 — composes core.Agent + pubSub directly).
-  let skillMatch = null;
-  if (skillMatchOpts?.group) {
-    skillMatch = new OfferingMatch({
+  // OfferingMatch (Phase 4.2 — composes core.Agent + pubSub directly).
+  let offeringMatch = null;
+  if (offeringMatchOpts?.group) {
+    offeringMatch = new OfferingMatch({
       agent,
-      peers:      skillMatchOpts.peers ?? [],
-      group:      skillMatchOpts.group,
-      localActor: skillMatchOpts.localActor ?? null,
+      peers:      offeringMatchOpts.peers ?? [],
+      group:      offeringMatchOpts.group,
+      localActor: offeringMatchOpts.localActor ?? null,
     });
-    await skillMatch.start();
+    await offeringMatch.start();
   }
 
   // ── CircleState (V2.8) ─────────────────────────────────────────────────────
@@ -243,7 +243,7 @@ export async function createTasksAgent({
     itemStore,
     members,
     notifier,
-    skillMatch,
+    offeringMatch,
     taskGrantManager,
     localStore: localStoreBundle ?? null,
     _circleState: circleState,

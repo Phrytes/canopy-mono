@@ -77,7 +77,7 @@ export {
   unregisterCustomRole,
   canPromote,
   listKnownRoles,
-  skillMatches,
+  offeringMatches,
   skillAttenuates,
   GroupManager,
   A2ATLSLayer,

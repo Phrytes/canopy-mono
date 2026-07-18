@@ -54,9 +54,9 @@ async function makeOfferingMatch({ bus, label, group, actor, offerings, posture,
  * `UNKNOWN_RECIPIENT — send HI first` fires when pubSub.subscribe sends
  * its initial subscribe envelope).
  */
-function wirePeers(skillMatches) {
-  const agents = skillMatches.map((x) => x.agent);
-  for (const { sm, agent: self } of skillMatches) {
+function wirePeers(offeringMatches) {
+  const agents = offeringMatches.map((x) => x.agent);
+  for (const { sm, agent: self } of offeringMatches) {
     for (const peer of agents) {
       if (peer === self) continue;
       self.addPeer(peer.address, peer.pubKey);
@@ -65,8 +65,8 @@ function wirePeers(skillMatches) {
   }
 }
 
-async function tearDown(skillMatches) {
-  for (const { sm, agent } of skillMatches) {
+async function tearDown(offeringMatches) {
+  for (const { sm, agent } of offeringMatches) {
     await sm.stop();
     await agent.stop();
   }

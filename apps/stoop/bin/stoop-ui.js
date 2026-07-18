@@ -113,7 +113,7 @@ if (isMultiGroup) {
     bus,
     groups:   groupIds.map((gid) => ({ groupId: gid, localActor: values.actor })),
   });
-  for (const b of cluster.groups.values()) await b.skillMatch.start();
+  for (const b of cluster.groups.values()) await b.offeringMatch.start();
   // Cross-device transport for every group agent (parity with mobile).
   if (relayUrl) {
     for (const b of cluster.groups.values()) {
@@ -180,7 +180,7 @@ if (isMultiGroup) {
     identity:  id,
     agent:     _meshAgent,
     label:     `H5-${values.actor}`,
-    skillMatch: {
+    offeringMatch: {
       group:      values.group,
       localActor: values.actor,
       peers,
@@ -189,8 +189,8 @@ if (isMultiGroup) {
     },
   });
   // Single-member: nothing to addPeer; multi-member callers wire that
-  // before invoking this script. SkillMatch.start() is fine without peers.
-  await bundle.skillMatch.start();
+  // before invoking this script. OfferingMatch.start() is fine without peers.
+  await bundle.offeringMatch.start();
 
   // Cross-device parity with stoop-mobile. The single-group launcher
   // was single-member with NO substrate mirror, so postRequest's
@@ -225,14 +225,14 @@ if (isMultiGroup) {
   }
 
   // Auto-HI on discovery (routes over the relay now that the agent has
-  // a RoutingStrategy), then bridge a hello'd peer into skillMatch +
+  // a RoutingStrategy), then bridge a hello'd peer into offeringMatch +
   // the mirror's recipient set so postRequest's fan-out reaches it —
   // the stoop-mobile pattern (agentBundle.js).
   bundle.agent.enableAutoHello?.({ pullPeers: true });
   bundle.agent.on('peer', ({ address, pubKey }) => {
     const pk = pubKey ?? address;
     if (!pk || typeof pk !== 'string' || pk.includes(':') || pk === bundle.agent.address) return;
-    try { bundle.skillMatch?.addPeer?.({ pubKey: pk }); } catch { /* best effort */ }
+    try { bundle.offeringMatch?.addPeer?.({ pubKey: pk }); } catch { /* best effort */ }
     bundle.mirror?.addPeer?.(pk)?.catch?.(() => { /* swallow — already added */ });
   });
 

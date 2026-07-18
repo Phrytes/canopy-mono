@@ -8,7 +8,7 @@
  *   'token:<tokenId>'   → JSON-serialised token
  *   'revoked:<tokenId>' → '1'
  */
-import { CapabilityToken, skillMatches } from './CapabilityToken.js';
+import { CapabilityToken, offeringMatches } from './CapabilityToken.js';
 
 /**
  * Vault-backed store for CapabilityTokens received from peers ("held" tokens). `get()`
@@ -44,7 +44,7 @@ export class TokenRegistry {
       if (t.isExpired) continue;
       if (await this.isRevoked(t.id)) continue;
       if (t.agentId !== agentId) continue;
-      if (!skillMatches(t.skill, skill)) continue;
+      if (!offeringMatches(t.skill, skill)) continue;
       if (!best || t.expiresAt > best.expiresAt) best = t;
     }
     return best;

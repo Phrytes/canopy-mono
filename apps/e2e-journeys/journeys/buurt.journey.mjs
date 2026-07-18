@@ -18,7 +18,7 @@ export async function run({ relayUrl }) {
   const strangerId = await AgentIdentity.generate(new VaultMemory());
   const mk = (id, me, peer, peerWebid) => createNeighborhoodAgent({
     identity: id, transport: new RelayTransport({ relayUrl, identity: id }),
-    skillMatch: { group: GROUP, localActor: me, peers: [{ pubKey: peer.pubKey }] },
+    offeringMatch: { group: GROUP, localActor: me, peers: [{ pubKey: peer.pubKey }] },
     members: [
       { webid: me,        stableId: id.stableId,   pubKey: id.pubKey },
       { webid: peerWebid, stableId: peer.stableId, pubKey: peer.pubKey },
@@ -31,8 +31,8 @@ export async function run({ relayUrl }) {
   stranger.agent.addPeer(hostId.pubKey, hostId.pubKey);
   await attachSubstrateMirror(host,     { group: GROUP, peers: [{ pubKey: strangerId.pubKey }] });
   await attachSubstrateMirror(stranger, { group: GROUP, peers: [{ pubKey: hostId.pubKey }] });
-  await host.skillMatch.start();
-  await stranger.skillMatch.start();
+  await host.offeringMatch.start();
+  await stranger.offeringMatch.start();
   const call = (b, op, args, from) =>
     b.agent.skills.get(op).handler({ parts: args === undefined ? [] : [DataPart(args)], from, agent: b.agent, envelope: null });
 

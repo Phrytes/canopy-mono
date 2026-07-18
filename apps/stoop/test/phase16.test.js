@@ -33,14 +33,14 @@ async function buildAgentAs(role) {
   const tx = new InternalTransport(new InternalBus(), id.pubKey);
   const bundle = await createNeighborhoodAgent({
     identity: id, transport: tx,
-    skillMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
+    offeringMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
     members:    [
       { webid: ANNE,  role },
       { webid: BOB,   role: 'member', stableId: 'sid-bob' },
       { webid: CARLA, role: 'member', stableId: 'sid-carla' },
     ],
   });
-  await bundle.skillMatch.start();
+  await bundle.offeringMatch.start();
   return bundle;
 }
 

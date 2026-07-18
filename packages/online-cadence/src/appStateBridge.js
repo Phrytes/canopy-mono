@@ -5,7 +5,7 @@
  * Lifted from apps/stoop-mobile/src/lib/appStateBridge.js 2026-05-09
  * (Phase 41.0 L2; Tasks-mobile is the second consumer).
  *
- * Foreground: agent stays connected; ticker drives `bundle.skillMatch.tick`.
+ * Foreground: agent stays connected; ticker drives `bundle.offeringMatch.tick`.
  * Background: agent disconnects from relay, drains, sleeps. The OS-driven
  * background-fetch task brings it back periodically (see `./bgTask.js`).
  *
@@ -46,8 +46,8 @@ export function attachAppStateBridge({
   }
   const runOnce = async () => {
     try {
-      if (typeof bundle.skillMatch?.tick === 'function') {
-        await bundle.skillMatch.tick();
+      if (typeof bundle.offeringMatch?.tick === 'function') {
+        await bundle.offeringMatch.tick();
       }
     } catch (err) {
       if (onError) onError(err);

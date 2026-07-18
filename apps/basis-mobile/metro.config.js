@@ -52,7 +52,7 @@ const _cfg = withCanopyPreset({
     path.resolve(repoRoot, 'packages/item-store'),
     path.resolve(repoRoot, 'packages/local-store'),
     path.resolve(repoRoot, 'packages/notifier'),
-    path.resolve(repoRoot, 'packages/skill-match'),
+    path.resolve(repoRoot, 'packages/offering-match'),
     path.resolve(repoRoot, 'packages/manifest-host'),
     path.resolve(repoRoot, 'packages/app-manifest'),
     // @onderling/llm-client — the circle bot's NL→slash LLM client (ollama provider).
@@ -125,7 +125,7 @@ const _cfg = withCanopyPreset({
     '@onderling/identity-resolver': path.resolve(repoRoot, 'packages/identity-resolver'),
     '@onderling/item-store':        path.resolve(repoRoot, 'packages/item-store'),
     '@onderling/notifier':          path.resolve(repoRoot, 'packages/notifier'),
-    '@onderling/skill-match':       path.resolve(repoRoot, 'packages/skill-match'),
+    '@onderling/offering-match':       path.resolve(repoRoot, 'packages/offering-match'),
     '@onderling/manifest-host':     path.resolve(repoRoot, 'packages/manifest-host'),
     // @onderling/llm-client — bare import resolves via its package.json main (src/index.js); the
     // /providers/ollama subpath goes through extraSubpathResolvers (package-exports is disabled).

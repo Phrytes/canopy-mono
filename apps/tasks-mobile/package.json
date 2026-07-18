@@ -25,7 +25,7 @@
     "@onderling/online-cadence": "file:../../packages/online-cadence",
     "@onderling/pod-client": "file:../../packages/pod-client",
     "@onderling/react-native": "file:../../packages/react-native",
-    "@onderling/skill-match": "file:../../packages/skill-match",
+    "@onderling/offering-match": "file:../../packages/offering-match",
     "@onderling/sync-engine-rn": "file:../../packages/sync-engine-rn",
     "@onderling/web-adapter": "file:../../packages/web-adapter",
     "@react-native-async-storage/async-storage": "^1.24.0",

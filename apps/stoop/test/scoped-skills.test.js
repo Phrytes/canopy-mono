@@ -26,7 +26,7 @@ function buildBundle(groupId, localActor) {
   return {
     store,
     members,
-    skillMatch:   { broadcast: vi.fn(async () => ({ claims: [] })), addPeer: vi.fn() },
+    offeringMatch:   { broadcast: vi.fn(async () => ({ claims: [] })), addPeer: vi.fn() },
     notifier:     null,
     reveals:      null,
     muted:        new Set(),

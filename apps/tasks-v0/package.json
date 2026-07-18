@@ -60,7 +60,7 @@
     "@onderling/pod-routing": "file:../../packages/pod-routing",
     "@onderling/relay": "file:../../packages/relay",
     "@onderling/sdk": "file:../../packages/sdk",
-    "@onderling/skill-match": "file:../../packages/skill-match",
+    "@onderling/offering-match": "file:../../packages/offering-match",
     "i18next": "^26.0.10",
     "ical.js": "^2.2.1",
     "@onderling/calendar-emission": "workspace:*"

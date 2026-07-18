@@ -32,10 +32,10 @@ async function buildAgent({ members } = {}) {
   const tx = new InternalTransport(new InternalBus(), id.pubKey);
   const bundle = await createNeighborhoodAgent({
     identity: id, transport: tx,
-    skillMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
+    offeringMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
     members:    members ?? [{ webid: ANNE }],
   });
-  await bundle.skillMatch.start();
+  await bundle.offeringMatch.start();
   return bundle;
 }
 
@@ -132,7 +132,7 @@ describe('Stoop V1 Phase 11 — mutePeer by stableId (with webid back-compat)', 
 // ── stableId end-to-end through the agent factory ─────────────────────────
 
 describe('Stoop V1 Phase 11 — stableId reaches the bundle', () => {
-  it('bundle.agent.identity.stableId is non-null + survives skillMatch start', async () => {
+  it('bundle.agent.identity.stableId is non-null + survives offeringMatch start', async () => {
     const bundle = await buildAgent();
     const sid = bundle.agent.identity.stableId;
     expect(typeof sid).toBe('string');

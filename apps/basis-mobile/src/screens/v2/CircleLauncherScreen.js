@@ -2198,11 +2198,11 @@ function CircleDetail({
       if (Array.isArray(reply?.payload?.items)) lastKringListingRef.current = { appOrigin: entry?.appOrigin, items: reply.payload.items };
       // Shared find-result enrichment (skill matches + hop prompt), web≡mobile via buildFindExtras. Best-effort.
       try {
-        const { skillMatches, hopCard } = await buildFindExtras({
+        const { offeringMatches, hopCard } = await buildFindExtras({
           query: reply?.payload?.query, groups: reply?.payload?.groups,
           circleId: circle?.id, callSkill: (op, a) => rawCallSkill('stoop', op, a), t,
         });
-        if (skillMatches.length) appendKringMessage({ actor: 'bot', text: `${t('circle.skillMatches.title')}\n${skillMatches.map((m) => `• ${m.label} — ${m.skill}`).join('\n')}` });
+        if (offeringMatches.length) appendKringMessage({ actor: 'bot', text: `${t('circle.offeringMatches.title')}\n${offeringMatches.map((m) => `• ${m.label} — ${m.skill}`).join('\n')}` });
         if (hopCard) appendKringMessage({ actor: 'bot', text: `${hopCard.title}\n${hopCard.body}` });
       } catch { /* enrichment is non-essential */ }
     }

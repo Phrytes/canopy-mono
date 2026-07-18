@@ -1608,13 +1608,13 @@ function buildCircleBot(agent) {
   // search came up short but the user has hop-eligible contacts + hop is on. Ported from classic main.js
   // (appendFindExtras); the building blocks (findOfferingMatches / hopPrompt) are shared.
   async function appendFindExtras(reply) {
-    const { skillMatches, hopCard } = await buildFindExtras({
+    const { offeringMatches, hopCard } = await buildFindExtras({
       query: reply?.payload?.query, groups: reply?.payload?.groups,
       circleId: getActiveCircle(), callSkill: resolveCallSkill, t,
     });
-    if (skillMatches.length) {
-      const lines = skillMatches.map((m) => `• ${m.label} — ${m.skill}`).join('\n');
-      _kringRender?.botBubble(`${t('circle.skillMatches.title')}\n${lines}`);
+    if (offeringMatches.length) {
+      const lines = offeringMatches.map((m) => `• ${m.label} — ${m.skill}`).join('\n');
+      _kringRender?.botBubble(`${t('circle.offeringMatches.title')}\n${lines}`);
     }
     if (hopCard) _kringRender?.botBubble(`${hopCard.title}\n${hopCard.body}`);
   }

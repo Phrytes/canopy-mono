@@ -37,13 +37,13 @@ async function buildAgent({ notifier, reveals, members } = {}) {
   const bundle = await createNeighborhoodAgent({
     identity: id,
     transport: tx,
-    skillMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
+    offeringMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
     members,
     notifier,
     reveals,
   });
-  // SkillMatch.broadcast requires start() even with zero peers.
-  await bundle.skillMatch.start();
+  // OfferingMatch.broadcast requires start() even with zero peers.
+  await bundle.offeringMatch.start();
   return bundle;
 }
 

@@ -29,7 +29,7 @@
     "@onderling/pod-routing": "file:../../packages/pod-routing",
     "@onderling/pseudo-pod": "file:../../packages/pseudo-pod",
     "@onderling/react-native": "file:../../packages/react-native",
-    "@onderling/skill-match": "file:../../packages/skill-match",
+    "@onderling/offering-match": "file:../../packages/offering-match",
     "@onderling/sync-engine-rn": "file:../../packages/sync-engine-rn",
     "@react-native-async-storage/async-storage": "^1.24.0",
     "@react-navigation/bottom-tabs": "^6.6.1",

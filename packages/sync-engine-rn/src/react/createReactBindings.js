@@ -20,7 +20,7 @@
  *
  * The expected `useService` return shape:
  *   {
- *     activeBundle?:       { agent, groupId?, skillMatch?, ... } | null,
+ *     activeBundle?:       { agent, groupId?, offeringMatch?, ... } | null,
  *     activeGroupId?:      string | null,
  *     ensureActiveBundle?: () => Promise<bundle>,  // optional; lazy bring-up
  *   }

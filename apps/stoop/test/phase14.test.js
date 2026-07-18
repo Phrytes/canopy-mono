@@ -39,7 +39,7 @@ async function buildPair() {
   const anne = await createNeighborhoodAgent({
     identity:  anneId,
     transport: new InternalTransport(bus, anneId.pubKey),
-    skillMatch: { group: 'oosterpoort', localActor: ANNE,
+    offeringMatch: { group: 'oosterpoort', localActor: ANNE,
                   peers: [{ pubKey: bobId.pubKey }] },
     members: [
       { webid: ANNE, handle: 'anne', stableId: anneId.stableId, pubKey: anneId.pubKey },
@@ -50,7 +50,7 @@ async function buildPair() {
   const bob = await createNeighborhoodAgent({
     identity:  bobId,
     transport: new InternalTransport(bus, bobId.pubKey),
-    skillMatch: { group: 'oosterpoort', localActor: BOB,
+    offeringMatch: { group: 'oosterpoort', localActor: BOB,
                   peers: [{ pubKey: anneId.pubKey }] },
     members: [
       { webid: ANNE, handle: 'anne', stableId: anneId.stableId, pubKey: anneId.pubKey },
@@ -60,18 +60,18 @@ async function buildPair() {
   });
 
   // Cross-register peer pubkeys at the SecurityLayer (must happen
-  // BEFORE skillMatch.start()).
+  // BEFORE offeringMatch.start()).
   anne.agent.addPeer(bobId.pubKey, bobId.pubKey);
   bob.agent.addPeer(anneId.pubKey, anneId.pubKey);
 
   // Wire substrate mirror (Phase 52.9.2 / Q-B 2026-05-14 — replaces
-  // legacy groupMirror) BEFORE skillMatch.start so the substrate
+  // legacy groupMirror) BEFORE offeringMatch.start so the substrate
   // subscriber is live in time for the first publish.
   await attachSubstrateMirror(anne, { group: 'oosterpoort', peers: [{ pubKey: bobId.pubKey }] });
   await attachSubstrateMirror(bob,  { group: 'oosterpoort', peers: [{ pubKey: anneId.pubKey }] });
 
-  await anne.skillMatch.start();
-  await bob.skillMatch.start();
+  await anne.offeringMatch.start();
+  await bob.offeringMatch.start();
 
   return { anne, bob, anneId, bobId };
 }
@@ -269,10 +269,10 @@ describe('Stoop V1 Phase 14 — bilateral reveal handshake', () => {
     const tx = new InternalTransport(new InternalBus(), id.pubKey);
     const bundle = await createNeighborhoodAgent({
       identity: id, transport: tx,
-      skillMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
+      offeringMatch: { group: 'oosterpoort', localActor: ANNE, peers: [] },
       members:    [{ webid: ANNE }],
     });
-    await bundle.skillMatch.start();
+    await bundle.offeringMatch.start();
     expect(bundle.reveals).toBeTruthy();
   });
 });

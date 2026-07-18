@@ -25,7 +25,7 @@ async function makeBundle() {
   return createNeighborhoodAgent({
     identity:   id,
     transport:  tx,
-    skillMatch: { group: GROUP, localActor: ANNE, peers: [] },
+    offeringMatch: { group: GROUP, localActor: ANNE, peers: [] },
     members:    [{ webid: ANNE }],
   });
 }
