@@ -502,7 +502,11 @@
   "help": {
     "consent_prompt": {
       "text": "I don't have a set answer for that. Shall I ask the confidential assistant? Your question would then be forwarded.",
-      "doc": "Task #13 Phase 2 — the LLM-forward consent card in the help circle: shown on a deterministic MISS when an assistant is connected. Renders as the dashed-rust consent card (payload.consent)."
+      "doc": "Task #13 — the LLM-forward consent card, CONFIDENTIAL route (Privatemode/TEE): shown on a deterministic MISS when an assistant is connected. Renders as the dashed-rust consent card (payload.consent). Chosen by helpLlmLabelKeys({confidential:true})."
+    },
+    "consent_prompt_plain": {
+      "text": "I don't have a set answer for that. Shall I ask the assistant? Your question would then be forwarded.",
+      "doc": "Task #13 — the LLM-forward consent card, PLAIN (non-confidential) route: a local or non-confidential cloud assistant, so NO 'confidential' claim. Chosen by helpLlmLabelKeys({confidential:false})."
     },
     "consent_yes": {
       "text": "yes, forward it",
@@ -522,7 +526,11 @@
     },
     "provenance_llm": {
       "text": "· via the confidential assistant",
-      "doc": "Task #13 Phase 2 — transparency badge under a help answer produced by the confidential assistant (language model). Stamped verbatim as payload.provenance."
+      "doc": "Task #13 — transparency badge under a help answer produced by the CONFIDENTIAL assistant (Privatemode/TEE language model). Stamped verbatim as payload.provenance. Chosen by helpLlmLabelKeys({confidential:true})."
+    },
+    "provenance_llm_plain": {
+      "text": "· via the assistant",
+      "doc": "Task #13 — transparency badge under a help answer produced by a PLAIN (non-confidential) assistant: local or non-confidential cloud, so NO 'confidential' claim. Chosen by helpLlmLabelKeys({confidential:false})."
     },
     "llm_no_answer": {
       "text": "Even with the assistant I couldn't work that out. Pick a topic if you like:",

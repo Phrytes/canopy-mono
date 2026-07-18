@@ -166,7 +166,7 @@ import { createOnboardingFlags, localStorageOnboardingIo } from '../../src/v2/on
 // (both pure, shared src/). The web shell only posts the descriptors they return + runs the LLM leg.
 import { botIsAddressed } from '../../src/v2/botAddress.js';
 import { stripBotTag } from '../../src/v2/circleDispatch.js';
-import { routeHelpMessage, helpTopicChips, resolveHelpTopic, parseHelpAction, helpConsentAction } from '../../src/v2/helpChat.js';
+import { routeHelpMessage, helpTopicChips, resolveHelpTopic, parseHelpAction, helpConsentAction, helpLlmLabelKeys } from '../../src/v2/helpChat.js';
 import { resolveCircleLlm } from '../../src/v2/llmPicker.js';
 // Task #13 Phase 2 — the onboarding "Ja, help me" handoff opens the RICH 5-step create wizard.
 import { renderCreateGroupWizard } from '../../src/web/wizards/createGroupWizard.js';
@@ -1479,11 +1479,14 @@ function buildCircleBot(agent) {
   const embedProviders = {};
   applyUserLlmRuntime({ userCfg: { preset: 'off' }, env: ENV_LLM, llmProviders, embedProviders });
   let userDefault = { mode: ENV_LLM.mode };
+  // Task #13 / #37 — whether the route actually in effect is the confidential preset (Privatemode/TEE).
+  // Drives the HONEST help wording: a plain route must NOT be called "de vertrouwelijke assistent".
+  let userLlmConfidential = !!ENV_LLM.confidential;
   const userLlmStore = createUserLlmDefaultStore(localStorageUserLlmIo());
   // Exposed to the settings panel (showMyData): rebuild the live providers from the member's config.
   circleApplyUserLlm = (cfg) => {
     const r = applyUserLlmRuntime({ userCfg: cfg, env: ENV_LLM, llmProviders, embedProviders });
-    if (r.ok) userDefault = { ...cfg, mode: r.mode };
+    if (r.ok) { userDefault = { ...cfg, mode: r.mode }; userLlmConfidential = !!r.confidential; }
     // 52.25 — the embed providers just changed → re-wire folio /zoek's embedder.
     try { circleSyncFolioNoteEmbedder?.(); } catch { /* /zoek stays lexical */ }
     return r;
@@ -1878,6 +1881,9 @@ function buildCircleBot(agent) {
         return resolveCircleLlm({ circlePolicy, userDefault, providers: llmProviders }) != null;
       } catch { return false; }
     },
+    // Whether the bound route is confidential (Privatemode/TEE) — read by the honest help wording so a
+    // plain route is never mislabelled "vertrouwelijk". Tracks the live provider config (settings changes).
+    confidential: () => userLlmConfidential,
     answer: async (query) => {
       const circlePolicy = await policyFor();
       const llm = resolveCircleLlm({ circlePolicy, userDefault, providers: llmProviders });
@@ -3864,8 +3870,10 @@ async function answerHelpMessage(id, query) {
   }
   if (route.kind === 'consent') {
     helpPendingHelpQuery = { circleId: id, query };
+    // #37 — name the route HONESTLY: "vertrouwelijke assistent" only when it truly is confidential.
+    const { consentKey } = helpLlmLabelKeys({ confidential: circleHelpLlm ? circleHelpLlm.confidential() : false });
     // The dashed-rust consent card (payload.consent) + the primary/secondary button pair.
-    _kringRender?.botBubble(t('circle.help.consent_prompt'), {
+    _kringRender?.botBubble(t(consentKey), {
       consent: true,
       buttons: [
         { label: t('circle.help.consent_yes'), action: helpConsentAction('yes'), variant: 'primary' },
@@ -3903,7 +3911,11 @@ async function runHelpLlm(id, query) {
   let reply = null;
   try { reply = circleHelpLlm ? await circleHelpLlm.answer(query) : null; }
   catch { _kringRender?.botBubble(t('circle.help.llm_unavailable')); return; }
-  if (reply) { _kringRender?.botBubble(reply, { provenance: t('circle.help.provenance_llm') }); return; }
+  if (reply) {
+    // #37 — badge the provenance for the ACTUAL route: plain routes get "· via de assistent", not "vertrouwelijke".
+    const { badgeKey } = helpLlmLabelKeys({ confidential: circleHelpLlm ? circleHelpLlm.confidential() : false });
+    _kringRender?.botBubble(reply, { provenance: t(badgeKey) }); return;
+  }
   _kringRender?.botBubble(t('circle.help.llm_no_answer'));
   postHelpTopicChips(id);
 }

@@ -43,7 +43,10 @@ export function validateUserLlmConfig(cfg) {
  * @param {object} userCfg  normalized userLlmDefault value
  * @param {{ env?: {mode?:string, llmBaseUrl?:string, llmModel?:string, llmApiKey?:string,
  *           embedBaseUrl?:string, embedModel?:string, embedApiKey?:string, timeoutMs?:number} }} [opts]
- * @returns {{ llmProviders: object, embedProviders: object, mode: string }}
+ * @returns {{ llmProviders: object, embedProviders: object, mode: string, confidential: boolean }}
+ *   `confidential` is true only when the route ACTUALLY in effect is the 'confidential-proxy' preset
+ *   (Privatemode/TEE) — the signal the honest help wording (helpLlmLabelKeys) reads. A plain local /
+ *   OpenAI-compatible route, or the env fallback (unless the deployment flags env.confidential), is false.
  * @throws  the guard error when a confidential route is unsafe (validate first to avoid surprises)
  */
 export function buildUserLlmRuntime(userCfg, { env = {} } = {}) {
@@ -85,13 +88,16 @@ export function buildUserLlmRuntime(userCfg, { env = {} } = {}) {
     embedProviders = buildCircleEmbedProviders({ localBaseUrl: env.embedBaseUrl, model: env.embedModel, apiKey: env.embedApiKey });
   }
 
-  return { llmProviders, embedProviders, mode };
+  // The confidentiality of the route actually in effect: the user's confidential preset when their URL is
+  // live, otherwise the deployment env's own declaration (default false — a bare local base URL is plain).
+  const effectiveConfidential = hasUserLlm ? confidential : !!env.confidential;
+  return { llmProviders, embedProviders, mode, confidential: effectiveConfidential };
 }
 
 /**
  * Rebuild providers from `userCfg` and apply them IN PLACE into the live `llmProviders`/`embedProviders`
  * objects the bot already holds by reference (so a settings change takes effect without a reload).
- * @returns {{ ok: true, mode: string } | { ok: false, error: string }}
+ * @returns {{ ok: true, mode: string, confidential: boolean } | { ok: false, error: string }}
  */
 export function applyUserLlmRuntime({ userCfg, env, llmProviders, embedProviders }) {
   let runtime;
@@ -99,5 +105,5 @@ export function applyUserLlmRuntime({ userCfg, env, llmProviders, embedProviders
   catch (err) { return { ok: false, error: err?.message || 'invalid LLM route' }; }
   if (llmProviders) { for (const k of Object.keys(llmProviders)) delete llmProviders[k]; Object.assign(llmProviders, runtime.llmProviders); }
   if (embedProviders) { for (const k of Object.keys(embedProviders)) delete embedProviders[k]; Object.assign(embedProviders, runtime.embedProviders); }
-  return { ok: true, mode: runtime.mode };
+  return { ok: true, mode: runtime.mode, confidential: runtime.confidential };
 }

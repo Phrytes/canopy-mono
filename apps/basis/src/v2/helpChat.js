@@ -74,6 +74,24 @@ export function helpTopicChips({ lang } = {}) {
 }
 
 /**
+ * Pick the LOCALE KEYS for the LLM-forward wording, honestly matched to the resolved route.
+ *
+ * A 'confidential-proxy' route (Privatemode/TEE) may truthfully be named "de vertrouwelijke assistent";
+ * a plain route (a local Ollama, an OpenAI-compatible cloud) may NOT — it is just "de assistent". Both
+ * shells (web + mobile) call this ONE helper so they always pick the same variant for the same route.
+ *
+ * @param {{ confidential?: boolean }} [route]
+ * @returns {{ badgeKey: string, consentKey: string }}
+ *   badgeKey   — the provenance badge stamped under an LLM answer.
+ *   consentKey — the consent-card prompt asking to forward the question.
+ */
+export function helpLlmLabelKeys({ confidential } = {}) {
+  return confidential
+    ? { badgeKey: 'circle.help.provenance_llm',       consentKey: 'circle.help.consent_prompt' }
+    : { badgeKey: 'circle.help.provenance_llm_plain', consentKey: 'circle.help.consent_prompt_plain' };
+}
+
+/**
  * Resolve a picked topic id → its deterministic card answer, or null for an unknown id.
  * @param {string} id
  * @param {{ lang?: string }} [opts]

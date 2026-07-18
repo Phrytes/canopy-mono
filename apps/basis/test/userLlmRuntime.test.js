@@ -79,6 +79,20 @@ describe('buildUserLlmRuntime', () => {
   it('throws on an unsafe confidential route', () => {
     expect(() => buildUserLlmRuntime({ preset: 'confidential-proxy', llmBaseUrl: 'https://evil/v1' })).toThrow(/confidential/i);
   });
+  it('#37 — surfaces `confidential` per the route actually in effect', () => {
+    // confidential preset with a live (safe) URL → confidential:true
+    expect(buildUserLlmRuntime({ preset: 'confidential-proxy', llmBaseUrl: 'http://localhost:8080' }).confidential).toBe(true);
+    // a plain local route → confidential:false
+    expect(buildUserLlmRuntime({ preset: 'local-ollama', llmBaseUrl: 'http://127.0.0.1:11434' }).confidential).toBe(false);
+    // a plain cloud route → confidential:false
+    expect(buildUserLlmRuntime({ preset: 'openai-compatible', llmBaseUrl: 'https://api.x/v1' }).confidential).toBe(false);
+    // confidential preset but BLANK url → the env route is in effect, so its declaration wins (default false)
+    expect(buildUserLlmRuntime({ preset: 'confidential-proxy', llmBaseUrl: '' },
+      { env: { llmBaseUrl: 'http://localhost:8080' } }).confidential).toBe(false);
+    // a deployment env that declares itself confidential
+    expect(buildUserLlmRuntime({ preset: 'off' },
+      { env: { llmBaseUrl: 'http://localhost:8080', confidential: true } }).confidential).toBe(true);
+  });
 });
 
 describe('applyUserLlmRuntime — live in-place swap', () => {
@@ -89,7 +103,7 @@ describe('applyUserLlmRuntime — live in-place swap', () => {
       userCfg: { preset: 'openai-compatible', llmBaseUrl: 'https://api.x/v1', embedBaseUrl: 'https://api.x/v1' },
       llmProviders, embedProviders,
     });
-    expect(r).toMatchObject({ ok: true, mode: 'cloud' });
+    expect(r).toMatchObject({ ok: true, mode: 'cloud', confidential: false });   // #37 — plain cloud opt-in
     expect(llmProviders.local).toBeUndefined();   // old cleared
     expect(llmProviders.cloud).toBeTruthy();       // new applied in place
     expect(embedProviders.cloud).toBeTruthy();

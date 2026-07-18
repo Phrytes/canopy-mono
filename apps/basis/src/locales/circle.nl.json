@@ -502,7 +502,11 @@
   "help": {
     "consent_prompt": {
       "text": "Daar heb ik geen vast antwoord op. Wil je dat ik het aan de vertrouwelijke assistent vraag? Je vraag wordt dan doorgestuurd.",
-      "doc": "Task #13 Phase 2 — the LLM-forward consent card in the help circle: shown on a deterministic MISS when an assistant is connected. Renders as the dashed-rust consent card (payload.consent)."
+      "doc": "Task #13 — the LLM-forward consent card, CONFIDENTIAL route (Privatemode/TEE): shown on a deterministic MISS when an assistant is connected. Renders as the dashed-rust consent card (payload.consent). Chosen by helpLlmLabelKeys({confidential:true})."
+    },
+    "consent_prompt_plain": {
+      "text": "Daar heb ik geen vast antwoord op. Wil je dat ik het aan de assistent vraag? Je vraag wordt dan doorgestuurd.",
+      "doc": "Task #13 — the LLM-forward consent card, PLAIN (non-confidential) route: a local of niet-vertrouwelijke cloud-assistent, dus GEEN 'vertrouwelijke' claim. Chosen by helpLlmLabelKeys({confidential:false})."
     },
     "consent_yes": {
       "text": "ja, doorsturen",
@@ -522,7 +526,11 @@
     },
     "provenance_llm": {
       "text": "· via de vertrouwelijke assistent",
-      "doc": "Task #13 Phase 2 — transparency badge under a help answer produced by the confidential assistant (language model). Stamped verbatim as payload.provenance."
+      "doc": "Task #13 — transparency badge under a help answer produced by the CONFIDENTIAL assistant (Privatemode/TEE language model). Stamped verbatim as payload.provenance. Chosen by helpLlmLabelKeys({confidential:true})."
+    },
+    "provenance_llm_plain": {
+      "text": "· via de assistent",
+      "doc": "Task #13 — transparency badge under a help answer produced by a PLAIN (non-confidential) assistant: local of niet-vertrouwelijke cloud, dus GEEN 'vertrouwelijke' claim. Chosen by helpLlmLabelKeys({confidential:false})."
     },
     "llm_no_answer": {
       "text": "Daar kwam ik ook met de assistent niet uit. Kies eventueel een onderwerp:",
