@@ -2,6 +2,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderCircleKring } from '../../web/v2/circleKring.js';
 import { createInputHistory } from '../../src/v2/commandSuggest.js';
+import { kringChatMessageEvent } from '@onderling/kring-host/kringBroadcast';
 
 const t = (key, params) =>
   params && params.count != null ? `${key}:${params.count}` : key;
@@ -680,5 +681,43 @@ describe('renderCircleKring · prikbord tab → noticeboard (S1 #1)', () => {
     renderCircleKring(el, { circle, rows, t, onSend: vi.fn(), tabs, activeTab: 'prikbord' });
     expect(el.querySelector('.cc-prikbord')).toBeNull();
     expect(el.querySelector('.circle-kring__placeholder')).not.toBeNull();
+  });
+});
+
+// Task #13 Phase 2 — the standing help Q&A lights two dormant restyle seams for real: the per-answer
+// transparency badge (payload.provenance) and the LLM-forward consent card (payload.consent).
+describe('renderCircleKring · help Q&A seams (transparency badge + consent card)', () => {
+  const botRow = (opts) => {
+    const ev = kringChatMessageEvent({ msgId: 'b1', ts: now, circleId: 'g1', actor: 'bot', text: 'Basis is…', ...opts });
+    return [{ id: 'b1', ts: now, app: 'kring', type: 'chat-message', actor: 'bot', circleId: 'g1', event: ev }];
+  };
+
+  it('a deterministic hit shows the "answered directly" badge (llmUsed:false)', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows: botRow({ provenance: { llmUsed: false } }), t });
+    const badge = el.querySelector('.circle-kring__bubble-provenance');
+    expect(badge).not.toBeNull();
+    expect(badge.textContent).toBe('circle.kring.provenance_direct');
+  });
+
+  it('an LLM answer stamps a verbatim provenance string', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows: botRow({ provenance: '· via de vertrouwelijke assistent' }), t });
+    expect(el.querySelector('.circle-kring__bubble-provenance').textContent).toBe('· via de vertrouwelijke assistent');
+  });
+
+  it('a consent bubble styles as the consent card and renders variant buttons', () => {
+    const el = mount();
+    renderCircleKring(el, {
+      circle,
+      rows: botRow({ consent: true, buttons: [
+        { label: 'ja, doorsturen', action: 'help:consent:yes', variant: 'primary' },
+        { label: 'nee, ik kies zelf', action: 'help:consent:no', variant: 'secondary' },
+      ] }),
+      t, onEmbedButton: vi.fn(),
+    });
+    expect(el.querySelector('.circle-kring__bubble--consent')).not.toBeNull();
+    expect(el.querySelector('.circle-kring__consent-btn--primary')).not.toBeNull();
+    expect(el.querySelector('.circle-kring__consent-btn--secondary')).not.toBeNull();
   });
 });
