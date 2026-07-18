@@ -378,10 +378,33 @@ describe('J5 — sendable lists (GREEN: ordered subtree walk)', () => {
 // Verifies: humanInTheLoop:required → task; posture:negotiable → IR counter;
 //   direct-to-device routing.
 // ═══════════════════════════════════════════════════════════════════════════
-describe('J6 — requestable bridge (TODO: Phase 4 requestable→task)', () => {
-  it.todo(
-    'requestable skill invoked by B arrives to A as a task (not action); accept → claimed; counter → IR round-trip',
-  );
+// The full host-wiring (offering→skill auto-projection, peer routing) is a
+// documented seam; the negotiate/counter IR channel too. Here we assert the
+// CONVERGENCE: a requestable invocation mints a task (not an action).
+describe('J6 — requestable bridge (GREEN: requestable invocation → task)', () => {
+  it('B invokes A\'s requestable offering → a task for A (not an action); accept = claim', async () => {
+    const { requestableSkillHandler, REQUEST_TASK_KIND } = await import('@onderling/item-store');
+    const tasks = createTaskStore(new CircleItemStore({ dataSource: new MemorySource(), rootContainer: ROOT }));
+
+    let offeringRan = false;
+    const offering = { key: 'fix-leaks', text: 'fix a leak', run: () => { offeringRan = true; } };
+    // A (ANNE) advertises this requestable offering; B (BOB) invokes it.
+    const handler = requestableSkillHandler({ taskStore: tasks, offering, recipient: ANNE, from: BOB });
+    const res = await handler({ from: BOB });
+
+    // It arrives as a TASK, not an action — the offering is NEVER executed.
+    expect(res.created).toBe(true);
+    expect(res.status).toBe('pending');
+    expect(offeringRan).toBe(false);
+    const task = await tasks.getById(res.taskId);
+    expect(task.kind).toBe(REQUEST_TASK_KIND);
+    expect(task.source.requestedBy).toBe(BOB); // who asked
+    expect(task.source.forMember).toBe(ANNE); //  directed at the recipient
+
+    // A accepts by claiming — the ordinary task lifecycle.
+    const claimed = await tasks.claim(res.taskId, { actor: ANNE });
+    expect(assigneesOf(claimed)).toContain(ANNE);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
