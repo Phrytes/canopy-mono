@@ -5,7 +5,7 @@
  *   - Avatar (camera/library picker).
  *   - Handle (lowercase, 3-32 chars).
  *   - Real / chosen name (optional).
- *   - Skills (categorised chip multi-select via SkillPicker).
+ *   - Offerings (categorised chip multi-select via OfferingPicker).
  *   - Holiday toggle.
  *   - Location (GPS-fetched cell, clearable).
  *   - Recovery phrase export (View / Copy).
@@ -34,7 +34,7 @@ import { useProfile }                         from '../lib/useProfile.js';
 import { useSkill }                           from '../lib/useSkill.js';
 import { AvatarCircle }                       from '../components/AvatarCircle.js';
 import { ConfirmModal }                       from '../components/ConfirmModal.js';
-import { SkillPicker }                        from '../components/SkillPicker.js';
+import { OfferingPicker }                        from '../components/OfferingPicker.js';
 
 export function ProfileMineScreen() {
   useNavigation(); // reserved for future header-button work
@@ -46,7 +46,7 @@ export function ProfileMineScreen() {
     setAvatar, clearAvatar,
     setLocation, clearLocation,
     setHolidayMode,
-    addSkill, removeSkill,
+    addOffering, removeOffering,
     listOfferingCategories,
     getMnemonicOnce,
   } = useProfile();
@@ -312,16 +312,16 @@ export function ProfileMineScreen() {
         ) : null}
       </View>
 
-      {/* Skills */}
+      {/* Offerings */}
       <View style={styles.section}>
         <Text style={styles.label}>
           {t('profile.skills_heading', 'Mijn skills')}
         </Text>
-        <SkillPicker
+        <OfferingPicker
           categories={categories}
           selected={profile?.offerings ?? []}
-          onAdd={(entry)   => addSkill(entry).catch((e) => setError(e?.message ?? String(e)))}
-          onRemove={(id)   => removeSkill(id).catch((e) => setError(e?.message ?? String(e)))}
+          onAdd={(entry)   => addOffering(entry).catch((e) => setError(e?.message ?? String(e)))}
+          onRemove={(id)   => removeOffering(id).catch((e) => setError(e?.message ?? String(e)))}
         />
       </View>
 

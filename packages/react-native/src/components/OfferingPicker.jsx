@@ -1,7 +1,7 @@
 /**
- * SkillPicker — categorised chip multi-select for the user's skills.
+ * OfferingPicker — categorised chip multi-select for the user's offerings.
  *
- * Lifted from apps/stoop-mobile/src/components/SkillPicker.js
+ * Lifted from apps/stoop-mobile/src/components/OfferingPicker.js
  * 2026-05-09 (Phase 41.0.b B4).
  *
  * Pure-controlled. Tapping a chip calls the right callback:
@@ -11,7 +11,7 @@
  * `categories` shape:
  *   `[{id: string, label: {nl, en} | string, hint?: {nl, en} | string}, ...]`
  *
- * Per-skill freeTags / availability / radius are out of scope.
+ * Per-offering freeTags / availability / radius are out of scope.
  * Tokens via `useTheme()`.
  */
 
@@ -28,7 +28,7 @@ import { useTheme } from '../theme/index.js';
  * @param {(entry: {categoryId: string}) => void} props.onAdd
  * @param {(categoryId: string) => void} props.onRemove
  */
-export function SkillPicker({
+export function OfferingPicker({
   categories = [], selected = [], lang = 'nl', onAdd, onRemove,
 }) {
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();

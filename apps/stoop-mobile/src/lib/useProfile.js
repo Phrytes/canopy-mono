@@ -22,7 +22,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useService } from '../ServiceContext.js';
 import { toParts, unwrapParts } from './skillParts.js';
 import {
-  unpackProfile, mergeSkillUpdate, removeSkill, avatarToUri,
+  unpackProfile, mergeOfferingUpdate, removeOffering, avatarToUri,
 } from './profileSync.js';
 
 /**
@@ -38,8 +38,8 @@ import {
  *   setLocation:    (loc: {cell: string, label?: string, source?: string}) => Promise<void>,
  *   clearLocation:  () => Promise<void>,
  *   setHolidayMode: (next: boolean) => Promise<void>,
- *   addSkill:       (entry: object) => Promise<void>,
- *   removeSkill:    (categoryId: string) => Promise<void>,
+ *   addOffering:       (entry: object) => Promise<void>,
+ *   removeOffering:    (categoryId: string) => Promise<void>,
  *   listOfferingCategories: (lang?: string) => Promise<object[]>,
  *   getMnemonicOnce: () => Promise<string | null>,
  * }}
@@ -137,14 +137,14 @@ export function useProfile() {
     if (r?.error) throw new Error(r.error);
   }, [_invoke]);
 
-  const addSkill = useCallback(async (entry) => {
-    setProfile((p) => p ? { ...p, offerings: mergeSkillUpdate(p.offerings, entry) } : p);
+  const addOffering = useCallback(async (entry) => {
+    setProfile((p) => p ? { ...p, offerings: mergeOfferingUpdate(p.offerings, entry) } : p);
     const r = await _invoke('addMyOffering', entry);
     if (r?.error) throw new Error(r.error);
   }, [_invoke]);
 
-  const removeSkillFn = useCallback(async (categoryId) => {
-    setProfile((p) => p ? { ...p, offerings: removeSkill(p.offerings, categoryId) } : p);
+  const removeOfferingFn = useCallback(async (categoryId) => {
+    setProfile((p) => p ? { ...p, offerings: removeOffering(p.offerings, categoryId) } : p);
     const r = await _invoke('removeMyOffering', { categoryId });
     if (r?.error) throw new Error(r.error);
   }, [_invoke]);
@@ -168,7 +168,7 @@ export function useProfile() {
     setAvatar, clearAvatar,
     setLocation, clearLocation,
     setHolidayMode,
-    addSkill, removeSkill: removeSkillFn,
+    addOffering, removeOffering: removeOfferingFn,
     listOfferingCategories,
     getMnemonicOnce,
   };

@@ -383,7 +383,7 @@ apps/stoop-mobile/
 │   ├── navigation.js          ← ROUTES, ROUTE_ORDER, SHELL_TAB_ROUTES
 │   ├── screens/               ← 22 screens (one per route)
 │   ├── components/            ← AvatarCircle, ChipRow, PostCard, ConfirmModal,
-│   │                              AttachmentModal, SkillPicker, AudiencePicker, QrCode
+│   │                              AttachmentModal, OfferingPicker, AudiencePicker, QrCode
 │   └── lib/                   ← hooks + pure helpers
 │       ├── localisation.js, theme.js, navigation helpers
 │       ├── identityBootstrap.js, groupRegistry.js, agentBundle.js
@@ -392,7 +392,7 @@ apps/stoop-mobile/
 │       ├── imagePicker.js, qrScanner.js, push.js, geo.js
 │       ├── compose.js, audience.js, feedFilter.js, post.js, avatar.js
 │       ├── chat.js, contacts.js, mnemonic.js, handle.js
-│       ├── deepLinks.js, onboardScanRouting.js, skillPicker.js
+│       ├── deepLinks.js, onboardScanRouting.js, offeringPicker.js
 │       ├── settings.js, skillParts.js
 │       ├── skillMatchListener.js, metadataWarning.js
 │       └── activeCadence.js, appStateBridge.js, bgRunOnce.js

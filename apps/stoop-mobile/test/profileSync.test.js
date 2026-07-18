@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  formatLocationLine, mergeSkillUpdate, removeSkill, avatarToUri, unpackProfile,
+  formatLocationLine, mergeOfferingUpdate, removeOffering, avatarToUri, unpackProfile,
 } from '../src/lib/profileSync.js';
 
 describe('formatLocationLine', () => {
@@ -22,44 +22,44 @@ describe('formatLocationLine', () => {
   });
 });
 
-describe('mergeSkillUpdate', () => {
+describe('mergeOfferingUpdate', () => {
   it('appends a new categoryId', () => {
-    const r = mergeSkillUpdate([], { categoryId: 'tuin' });
+    const r = mergeOfferingUpdate([], { categoryId: 'tuin' });
     expect(r).toHaveLength(1);
     expect(r[0].categoryId).toBe('tuin');
     expect(r[0].status).toBe('active');
   });
   it('replaces an existing categoryId', () => {
     const prev = [{ categoryId: 'tuin', status: 'active' }];
-    const r = mergeSkillUpdate(prev, { categoryId: 'tuin', status: 'paused' });
+    const r = mergeOfferingUpdate(prev, { categoryId: 'tuin', status: 'paused' });
     expect(r).toHaveLength(1);
     expect(r[0].status).toBe('paused');
   });
   it('preserves other categories', () => {
     const prev = [{ categoryId: 'tuin' }, { categoryId: 'tech' }];
-    const r = mergeSkillUpdate(prev, { categoryId: 'tuin', radius: 5 });
+    const r = mergeOfferingUpdate(prev, { categoryId: 'tuin', radius: 5 });
     expect(r.map((s) => s.categoryId).sort()).toEqual(['tech', 'tuin']);
     expect(r.find((s) => s.categoryId === 'tuin').radius).toBe(5);
   });
   it('ignores updates without categoryId', () => {
     const prev = [{ categoryId: 'tuin' }];
-    expect(mergeSkillUpdate(prev, {})).toEqual(prev);
-    expect(mergeSkillUpdate(prev, null)).toEqual(prev);
+    expect(mergeOfferingUpdate(prev, {})).toEqual(prev);
+    expect(mergeOfferingUpdate(prev, null)).toEqual(prev);
   });
 });
 
-describe('removeSkill', () => {
+describe('removeOffering', () => {
   it('drops the entry by categoryId', () => {
     const prev = [{ categoryId: 'tuin' }, { categoryId: 'tech' }];
-    expect(removeSkill(prev, 'tuin')).toEqual([{ categoryId: 'tech' }]);
+    expect(removeOffering(prev, 'tuin')).toEqual([{ categoryId: 'tech' }]);
   });
   it('no-ops when categoryId absent', () => {
     const prev = [{ categoryId: 'tuin' }];
-    expect(removeSkill(prev, 'klusjes')).toEqual(prev);
+    expect(removeOffering(prev, 'klusjes')).toEqual(prev);
   });
   it('handles empty / null input', () => {
-    expect(removeSkill([], 'x')).toEqual([]);
-    expect(removeSkill(null, 'x')).toEqual([]);
+    expect(removeOffering([], 'x')).toEqual([]);
+    expect(removeOffering(null, 'x')).toEqual([]);
   });
 });
 

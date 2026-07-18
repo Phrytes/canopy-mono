@@ -18,4 +18,4 @@
 export { AvatarCircle } from './AvatarCircle.jsx';
 export { ChipRow }      from './ChipRow.jsx';
 export { ConfirmModal } from './ConfirmModal.jsx';
-export { SkillPicker }  from './SkillPicker.jsx';
+export { OfferingPicker }  from './OfferingPicker.jsx';

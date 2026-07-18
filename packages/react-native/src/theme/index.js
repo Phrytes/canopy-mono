@@ -3,7 +3,7 @@
  * lifted UI primitives.
  *
  * The substrate's UI components (`AvatarCircle`, `ChipRow`,
- * `ConfirmModal`, `SkillPicker`) consume tokens via `useTheme()`.
+ * `ConfirmModal`, `OfferingPicker`) consume tokens via `useTheme()`.
  * Apps wrap their tree in `<ThemeProvider value={tokens}>` to inject
  * their own COLORS / SPACING / RADII / FONT_SIZES — the substrate
  * itself only ships shape + a neutral default.

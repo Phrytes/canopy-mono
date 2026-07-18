@@ -1,12 +1,12 @@
 /**
- * skillPicker — coverage for the `localiseField` helper.
+ * offeringPicker — coverage for the `localiseField` helper.
  *
  * The component itself is JSX-only; render-level coverage lands in
  * Phase 40.10.6's deferred render harness.
  */
 
 import { describe, it, expect } from 'vitest';
-import { localiseField } from '../src/lib/skillPicker.js';
+import { localiseField } from '../src/lib/offeringPicker.js';
 
 describe('localiseField', () => {
   it('returns the language-specific string when present', () => {

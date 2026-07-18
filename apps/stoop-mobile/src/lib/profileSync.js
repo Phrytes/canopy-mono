@@ -5,11 +5,11 @@
  *
  *   - `formatLocationLine(location)` — renders a `{cell, label, source}`
  *     blob as a one-line string for the ProfileScreen location row.
- *   - `mergeSkillUpdate(prevSkills, updated)` — replaces / appends a
- *     skill entry by `categoryId` (matches the SDK's addMySkill
+ *   - `mergeOfferingUpdate(prevOfferings, updated)` — replaces / appends an
+ *     offering entry by `categoryId` (matches the SDK's addMyOffering
  *     semantics so the screen can optimistically update before the
- *     skill round-trip finishes).
- *   - `removeSkill(prevSkills, categoryId)` — drops one entry.
+ *     offering round-trip finishes).
+ *   - `removeOffering(prevOfferings, categoryId)` — drops one entry.
  *   - `avatarToUri(avatarBlob)` — turns a Phase 40.5 picker result
  *     `{mime, dataB64, ...}` into the data-URI shape avatars use.
  *
@@ -33,13 +33,13 @@ export function formatLocationLine(location) {
 }
 
 /**
- * @param {Array<object>} prevSkills
+ * @param {Array<object>} prevOfferings
  * @param {object} updated  must include `categoryId`
  * @returns {Array<object>}
  */
-export function mergeSkillUpdate(prevSkills, updated) {
-  if (!updated || typeof updated.categoryId !== 'string') return prevSkills.slice();
-  const filtered = (prevSkills ?? []).filter((s) => s.categoryId !== updated.categoryId);
+export function mergeOfferingUpdate(prevOfferings, updated) {
+  if (!updated || typeof updated.categoryId !== 'string') return prevOfferings.slice();
+  const filtered = (prevOfferings ?? []).filter((s) => s.categoryId !== updated.categoryId);
   filtered.push({
     categoryId:   updated.categoryId,
     freeTags:     Array.isArray(updated.freeTags) ? updated.freeTags : [],
@@ -51,13 +51,13 @@ export function mergeSkillUpdate(prevSkills, updated) {
 }
 
 /**
- * @param {Array<object>} prevSkills
+ * @param {Array<object>} prevOfferings
  * @param {string} categoryId
  * @returns {Array<object>}
  */
-export function removeSkill(prevSkills, categoryId) {
-  if (typeof categoryId !== 'string' || !categoryId) return (prevSkills ?? []).slice();
-  return (prevSkills ?? []).filter((s) => s.categoryId !== categoryId);
+export function removeOffering(prevOfferings, categoryId) {
+  if (typeof categoryId !== 'string' || !categoryId) return (prevOfferings ?? []).slice();
+  return (prevOfferings ?? []).filter((s) => s.categoryId !== categoryId);
 }
 
 /**
