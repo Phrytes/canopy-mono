@@ -14,7 +14,7 @@
 import {
   DEFAULT_RULES_DOC, buildRulesDoc, RULES_FIELDS,
 } from '../../v2/circleRules.js';
-// 5.5c — Step 4 captures the v2 skill list (the four axes per skill).
+// 5.5c — Step 4 captures the v2 offering list (the four axes per offering).
 // `normalizeOffering` coerces partial rows; `DEFAULT_OFFERING` seeds a new row.
 import { OFFERING_AXES, DEFAULT_OFFERING, normalizeOffering } from '@onderling/kring-host/circleOfferings';
 export { OFFERING_AXES };
@@ -57,7 +57,7 @@ export const KEY_ROTATION_MODES = Object.freeze([
   { id: 'peer-distributable', label: 'Peer-distributable (any active member can rotate)' },
 ]);
 
-// 5.5c — Skills is now its own step between Rules and Tech.  Renderers
+// 5.5c — Offerings is now its own step between Rules and Tech.  Renderers
 // drive their step machinery off `STEP_NAMES.length`, so adding here
 // promotes Tech→5 and Review→6 without touching the increment logic.
 export const STEP_NAMES = Object.freeze(['Identity', 'Governance', 'Rules', 'Offerings', 'Tech', 'Review']);
@@ -310,8 +310,8 @@ export function encodeMembershipCodeUrl(result) {
     ...(result.capabilities && typeof result.capabilities === 'object' && !Array.isArray(result.capabilities) && Object.keys(result.capabilities).length
       ? { capabilities: result.capabilities } : {}),
     ...(Array.isArray(result.apps) && result.apps.length ? { apps: result.apps } : {}),
-    // Skills→property fold-in phase C — the circle's "skills-matching is ON here" charter
-    // signal; the join wizard turns it into the visible pre-checked share-skills default. Only
+    // Offering→property fold-in phase C — the circle's "offering-matching is ON here" charter
+    // signal; the join wizard turns it into the visible pre-checked share-offerings default. Only
     // ever an explicit true; absent on older invites / non-matching circles (default-withhold).
     ...(result.offeringsMatching === true ? { offeringsMatching: true } : {}),
   };

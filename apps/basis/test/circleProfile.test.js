@@ -20,18 +20,18 @@ describe('renderCircleProfile — identity', () => {
   });
 });
 
-describe('renderCircleProfile — skills moved to Mij → persona\'s (fold-in phase C)', () => {
-  it('renders NO skills editor any more — only the quiet pointer row, which opens the Mij surface', () => {
+describe('renderCircleProfile — offerings moved to Mij → persona\'s (fold-in phase C)', () => {
+  it('renders NO offerings editor any more — only the quiet pointer row, which opens the Mij surface', () => {
     const onOpenMij = vi.fn();
     const el = renderCircleProfile(document.createElement('div'), {
       profile: { skills: [{ categoryId: 'klus' }] }, t, onOpenMij,
     });
-    // The old editor is gone even when a legacy roster profile still carries skills.
-    expect(el.querySelector('.cc-profile__skill')).toBeNull();
-    expect(el.querySelector('.cc-profile__skill-select')).toBeNull();
-    expect(el.querySelector('.cc-profile__skill-add-btn')).toBeNull();
+    // The old editor is gone even when a legacy roster profile still carries offerings.
+    expect(el.querySelector('.cc-profile__offering')).toBeNull();
+    expect(el.querySelector('.cc-profile__offering-select')).toBeNull();
+    expect(el.querySelector('.cc-profile__offering-add-btn')).toBeNull();
     // The pointer row is there and clicks through.
-    const link = el.querySelector('.cc-profile__skills-moved-link');
+    const link = el.querySelector('.cc-profile__offerings-moved-link');
     expect(link.textContent).toBe('circle.profile.offerings_moved');
     link.click();
     expect(onOpenMij).toHaveBeenCalled();
@@ -39,7 +39,7 @@ describe('renderCircleProfile — skills moved to Mij → persona\'s (fold-in ph
 
   it('degrades to plain text without onOpenMij (older callers)', () => {
     const el = renderCircleProfile(document.createElement('div'), { profile: {}, t });
-    const row = el.querySelector('.cc-profile__skills-moved');
+    const row = el.querySelector('.cc-profile__offerings-moved');
     expect(row.textContent).toBe('circle.profile.offerings_moved');
     expect(row.querySelector('button')).toBeNull();
   });

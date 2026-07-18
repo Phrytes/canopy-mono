@@ -268,19 +268,19 @@ function renderRulesStep(container, doc, state, onNext, onBack, onCancel, rerend
   ]);
 }
 
-// 5.5c — Skills step: list `{name, openness, posture, status, radius}`
+// 5.5c — Offerings step: list `{name, openness, posture, status, radius}`
 // rows.  Each row's four axes are radio groups over `OFFERING_AXES`.
 // Unnamed rows are dropped at submit (see buildRulesObjectFromState).
 function renderOfferingsStep(container, doc, state, onNext, onBack, onCancel, rerender) {
   const wrap = makeBody(doc, 'Offerings (optional)',
-    'What members can do / offer in this circle.  Each skill is named + has four axes (openness / posture / status / radius).  You can skip this step or edit it later.');
+    'What members can do / offer in this circle.  Each offering is named + has four axes (openness / posture / status / radius).  You can skip this step or edit it later.');
 
   state.offerings.forEach((row, i) => {
     const card = doc.createElement('div');
-    card.className = 'cc-wizard-skill-row';
+    card.className = 'cc-wizard-offering-row';
     card.style.cssText = 'border:1px solid var(--cc-line,#d8d1bc);border-radius:6px;padding:10px;margin-bottom:10px';
 
-    appendField(card, doc, 'Offering name', `skill-${i}-name`,
+    appendField(card, doc, 'Offering name', `offering-${i}-name`,
       row.name, (v) => { row.name = v; }, { placeholder: 'e.g. plumbing' });
 
     for (const axis of Object.keys(OFFERING_AXES)) {
@@ -374,13 +374,13 @@ function renderReviewStep(container, doc, state, onBack, onCancel, rerender, onS
     if (v) appendReview(dl, doc, t(`circle.rules.q.${q.key}.text`), v, { pre: true });
   }
   appendReview(dl, doc, 'Conflict policy', labelOf(CONFLICT_POLICIES, state.conflictPolicy));
-  // 5.5c — list named skills with their axes.
-  const namedSkills = (state.offerings ?? []).filter((s) => s?.name?.trim());
-  if (namedSkills.length > 0) {
-    const skillsSummary = namedSkills
+  // 5.5c — list named offerings with their axes.
+  const namedOfferings = (state.offerings ?? []).filter((s) => s?.name?.trim());
+  if (namedOfferings.length > 0) {
+    const offeringsSummary = namedOfferings
       .map((s) => `${s.name} — ${s.openness}/${s.posture}/${s.status}/${s.radius}`)
       .join('\n');
-    appendReview(dl, doc, 'Offerings', skillsSummary, { pre: true });
+    appendReview(dl, doc, 'Offerings', offeringsSummary, { pre: true });
   }
   appendReview(dl, doc, 'Storage',        labelOf(STORAGE_POLICIES, state.storagePolicy));
   if (state.groupPodUri) appendReview(dl, doc, 'Group pod URI', state.groupPodUri);

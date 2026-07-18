@@ -4,7 +4,7 @@
  * Three stacked sections over the shared read-model (`src/v2/personaView.js`
  * → buildMijViewModel; web ≡ mobile by construction):
  *   1. MIJN ALGEMENE PERSONA — the default profile's properties as rows
- *      (mono key · value · ladder hint) + skills/drivers as chips with a
+ *      (mono key · value · ladder hint) + offerings/drivers as chips with a
  *      dashed "+ vaardigheid of drijfveer" inline form,
  *   2. PERSONA'S — one card per profile; the root card is the truth layer
  *      (rust border); other cards show per key: volgt-algemeen / EIGEN / ∅,
@@ -136,16 +136,16 @@ function renderGeneral(tr, model, { onSetProperty, onAddOffering }) {
     panel.appendChild(row);
   }
 
-  // Skills & drivers — chips (bold text · mono tags · "≈ categorie" badge).
-  const skillsRow = el('div', 'cc-mij__row cc-mij__row--offerings');
-  skillsRow.appendChild(el('span', 'cc-mij__key', tr('circle.mij.offerings_label')));
+  // Offerings & drivers — chips (bold text · mono tags · "≈ categorie" badge).
+  const offeringsRow = el('div', 'cc-mij__row cc-mij__row--offerings');
+  offeringsRow.appendChild(el('span', 'cc-mij__key', tr('circle.mij.offerings_label')));
   const chips = el('div', 'cc-mij__chips');
   for (const d of (model.general?.drivers || [])) {
     const chip = el('span', 'cc-mij__chip');
     chip.appendChild(el('b', 'cc-mij__chip-text', d.text || d.tags.join(', ')));
     for (const tg of d.tags) chip.appendChild(el('span', 'cc-mij__chip-tag', tg));
     // "≈ categorie" — the coarse rung this item coarsens to under disclosure:
-    // for skills the taxonomy category (user-picked or derived, via the
+    // for offerings the taxonomy category (user-picked or derived, via the
     // read-model); other driver kinds show their kind label.
     const coarse = d.categoryId
       ? ((d.categoryLabel && (d.categoryLabel[lang] || d.categoryLabel.nl)) || d.categoryId)
@@ -153,9 +153,9 @@ function renderGeneral(tr, model, { onSetProperty, onAddOffering }) {
     chip.appendChild(el('span', 'cc-mij__chip-badge', tr('circle.mij.approx', { category: coarse })));
     chips.appendChild(chip);
   }
-  skillsRow.appendChild(chips);
-  skillsRow.appendChild(el('span', 'cc-mij__ladder', ladderHint(tr, ['all', 'none'])));
-  panel.appendChild(skillsRow);
+  offeringsRow.appendChild(chips);
+  offeringsRow.appendChild(el('span', 'cc-mij__ladder', ladderHint(tr, ['all', 'none'])));
+  panel.appendChild(offeringsRow);
 
   if (typeof onAddOffering === 'function') {
     const add = el('button', 'cc-mij__add', tr('circle.mij.offering_add'));

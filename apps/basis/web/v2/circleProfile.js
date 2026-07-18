@@ -5,9 +5,9 @@
  * (#7). Pure render — the host (`circleApp.js` showMij) loads `getMyProfile`
  * and dispatches the stoop mutations behind the callbacks.
  *
- * Skills→property fold-in phase C (2026-07-17, NOTE-skills-properties-audit §3c):
- * the personal-skills editor (`cc-profile__skill*` + onAddSkill/onRemoveSkill)
- * LEFT this screen — skills are driver-like items on the persona truth layer
+ * Offering→property fold-in phase C (2026-07-17, NOTE-skills-properties-audit §3c):
+ * the personal-offering editor (`cc-profile__offering*` + onAddOffering/onRemoveOffering)
+ * LEFT this screen — offerings are driver-like items on the persona truth layer
  * now (`circleMij.js`, "Mij → persona's"). A quiet pointer row (`onOpenMij`)
  * replaces it. NOT to be confused with `showSkills` (the circle's openness
  * *policy* surface, circleOfferingEditor.js — a different feature, untouched).
@@ -26,7 +26,7 @@ export function renderCircleProfile(container, {
   busy = false,
   t,
   onSaveProfile,
-  // Fold-in phase C — open the "Mij → persona's" surface (where skills live now).
+  // Fold-in phase C — open the "Mij → persona's" surface (where offerings live now).
   // Absent ⇒ the pointer renders as plain text (older callers / tests).
   onOpenMij,
   onGeocode,
@@ -71,13 +71,13 @@ export function renderCircleProfile(container, {
   idSection.appendChild(save);
   container.appendChild(idSection);
 
-  // ── skills — moved (fold-in phase C, 2026-07-17) ─────────────────────────
-  // A single quiet pointer to the "Mij → persona's" surface where skills live
+  // ── offerings — moved (fold-in phase C, 2026-07-17) ──────────────────────
+  // A single quiet pointer to the "Mij → persona's" surface where offerings live
   // now. Clickable when the host wires onOpenMij; plain text otherwise.
   const moved = document.createElement('p');
-  moved.className = 'cc-profile__skills-moved';
+  moved.className = 'cc-profile__offerings-moved';
   if (typeof onOpenMij === 'function') {
-    moved.appendChild(button(tr('circle.profile.offerings_moved'), 'cc-profile__skills-moved-link', onOpenMij));
+    moved.appendChild(button(tr('circle.profile.offerings_moved'), 'cc-profile__offerings-moved-link', onOpenMij));
   } else {
     moved.textContent = tr('circle.profile.offerings_moved');
   }
@@ -117,7 +117,7 @@ export function renderCircleProfile(container, {
   }
   // location fold-in (audit §4) — this geo editor stays (it sets the coarse place),
   // but WHO sees your location is now a disclosure-controlled property on the Mij
-  // persona layer. A quiet pointer (like skills' onOpenMij), never a removal.
+  // persona layer. A quiet pointer (like offerings' onOpenMij), never a removal.
   const locHint = document.createElement('p');
   locHint.className = 'cc-profile__loc-disclosure-hint';
   if (typeof onOpenMij === 'function') {

@@ -57,7 +57,7 @@
 /* small-caps section labels */
 .circle-page [class$="__section-title"],
 .circle-page [class$="__axis-title"],
-.circle-page .circle-skill-matches__label,
+.circle-page .circle-offering-matches__label,
 .circle-page .circle-folio__filters {
   font-size: 11px;
   font-weight: 700;
@@ -372,7 +372,7 @@
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px;
 }
 .circle-viewas__name { font-weight: 600; }
-.circle-viewas__badge, .circle-skill-matches__badge, .circle-rules-consent__field {
+.circle-viewas__badge, .circle-offering-matches__badge, .circle-rules-consent__field {
   font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
   padding: 3px 8px; border-radius: 999px; background: var(--paper-2); color: var(--ink-soft);
 }
@@ -397,16 +397,16 @@
 .circle-hop__explain { font-size: 13px; color: var(--ink-soft); }
 .circle-hop__overlimit { color: var(--accent-ink); font-weight: 600; font-size: 13px; }
 
-/* ───────────────────── skills (board 8) ───────────────────── */
-.circle-skill__axis { margin-bottom: 14px; }
-.circle-skill__opt {
+/* ───────────────────── offerings (board 8) ───────────────────── */
+.circle-offering__axis { margin-bottom: 14px; }
+.circle-offering__opt {
   display: inline-flex; align-items: center; gap: 7px; margin: 0 8px 6px 0;
   padding: 6px 11px; border-radius: 999px; cursor: pointer; font-size: 13px;
   background: var(--card); border: 1px solid var(--line);
 }
-.circle-skill__opt:has(input:checked) { border-color: var(--accent); background: var(--card); }
-.circle-skill-matches__list { display: flex; flex-direction: column; gap: 8px; }
-.circle-skill-matches__row {
+.circle-offering__opt:has(input:checked) { border-color: var(--accent); background: var(--card); }
+.circle-offering-matches__list { display: flex; flex-direction: column; gap: 8px; }
+.circle-offering-matches__row {
   padding: 12px 14px; background: var(--card);
   border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px;
 }
@@ -886,21 +886,21 @@
 .cc-profile__section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin: 0; }
 .cc-profile__field { display: flex; flex-direction: column; gap: 4px; }
 .cc-profile__field-label { font-size: 13px; color: var(--ink-soft); }
-.cc-profile__field input, .cc-profile__geo-input, .cc-profile__skill-select {
+.cc-profile__field input, .cc-profile__geo-input, .cc-profile__offering-select {
   font: inherit; font-size: 14px; padding: 9px 12px; border: 1px solid var(--line);
   border-radius: var(--radius); background: var(--paper); color: var(--ink);
 }
-.cc-profile__save, .cc-profile__skill-add-btn, .cc-profile__geo-search, .cc-profile__geo-use {
+.cc-profile__save, .cc-profile__offering-add-btn, .cc-profile__geo-search, .cc-profile__geo-use {
   align-self: flex-start; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600;
   padding: 9px 16px; border-radius: var(--radius); background: var(--accent); border: 1px solid var(--accent); color: var(--accent-contrast);
 }
 .cc-profile__none { color: var(--ink-soft); font-size: 14px; margin: 0; }
-.cc-profile__skill-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.cc-profile__skill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border: 1px solid var(--line); border-radius: 14px; font-size: 13px; color: var(--ink); }
-.cc-profile__skill-remove { cursor: pointer; font: inherit; font-size: 14px; line-height: 1; background: transparent; border: none; color: var(--ink-soft); padding: 0 4px; }
-.cc-profile__skill-remove:hover { color: var(--danger); }
-.cc-profile__skill-add { display: flex; gap: 8px; align-items: center; }
-.cc-profile__skill-select { flex: 1 1 auto; }
+.cc-profile__offering-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.cc-profile__offering { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border: 1px solid var(--line); border-radius: 14px; font-size: 13px; color: var(--ink); }
+.cc-profile__offering-remove { cursor: pointer; font: inherit; font-size: 14px; line-height: 1; background: transparent; border: none; color: var(--ink-soft); padding: 0 4px; }
+.cc-profile__offering-remove:hover { color: var(--danger); }
+.cc-profile__offering-add { display: flex; gap: 8px; align-items: center; }
+.cc-profile__offering-select { flex: 1 1 auto; }
 .cc-profile__geo { display: flex; gap: 8px; }
 .cc-profile__geo-input { flex: 1 1 auto; }
 .cc-profile__geo-result { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 14px; color: var(--ink); }
