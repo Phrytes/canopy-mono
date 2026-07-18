@@ -55,7 +55,7 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `completeTask` | complete | ✅ | ✅ | ✅ | · | ✅ | ✅ | klaar met, done with, done, complete, completed, finished, klaar, voltooid, gedaan |
 |  | `getTaskSnapshot` | list | ✅ | · | · | · | · | · |  |
 |  | `removeTask` | remove | ✅ | · | · | · | · | · |  |
-|  | `attachTaskGrant` | update | ✅ | · | · | · | · | · |  |
+|  | `attachTaskGrant` | update | ✅ | · | · | · | ✅ | · |  |
 |  | `reassignTask` | reassign | ✅ | · | · | · | · | · |  |
 |  | `submitTask` | submit | ✅ | ✅ | ✅ | · | ✅ | ✅ | submit, hand in, indienen, inleveren, ter review |
 |  | `approveTask` | approve | ✅ | ✅ | ✅ | · | ✅ | ✅ | approve, goedkeuren, akkoord |
@@ -178,7 +178,7 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `listDataVersions` | list | ✅ | · | · | · | · | · |  |
 |  | `restoreDataVersion` | update | ✅ | · | · | · | ✅ | ✅ |  |
 |---|---|---|---|---|---|---|---|---|---|
-| **totals** | 173 ops | | 170 | 126 | 33 | 3 | 83 | 47 | |
+| **totals** | 173 ops | | 170 | 126 | 33 | 3 | 84 | 47 | |
 
 ## Gaps for the gate/LLM + inline-menu work
 

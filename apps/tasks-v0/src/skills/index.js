@@ -577,31 +577,35 @@ export function buildSkills({ bundleResolver, circlesProvider } = {}) {
      * stay hand-written.
      */
     defineSkill('attachTaskGrant', async ({ parts, from, envelope, actorDisplayName }) => {
+      // Error returns carry `ok:false` alongside `error` so the basis dispatch
+      // waist (runDispatch's {ok:false,error} elevation guard) surfaces a FAILED
+      // attach as an error bubble — not a misleading "done". Consumers still read
+      // `.error` for the code (unchanged contract).
       const circle = bundleResolver(parts, { envelope, from });
-      if (!circle) return { error: 'circleId required' };
+      if (!circle) return { ok: false, error: 'circleId required' };
       const mgr = circle.taskGrantManager;
-      if (!mgr) return { error: 'task-grants-unavailable' };
+      if (!mgr) return { ok: false, error: 'task-grants-unavailable' };
 
       const a = argsFromParts(parts);
       const { taskId, member, grant } = a;
-      if (typeof taskId !== 'string' || !taskId) return { error: 'taskId required' };
-      if (typeof member !== 'string' || !member) return { error: 'member required' };
+      if (typeof taskId !== 'string' || !taskId) return { ok: false, error: 'taskId required' };
+      if (typeof member !== 'string' || !member) return { ok: false, error: 'member required' };
       if (!grant || typeof grant !== 'object' || Array.isArray(grant)) {
-        return { error: 'grant required' };
+        return { ok: false, error: 'grant required' };
       }
 
       // Locate the task — it must exist AND it drives the creator gate.
       const open   = await circle.itemStore.listOpen();
       const closed = await circle.itemStore.listClosed();
       const task   = [...open, ...closed].find((t) => t.id === taskId);
-      if (!task) return { error: 'task-not-found' };
+      if (!task) return { ok: false, error: 'task-not-found' };
 
       // Gate (rides the same role map as the other admin-gated skills): only
       // the task creator (addedBy / master) or a circle admin may attach.
       const role = circle.liveCircle?.members?.find?.((m) => m.webid === from)?.role
         ?? circle?.roles?.[from] ?? null;
       const isCreator = task.addedBy === from || task.master === from;
-      if (role !== 'admin' && !isCreator) return { error: 'permission-denied' };
+      if (role !== 'admin' && !isCreator) return { ok: false, error: 'permission-denied' };
 
       // Issue the attenuated, task-scoped grant. Attenuation / off-by-default
       // are enforced by the primitive; a grant wider than the granter throws.
@@ -609,7 +613,7 @@ export function buildSkills({ bundleResolver, circlesProvider } = {}) {
       try {
         token = await mgr.attachGrant({ taskId, memberPubKey: member, grant });
       } catch (err) {
-        return { error: `grant-rejected:${err?.message ?? err}` };
+        return { ok: false, error: `grant-rejected:${err?.message ?? err}` };
       }
 
       // Legibility — record the granted tokenId on the task's `source` (merged,

@@ -1514,16 +1514,20 @@ function buildCircleBot(agent) {
     // explicit accept. Sits at the dispatch waist, so the row-button path and the chat/slash path are
     // gated uniformly (shared runConfirmGate; the dialog is only the web presenter). Cancel = quiet notice.
     if (route.kind === 'needsConfirm') {
+      // Capture the executed op's reply so a caller (e.g. the entrust picker) can
+      // surface success/failure — while the confirm gate still runs. `undefined`
+      // means the user CANCELLED (or a broken presenter) → the op never ran.
+      let gateReply;
       await runConfirmGate({
         route, catalog, t,
         present: openCircleConfirmDialog,
         onCancelNotice: () => _kringRender?.botBubble(t('circle.confirm.cancelled')),
-        execute: executeResolved,
+        execute: async (ready) => { gateReply = await executeResolved(ready); },
       });
-      return;
+      return gateReply;
     }
     if (route.kind !== 'ready')     { _kringRender?.botBubble(t('circle.bot.unknown')); return; }
-    await executeResolved(route);
+    return await executeResolved(route);
 
     // The execute tail every accepted route runs (direct 'ready' or confirmed 'needsConfirm' → 'ready').
     async function executeResolved(route) {
@@ -1586,6 +1590,10 @@ function buildCircleBot(agent) {
       // Classic parity (P6.6/P6.7): after a /find reply, enrich with in-circle skill matches + an optional hop
       // prompt. Best-effort — never let it break the dispatch.
       try { await appendFindExtras(reply); } catch { /* enrichment is non-essential */ }
+      // Return the op's reply so a caller that dispatched through the waist (e.g.
+      // the entrust picker) can surface success/failure. The result is ALSO
+      // already surfaced as a kring bubble above — this is an additive channel.
+      return reply;
     }
   }
 
@@ -1975,19 +1983,39 @@ async function openMandatePicker({ taskId, circleId } = {}) {
     onCancel: close,
     onConfirm: async ({ taskId: tid, member, grant }) => {
       busy = true; notice = null; paint();
-      let res = null;
-      try { res = await rawCallSkill('tasks', 'attachTaskGrant', { taskId: tid, member, grant, circleId }); }
-      catch (e) { res = { error: e?.message ?? 'unknown' }; }
+      // Route the mandate through the SAME confirm/gate waist every consequential
+      // op uses (attachTaskGrant now declares surfaces.ui.confirm → runConfirmGate
+      // shows "weet je het zeker?" + the default-deny capability gate runs) — NO
+      // direct callSkill bypass. Hide the picker while the shared confirm dialog
+      // (a lower-z-index modal) is up, then reshow with the result. The waist ALSO
+      // surfaces the op reply as a kring bubble; here we read it back to keep the
+      // picker's own success/failure notice + legibility refresh.
+      backdrop.style.display = 'none';
+      let reply;
+      try {
+        reply = typeof circleDispatchReady === 'function'
+          ? await circleDispatchReady({ opId: 'attachTaskGrant', args: { taskId: tid, member, grant, circleId }, appOrigin: 'tasks' })
+          : undefined;
+      } catch (e) { reply = { error: { message: e?.message ?? 'unknown' } }; }
       busy = false;
-      if (res && res.ok) {
+      backdrop.style.display = 'flex';
+      // `undefined` ⇒ cancelled at the confirm gate (the op never ran) — leave the
+      // picker open with no notice so the owner can retry or cancel; the gate
+      // posted its own quiet "cancelled" bubble.
+      if (reply === undefined) { paint(); return; }
+      // runDispatch wraps the skill reply: success = `payload.ok`; failure = an
+      // elevated `reply.error` OR a bare `payload.error`. Never swallow either.
+      const skillReply = reply && typeof reply === 'object' ? reply.payload : null;
+      const errMsg = reply?.error?.message
+        ?? (skillReply && typeof skillReply === 'object' ? skillReply.error : null);
+      if (!errMsg && skillReply && skillReply.ok) {
         // Legibility refreshes from the op's returned grant set (or a re-read).
-        existingGrants = Array.isArray(res.grants) ? res.grants : await loadTaskGrants({ taskId: tid, circleId });
+        existingGrants = Array.isArray(skillReply.grants) ? skillReply.grants : await loadTaskGrants({ taskId: tid, circleId });
         notice = t('circle.mandate.done');
-        paint();
       } else {
-        notice = t('circle.mandate.failed', { error: res?.error ?? 'unknown' });
-        paint();
+        notice = t('circle.mandate.failed', { error: errMsg ?? 'unknown' });
       }
+      paint();
     },
   });
   paint();

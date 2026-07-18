@@ -18,6 +18,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
 import { agentsManifest } from '../../../agents/manifest.js';
+import { tasksManifest } from '../../../tasks-v0/manifest.js';
 import { mergeManifests } from '../../src/manifestMerge.js';
 import { resolveDispatch } from '../../src/router.js';
 import { confirmRequestFromRoute, readyFromConfirm, runConfirmGate } from '../../src/v2/confirmGate.js';
@@ -48,6 +49,49 @@ describe('emission — an op with surfaces.ui.confirm + complete args resolves t
       expect(route.appOrigin).toBe('agents');
     });
   }
+});
+
+// The MANDATE (entrust) op routes through the SAME confirm waist: attachTaskGrant
+// now declares surfaces.ui.confirm (severity warn, no manifest message → the
+// localised default), so issuing a mandate can never bypass the "weet je het
+// zeker?" gate. This is the mechanism the entrust picker relies on (P5, 2026-07-18).
+describe('mandate — attachTaskGrant routes through the confirm waist', () => {
+  const tasksCatalog = mergeManifests([{ manifest: tasksManifest }]);
+  const routeMandate = () => resolveDispatch(
+    { kind: 'slash', opId: 'attachTaskGrant', args: { taskId: 't1', member: 'ed25519:bob' }, command: '(bot)', body: '' },
+    tasksCatalog,
+  );
+
+  it('resolves attachTaskGrant to needsConfirm (severity warn) before any execute', () => {
+    const route = routeMandate();
+    expect(route.kind).toBe('needsConfirm');
+    expect(route.severity).toBe('warn');
+    expect(route.opId).toBe('attachTaskGrant');
+    expect(route.args).toEqual({ taskId: 't1', member: 'ed25519:bob' });
+  });
+
+  it('has no raw manifest message → the gate uses the localised default (invariant #8)', () => {
+    const declared = tasksManifest.operations.find((o) => o.id === 'attachTaskGrant').surfaces.ui.confirm;
+    expect(declared.message).toBeUndefined();
+    const req = confirmRequestFromRoute(routeMandate(), { t });
+    expect(req.message).toBe('circle.confirm.default_message');
+    expect(req.severity).toBe('warn');
+  });
+
+  it('accept → executes exactly once with the confirmed ready dispatch; cancel → never executes', async () => {
+    const acceptExec = vi.fn();
+    const accepted = await runConfirmGate({ route: routeMandate(), catalog: tasksCatalog, t, present: async () => true, execute: acceptExec, onCancelNotice: vi.fn() });
+    expect(accepted.executed).toBe(true);
+    expect(acceptExec).toHaveBeenCalledTimes(1);
+    expect(acceptExec).toHaveBeenCalledWith(expect.objectContaining({ kind: 'ready', opId: 'attachTaskGrant' }));
+
+    const cancelExec = vi.fn();
+    const onCancelNotice = vi.fn();
+    const cancelled = await runConfirmGate({ route: routeMandate(), catalog: tasksCatalog, t, present: async () => false, execute: cancelExec, onCancelNotice });
+    expect(cancelled.executed).toBe(false);
+    expect(cancelExec).not.toHaveBeenCalled();
+    expect(onCancelNotice).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('confirmRequestFromRoute — the presentation model', () => {

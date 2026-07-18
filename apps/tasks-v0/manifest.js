@@ -245,6 +245,16 @@ export const tasksManifest = {
       ],
       surfaces: {
         chat: { hint: 'Attach a task-scoped, attenuated capability grant to a task for a member (creator/admin only); revoked when the task completes.' },
+        // P5 (2026-07-18) — entrusting authority routes through the SAME Q27
+        // confirm waist every consequential op uses: declaring `ui.confirm`
+        // makes resolveDispatch emit `needsConfirm`, so the shared runConfirmGate
+        // shows a "weet je het zeker?" before ANY grant is issued — the entrust
+        // picker no longer bypasses the gate with a direct callSkill. `confirm`
+        // WITHOUT a `control` adds no inline button (computeEmbedButtons requires
+        // control === 'button'), so the deliberately-minimal task keyboard is
+        // untouched. No `message` here (invariant #8: the manifest message is raw,
+        // not t()'d) → the gate falls back to the localised default prompt.
+        ui: { confirm: { severity: 'warn' } },
       },
     },
     {
