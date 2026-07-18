@@ -1,7 +1,7 @@
 /**
- * taskExchange.js — Task lifecycle: outbound callSkill + inbound handleTaskRequest.
+ * taskExchange.js — Task lifecycle: outbound invokeAgentSkill + inbound handleTaskRequest.
  *
- * Outbound (callSkill):
+ * Outbound (invokeAgentSkill):
  *   1. Create Task, register in StateManager
  *   2. Look up CapabilityToken for (peerId, skillId) if agent.tokenRegistry present
  *   3. Send RQ with { type:'task', taskId, skillId, parts, ttl?, _token? }
@@ -73,7 +73,7 @@ function _effectiveTtl(requested, ceiling) {
  * @param {number}    [opts.ttl]   — suggested task TTL ms (receiver may cap)
  * @returns {Task}
  */
-export function callSkill(agent, peerId, skillId, parts, opts = {}) {
+export function invokeAgentSkill(agent, peerId, skillId, parts, opts = {}) {
   const taskId = genId();
   const task   = new Task({ taskId, skillId, agent, peerId, state: 'submitted' });
   agent.stateManager.createTask(taskId, task);
@@ -113,7 +113,7 @@ export function callSkill(agent, peerId, skillId, parts, opts = {}) {
         return;
       }
 
-      console.log(`[callSkill] ${skillId} → ${peerId.slice(0,12)} via ${t?.constructor?.name}`);
+      console.log(`[invokeAgentSkill] ${skillId} → ${peerId.slice(0,12)} via ${t?.constructor?.name}`);
       const rs = await t.request(
         peerId,
         {
@@ -141,7 +141,7 @@ export function callSkill(agent, peerId, skillId, parts, opts = {}) {
       // mark the (peer, transport) pair degraded for 30 s so the next call
       // via RoutingStrategy falls through to the next-best live transport.
       if (!err.message?.includes('pubKey')) {
-        console.warn(`[callSkill] ${skillId} → ${peerId.slice(0,12)} FAILED:`, err.message);
+        console.warn(`[invokeAgentSkill] ${skillId} → ${peerId.slice(0,12)} FAILED:`, err.message);
         if (!opts._overrideTransport) {
           _reportFailure(agent, peerId, err);
         }
@@ -300,7 +300,7 @@ async function _runInProcess(callerAgent, targetAgent, task, taskId, skillId, pa
  *
  * Returns the terminal descriptor (or null when the round ended via cancel /
  * TTL-expiry, where the caller Task was already settled by the cancel OW /
- * task-expired OW). The caller (callSkill) applies the transition so the
+ * task-expired OW). The caller (invokeAgentSkill) applies the transition so the
  * failure lands one hop after done() is awaited — matching wire RS timing.
  */
 async function _runInProcessInputRequired(targetAgent, targetT, taskId, skillId, from, res, cleanup) {

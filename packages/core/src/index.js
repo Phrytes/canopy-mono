@@ -126,7 +126,7 @@ export { ping }                                           from './protocol/ping.
 export { sendMessage, handleMessage }                     from './protocol/messaging.js';
 export { sendHello, handleHello }                         from './protocol/hello.js';
 export { requestSkills, handleSkillDiscovery }            from './protocol/skillDiscovery.js';
-export { callSkill, handleTaskRequest, handleTaskOneWay } from './protocol/taskExchange.js';
+export { invokeAgentSkill, handleTaskRequest, handleTaskOneWay } from './protocol/taskExchange.js';
 export { subscribe, unsubscribe, publish, handlePubSub }  from './protocol/pubSub.js';
 export {
   SkillsPubSub,

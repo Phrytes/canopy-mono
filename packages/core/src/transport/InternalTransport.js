@@ -48,7 +48,7 @@ export class InternalTransport extends Transport {
   /**
    * Look up a sibling InternalTransport on the SAME bus by address (or null).
    * Populated on connect(); lets the B★ in-process fast-path
-   * (protocol/taskExchange.callSkill) resolve the target agent — via
+   * (protocol/taskExchange.invokeAgentSkill) resolve the target agent — via
    * `peerTransport(addr)._ownerAgent` — without a bus hop. Best-effort: an
    * unknown / not-yet-connected peer returns null and the caller falls back to
    * the wire path.

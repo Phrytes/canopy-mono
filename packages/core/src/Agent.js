@@ -34,7 +34,7 @@ import { handleMessage }                             from './protocol/messaging.
 import { handleKeyRotationOW, KeyRotation, migratePeerGraph } from './protocol/keyRotation.js';
 import { AgentIdentity }                              from './identity/AgentIdentity.js';
 import { handleSkillDiscovery }                      from './protocol/skillDiscovery.js';
-import { callSkill, handleTaskRequest, handleTaskOneWay } from './protocol/taskExchange.js';
+import { invokeAgentSkill, handleTaskRequest, handleTaskOneWay } from './protocol/taskExchange.js';
 import { handlePubSub }                              from './protocol/pubSub.js';
 import { invokeWithHop, callWithHop }                from './routing/invokeWithHop.js';
 import { registerRelayForward }                      from './skills/relayForward.js';
@@ -531,9 +531,9 @@ export class Agent extends Emitter {
     if (opts.transport) {
       const t = this.#transports.get(opts.transport);
       if (!t) throw new Error(`Unknown transport: ${opts.transport}`);
-      return callSkill({ ...this._asCallCtx(), _overrideTransport: t }, peerId, skillId, parts, opts);
+      return invokeAgentSkill({ ...this._asCallCtx(), _overrideTransport: t }, peerId, skillId, parts, opts);
     }
-    return callSkill(this, peerId, skillId, parts, opts);
+    return invokeAgentSkill(this, peerId, skillId, parts, opts);
   }
 
   /**
@@ -1344,7 +1344,7 @@ export class Agent extends Emitter {
   // ── Internal ──────────────────────────────────────────────────────────────
 
   /**
-   * Internal: return a context object for callSkill when an override transport
+   * Internal: return a context object for invokeAgentSkill when an override transport
    * is needed.  Not part of the public API.
    */
   _asCallCtx() { return this; }
