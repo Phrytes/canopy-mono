@@ -11,6 +11,8 @@
  * renderers are thin.
  */
 
+import { taskRowProvenance } from './streamActions.js';
+
 /**
  * Best-effort circle id for a logged event.  Events don't carry a
  * first-class circleId, so we read the usual audience fields off the
@@ -47,6 +49,11 @@ export function buildCircleStream({ events = [], circles = [] } = {}) {
     .map((e) => {
       const circleId = eventCircleId(e);
       const circle = circleId != null ? byId.get(circleId) : null;
+      // First-class task provenance (taskId + addedBy) for task/chore/reminder
+      // rows, so the owner-only entrust check downstream is DETERMINISTIC (not a
+      // best-effort payload dig). Null for non-task rows → the fields are absent
+      // and the row renders exactly as before (backwards-compatible).
+      const prov = taskRowProvenance(e);
       return {
         id:         e.id,
         ts:         typeof e.ts === 'number' ? e.ts : 0,
@@ -55,6 +62,7 @@ export function buildCircleStream({ events = [], circles = [] } = {}) {
         actor:      e.actor ?? null,
         circleId:   circleId ?? null,
         circleName: circle?.name ?? null,
+        ...(prov ? { taskId: prov.taskId, addedBy: prov.addedBy } : {}),
         event:      e,
       };
     })

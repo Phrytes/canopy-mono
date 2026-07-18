@@ -57,6 +57,31 @@ describe('buildCircleStream', () => {
     expect(buildCircleStream({ events: [], circles: [] })).toEqual([]);
     expect(buildCircleStream({ events: [null, undefined] })).toEqual([]);
   });
+
+  // First-class task provenance (taskId + addedBy) so the owner-only entrust
+  // check downstream is DETERMINISTIC, not a best-effort payload dig.
+  describe('task provenance (taskId + addedBy)', () => {
+    it('stamps taskId + addedBy on task/chore/reminder rows', () => {
+      const events = [
+        { id: 'e1', ts: 3, app: 'tasks', type: 'buurt-post', payload: { circleId: 'circle-1', kind: 'chore', ref: 'task-77', addedBy: 'https://me.example/#me' } },
+        { id: 'e2', ts: 2, app: 'tasks', type: 'task', payload: { circleId: 'circle-1', taskId: 'task-9', creator: 'https://al.example/#me' } },
+        { id: 'e3', ts: 1, app: 'tasks', type: 'reminder', payload: { circleId: 'circle-1' } },
+      ];
+      const rows = buildCircleStream({ events, circles });
+      expect(rows[0]).toMatchObject({ taskId: 'task-77', addedBy: 'https://me.example/#me' });
+      expect(rows[1]).toMatchObject({ taskId: 'task-9', addedBy: 'https://al.example/#me' });
+      // A task-like row with no creator present still stamps the fields (null), so
+      // the projection contract is uniform.
+      expect(rows[2]).toMatchObject({ taskId: null, addedBy: null });
+    });
+
+    it('does NOT add provenance fields to non-task rows (backwards-compatible)', () => {
+      const events = [{ id: 'e1', ts: 1, app: 'stoop', type: 'buurt-post', payload: { circleId: 'circle-1', kind: 'question', ref: 'q-1' } }];
+      const [row] = buildCircleStream({ events, circles });
+      expect(row).not.toHaveProperty('taskId');
+      expect(row).not.toHaveProperty('addedBy');
+    });
+  });
 });
 
 describe('buildKringStream (SP-13)', () => {

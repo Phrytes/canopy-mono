@@ -136,6 +136,29 @@ describe('actionsForStreamRow', () => {
       const actions = actionsForStreamRow(mkRow({ kind: 'task' }), { isAdmin: true });
       expect(actions.map((a) => a.action)).toEqual(['mandate']);
     });
+
+    // ── First-class provenance (the projection stamps row.taskId + row.addedBy) ──
+    // The owner check is now DETERMINISTIC: the actual creator sees entrust even
+    // when they are NOT an admin, straight off the row's stamped provenance.
+    describe('exact provenance (row.addedBy / row.taskId)', () => {
+      it('the creator (non-admin) sees entrust from first-class row.addedBy', () => {
+        const row = { id: 'r1', circleId: 'c', type: 'chore', addedBy: 'https://me.example/#me', taskId: 'task-77', event: { type: 'chore', payload: { kind: 'chore' } } };
+        const actions = actionsForStreamRow(row, { viewerWebid: 'https://me.example/#me', isAdmin: false });
+        expect(actions.map((a) => a.action)).toContain('mandate');
+      });
+
+      it('a non-owner still does not see entrust despite provenance', () => {
+        const row = { id: 'r1', circleId: 'c', type: 'chore', addedBy: 'https://alice.example/#me', taskId: 'task-77', event: { type: 'chore', payload: { kind: 'chore' } } };
+        const actions = actionsForStreamRow(row, { viewerWebid: 'https://bob.example/#me', isAdmin: false });
+        expect(actions.map((a) => a.action)).not.toContain('mandate');
+      });
+
+      it('the mandate payload carries the first-class row.taskId (preferred over the ref)', () => {
+        const row = { id: 'r1', circleId: 'c', type: 'chore', addedBy: 'https://me.example/#me', taskId: 'task-77', event: { type: 'chore', payload: { kind: 'chore', ref: 'stale-ref' } } };
+        const mandate = actionsForStreamRow(row, { isAdmin: true }).find((a) => a.action === 'mandate');
+        expect(mandate.payload.taskId).toBe('task-77');
+      });
+    });
   });
 });
 

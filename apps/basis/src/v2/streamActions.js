@@ -43,18 +43,49 @@ const ACTION_DEFS = {
  * brokered grant). A mandate is bounded authority the task OWNER entrusts for
  * one task; the `attachTaskGrant` op enforces the real creator/admin gate — the
  * owner-only VISIBILITY here is a UX affordance, not the security boundary.
+ *
+ * Exported so the row PROJECTION (`buildCircleStream`) can stamp first-class
+ * task provenance on the same kinds — one source of truth for "is this a
+ * task-like row" (invariant #3).
  */
-const MANDATE_KINDS = new Set(['task', 'chore', 'reminder']);
+export const MANDATE_KINDS = new Set(['task', 'chore', 'reminder']);
 
 /**
- * Best-effort task creator for a stream row. Stream rows are EventLog-derived,
- * so provenance may not be present; when it isn't, the caller's viewer signals
- * (`isOwn` / `isAdmin`) still decide visibility.
+ * First-class task provenance for a task/chore/reminder EVENT — the `taskId`
+ * (the item ref) + `addedBy` (the creator). This is the SINGLE extractor the
+ * projection uses to stamp `{ taskId, addedBy }` on a row, so the owner check
+ * downstream is deterministic rather than rummaging through payload shapes.
+ *
+ * Returns null when the event is not a task-like kind (the row then carries no
+ * provenance — backwards-compatible; the action just hides).
+ *
+ * @param {object} event  a LoggedEvent (`{ type?, kind?, payload? }`)
+ * @returns {{ taskId: (string|null), addedBy: (string|null) } | null}
+ */
+export function taskRowProvenance(event) {
+  const ev = event && typeof event === 'object' ? event : {};
+  const p = ev.payload && typeof ev.payload === 'object' ? ev.payload : {};
+  const cands = [p.kind, ev.type, ev.kind];
+  const isTaskLike = cands.some((c) => typeof c === 'string' && MANDATE_KINDS.has(c.toLowerCase()));
+  if (!isTaskLike) return null;
+  const taskId  = p.ref ?? p.taskId ?? p.id ?? ev.itemRef?.id ?? null;
+  const addedBy = p.addedBy ?? p.master ?? p.creator ?? p.author ?? null;
+  return { taskId, addedBy };
+}
+
+/**
+ * The task creator for a stream row. Prefers the FIRST-CLASS `row.addedBy`
+ * stamped by the projection (`buildCircleStream` → `taskRowProvenance`), so the
+ * owner check is deterministic for a mirrored-in task regardless of admin
+ * status. Falls back to reading the event payload for rows built WITHOUT
+ * provenance (backwards-compatible); when neither is present the caller's
+ * viewer signals (`isOwn` / `isAdmin`) still decide visibility.
  */
 function rowTaskCreator(row) {
+  if (row && typeof row.addedBy === 'string' && row.addedBy) return row.addedBy;
   const ev = row && row.event && typeof row.event === 'object' ? row.event : {};
   const p = ev.payload && typeof ev.payload === 'object' ? ev.payload : {};
-  return p.addedBy ?? p.master ?? p.creator ?? p.author ?? row?.addedBy ?? null;
+  return p.addedBy ?? p.master ?? p.creator ?? p.author ?? null;
 }
 
 /**
@@ -106,11 +137,14 @@ export function actionsForStreamRow(row, viewer = {}) {
   // row (which has no chips) still offers it to its owner.
   const mandateKind = pickMandateKind(row, ev, payload);
   if (mandateKind && viewerMayMandate(row, viewer)) {
+    // Prefer the first-class `row.taskId` stamped by the projection; fall back to
+    // the payload ref for rows built without provenance.
+    const taskId = (typeof row.taskId === 'string' && row.taskId) ? row.taskId : ref;
     out.push({
       id:      `${row.id ?? ev.id ?? 'row'}-mandate`,
       action:  'mandate',
       label:   ACTION_DEFS.mandate.label,
-      payload: { rowId, circleId: row.circleId ?? null, kind: mandateKind, ref, taskId: ref },
+      payload: { rowId, circleId: row.circleId ?? null, kind: mandateKind, ref, taskId },
     });
   }
   return out;
