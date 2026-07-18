@@ -14,6 +14,7 @@
  */
 export {
   VOCABULARY,
+  CHARTER_ROLE_KEY,
   attributeKeys,
   isVocabKey,
   bucketsFor,

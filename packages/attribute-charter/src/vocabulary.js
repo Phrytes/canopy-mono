@@ -24,6 +24,14 @@ export const VOCABULARY = Object.freeze({
     buckets: Object.freeze(['<18', '18-34', '35-54', '55+']),
     never: Object.freeze(['birthdate', 'exact-age']),
   }),
+  // NAMESPACE — this is `charter:role`, NOT `governance:role`. It is a DISCLOSED
+  // coarse background attribute (who you are in a neighbourhood: resident /
+  // visitor / …). It grants NOTHING: no rank, no authority, no policy gate. The
+  // rank-bearing standing (admin/coordinator/member) lives in
+  // packages/core/src/permissions/Roles.js and is a wholly separate concept that
+  // merely shares the bare word "role". Reference this key via CHARTER_ROLE_KEY
+  // (below) so it can never be confused with the governance role. See
+  // plans/PLAN-capabilities-tasks-roles.md Phase 0 (NAMESPACE — kill the `role` collision).
   role: Object.freeze({
     buckets: Object.freeze(['resident', 'works-here', 'visitor', 'business-owner']),
     never: Object.freeze(['free-text']),
@@ -37,6 +45,23 @@ export const VOCABULARY = Object.freeze({
     never: Object.freeze(['names', 'count']),
   }),
 });
+
+/**
+ * The disambiguated key for the charter `role` attribute — i.e. `charter:role`.
+ *
+ * Two unrelated concepts share the bare word "role" in this codebase:
+ *  - **charter role** (THIS): a disclosed personal property describing who you
+ *    are in a neighbourhood (resident / works-here / visitor / business-owner).
+ *    It is a plain coarse-enum attribute; it grants NO rank and NO authority.
+ *  - **governance role** (`packages/core/src/permissions/Roles.js`): a
+ *    rank-bearing standing (admin / coordinator / member …) that grants
+ *    authority and satisfies policy gates.
+ *
+ * Reference the charter attribute through this constant (never a bare `'role'`
+ * literal) so a build path can never conflate the two. Convention: write
+ * `charter:role` vs `governance:role` in docs/comments when they must coexist.
+ */
+export const CHARTER_ROLE_KEY = 'role';
 
 /** The attribute keys the vocabulary offers. */
 export function attributeKeys() {
