@@ -74,6 +74,7 @@ import {
 import { createInputHistory } from '../../src/v2/commandSuggest.js';
 import { beginFollowUp, completeFollowUp, beginFormFollowUp, completeMultiFieldFollowUp } from '@onderling/kring-host/followUp';
 import { kringReplyText } from '../../src/v2/kringReply.js';
+import { oneToOneBotLabel } from '../../src/v2/botChat.js';
 import { scopeCatalogToApps } from '../../src/v2/circleCatalogScope.js';
 // the default-deny capability gate applied at the user-dispatch waist (dispatchReady).
 import { effectiveCapabilities, checkCapability } from '../../src/v2/capabilityGate.js';
@@ -3841,6 +3842,11 @@ function showKring(id, circle, policy) {
   let noticeboardPendingAttachment = null;   // S5 — { encoded, thumbnail, name } before posting
   let myWebid = null;   // fetched once, best-effort (whoAmI is a stoop skill, not chat-manifested)
   let myCircleRole = null;   // my role in THIS circle ('admin' | …), for mandate owner-visibility
+  // 1:1-bot chat gate — THIS circle's raw roster rows (each carrying `relation`/`webid`),
+  // captured best-effort on open by ensureMyRole (same listGroupMembers call). Fed to the
+  // shared `oneToOneBotLabel` gate at render time to decide the assistant-header strip.
+  // null until resolved → the gate returns null → NO strip (fail-closed).
+  let kringMembers = null;
 
   async function ensureMyWebid() {
     if (myWebid !== null) return myWebid;
@@ -3858,6 +3864,7 @@ function showKring(id, circle, policy) {
     try {
       const res = await rawCallSkill('stoop', 'listGroupMembers', { groupId: id });
       const members = Array.isArray(res?.members) ? res.members : [];
+      kringMembers = members;   // 1:1-bot gate reads the raw rows (relation/webid) at render time
       const me = members.find((m) => (m?.webid ?? m?.id) === myWebid);
       myCircleRole = me?.role ?? '';
     } catch { myCircleRole = ''; }
@@ -4022,6 +4029,17 @@ function showKring(id, circle, policy) {
     });
     renderCircleKring(rootEl, {
       circle, rows, t,
+      // 1:1-bot chat gate — the assistant-header strip shows ONLY when this circle is
+      // you + exactly one participant, and that participant is a bot (relation==='agent').
+      // Computed from THIS circle's raw roster (kringMembers, best-effort on open) + my
+      // webid via the SHARED helper; null (roster not yet resolved, group, or 1:1-human)
+      // → no strip (fail-closed). The localized default rides in as the helper's fallback,
+      // used only for a genuine 1:1 bot with no display name.
+      botLabel: oneToOneBotLabel({
+        members: kringMembers,
+        selfWebid: myWebid || null,
+        fallbackLabel: t('circle.kring.bot_header'),
+      }),
       // Mandate ("entrust") — owner-only visibility of the entrust action. myWebid
       // + my role are best-effort (populated async on open); until then the action
       // stays hidden (fail-closed), and a locally-authored task row still offers it

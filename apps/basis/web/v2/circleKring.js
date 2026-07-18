@@ -68,10 +68,12 @@ export function renderCircleKring(container, {
   more = null,
   composerPlaceholder = null,
   composerPrefill = null,   // convergence — the ✏ edit opens the composer with the point's current text
-  // Bulletin restyle — the label shown in the GESPREK chat-card's bot-header strip
-  // (green presence dot + this name). SEAM: no per-kring bot identity is plumbed to
-  // the renderer yet, so hosts leave this null and the strip falls back to a localized
-  // default (`circle.kring.bot_header`). Wire a real agent/bot name here when it exists.
+  // The label shown in the GESPREK chat-card's assistant-header strip (green presence
+  // dot + this name). GATE: the host computes it via the shared `oneToOneBotLabel` and
+  // passes a non-empty string ONLY for a genuine 1:1-with-a-bot chat; on a group kring
+  // (or a 1:1-with-a-human) it passes null → NO strip. The localized default
+  // (`circle.kring.bot_header`) rides in as the helper's fallback for a named-less bot,
+  // never as an always-on default here. Null → the chat card renders without a head.
   botLabel = null,
   // per-kring bottom tabs (board Voorbeeld 1-3).
   // `tabs`     `[{id, label}]` produced by `buildKringTabs(policy, t)`
@@ -323,17 +325,25 @@ export function renderCircleKring(container, {
   if (isChatStream) {
     const card = document.createElement('div');
     card.className = 'circle-kring__chat-card';
-    const head = document.createElement('div');
-    head.className = 'circle-kring__bot-head';
-    const dot = document.createElement('span');
-    dot.className = 'circle-kring__bot-dot';
-    dot.setAttribute('aria-hidden', 'true');
-    head.appendChild(dot);
-    const name = document.createElement('span');
-    name.className = 'circle-kring__bot-name';
-    name.textContent = botLabel || tr('circle.kring.bot_header');
-    head.appendChild(name);
-    card.appendChild(head);
+    // Gate — the assistant-header strip (green dot + bot name) shows ONLY in a
+    // genuine 1:1-with-a-bot chat. The host computes `botLabel` via the shared
+    // `oneToOneBotLabel` gate; a non-empty string means "this IS a 1:1 bot chat"
+    // (the localized fallback now rides through the helper, not an always-on `||`
+    // here). Null/empty → group or 1:1-human → NO strip. The chat CARD itself still
+    // renders for the gesprek stream — only the HEAD is gated.
+    if (botLabel) {
+      const head = document.createElement('div');
+      head.className = 'circle-kring__bot-head';
+      const dot = document.createElement('span');
+      dot.className = 'circle-kring__bot-dot';
+      dot.setAttribute('aria-hidden', 'true');
+      head.appendChild(dot);
+      const name = document.createElement('span');
+      name.className = 'circle-kring__bot-name';
+      name.textContent = botLabel;
+      head.appendChild(name);
+      card.appendChild(head);
+    }
     card.appendChild(body);
     container.appendChild(card);
   } else {

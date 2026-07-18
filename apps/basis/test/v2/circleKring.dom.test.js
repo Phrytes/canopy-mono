@@ -446,21 +446,26 @@ describe('renderCircleKring · bulletin restyle (bot card · transparency · con
     event: { id: 'b1', type: 'chat-message', actor: 'bot', payload: { text: 'Klaar.', ...payload } },
   });
 
-  it('GESPREK renders the bot card: a bot-header strip (green dot + default name) wrapping the log', () => {
+  it('GESPREK renders the chat card wrapping the log, but NO assistant-header strip on a group kring (no botLabel)', () => {
     const el = mount();
-    renderCircleKring(el, { circle, rows, t });
+    renderCircleKring(el, { circle, rows, t });   // no botLabel → group / non-bot → gate closed
     const card = el.querySelector('.circle-kring__chat-card');
     expect(card).not.toBeNull();
-    expect(card.querySelector('.circle-kring__bot-dot')).not.toBeNull();
-    expect(card.querySelector('.circle-kring__bot-name').textContent).toBe('circle.kring.bot_header');
-    // the message log lives inside the card
+    // the head strip is gated OFF without a 1:1-bot botLabel
+    expect(card.querySelector('.circle-kring__bot-head')).toBeNull();
+    expect(card.querySelector('.circle-kring__bot-dot')).toBeNull();
+    expect(card.querySelector('.circle-kring__bot-name')).toBeNull();
+    // the message log still lives inside the card
     expect(card.querySelector('.circle-kring__list')).not.toBeNull();
   });
 
-  it('botLabel prop overrides the default bot-header name', () => {
+  it('shows the assistant-header strip (green dot + name) ONLY with a 1:1-bot botLabel', () => {
     const el = mount();
     renderCircleKring(el, { circle, rows, t, botLabel: 'de uitleg-bot' });
-    expect(el.querySelector('.circle-kring__bot-name').textContent).toBe('de uitleg-bot');
+    const card = el.querySelector('.circle-kring__chat-card');
+    expect(card.querySelector('.circle-kring__bot-head')).not.toBeNull();
+    expect(card.querySelector('.circle-kring__bot-dot')).not.toBeNull();
+    expect(card.querySelector('.circle-kring__bot-name').textContent).toBe('de uitleg-bot');
   });
 
   it('scherm-mode renders no bot card (not the assistant conversation)', () => {

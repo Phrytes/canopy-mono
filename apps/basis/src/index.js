@@ -138,6 +138,9 @@ export { buildCommandPool, suggestCommands, createInputHistory } from './v2/comm
 export { beginFollowUp, beginFormFollowUp, completeFollowUp, completeMultiFieldFollowUp, pickPromptKey } from '@onderling/kring-host/followUp';
 // Shared one-line kring bot reply text (web + mobile) — verb-aware Added:/Completed: phrasing.
 export { kringReplyText } from './v2/kringReply.js';
+// 1:1-bot chat gate — the GESPREK assistant-header strip shows ONLY in a genuine 1:1-with-a-bot
+// chat, hidden on multi-person kringen (web ≡ mobile; one shared decision).
+export { oneToOneBotLabel } from './v2/botChat.js';
 // Part D — scope a circle's catalog to its apps (drops basis infra ops like /me); web + mobile.
 export { scopeCatalogToApps } from './v2/circleCatalogScope.js';
 // E3 — shared record-panel auto-refresh helpers (web EventRouter + mobile post-mutation).
