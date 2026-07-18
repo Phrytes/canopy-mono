@@ -18,6 +18,9 @@ export {                                                  // PLAN-capabilities-t
   addTasks, listOpen, listClosed, getById, update, removeItems,   // CRUD/query surface as functions-over-CircleItemStore
 } from './taskCrud.js';
 export { createTaskStore } from './createTaskStore.js';   // PLAN-capabilities-tasks-roles P1 step 2 — ItemStore-compatible task surface (Emitter + audit + sync) over CircleItemStore
+export {                                                  // REQUESTABLE BRIDGE (P4b · J6) — a requestable offering, invoked, becomes a TASK (not an action)
+  requestableSkillHandler, offeringsToSkillDefinitions, REQUEST_TASK_KIND, REQUEST_SOURCE_KIND,
+} from './requestableBridge.js';
 export { createGenericAtomHandlers } from './genericAtomHandlers.js';  // B · Layer 1 §1b — generic CRUD-by-atom over any noun
 export { memoryDataSource } from './memoryDataSource.js'; // cluster L · L1 — Map-backed DataSource (no-pod / tests)
 export { createCircleStores } from './circleStores.js';  // cluster L · L1 — per-circle store registry (web≡mobile)
