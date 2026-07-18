@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { answerHelp, helpTopics } from '../../src/v2/help/helpAnswer.js';
+import { answerHelp, answerHelpTopic, helpTopics } from '../../src/v2/help/helpAnswer.js';
 import { helpDeck } from '../../src/v2/help/kaartjes.js';
 
 // The card text answerHelp returns for a given query+lang, or null on a miss.
@@ -205,6 +205,21 @@ describe('helpAnswer · NL ≡ EN parity', () => {
       expect(nl.text).not.toBe(en.text);
     });
   }
+});
+
+describe('helpAnswer · answerHelpTopic (direct topic resolution)', () => {
+  it('resolves a topic id straight to its localized card + source (no query matching)', () => {
+    const nl = answerHelpTopic('product.basis', { lang: 'nl' });
+    expect(nl.text).toBe(cardText('product.basis', 'nl'));
+    expect(nl.source).toEqual({ kind: 'local', label: helpDeck.srcLocal.nl, cardId: 'product.basis' });
+    const en = answerHelpTopic('product.basis', { lang: 'en' });
+    expect(en.text).toBe(cardText('product.basis', 'en'));
+  });
+
+  it('returns null for the fallback card and unknown ids', () => {
+    expect(answerHelpTopic(helpDeck.fallbackId, { lang: 'nl' })).toBeNull();
+    expect(answerHelpTopic('no.such.card', { lang: 'nl' })).toBeNull();
+  });
 });
 
 describe('helpAnswer · helpTopics', () => {

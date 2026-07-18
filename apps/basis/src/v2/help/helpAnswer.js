@@ -135,6 +135,22 @@ export function answerHelp(query, { lang } = {}) {
 }
 
 /**
+ * answerHelpTopic(id, { lang }) → { text, layer, source } | null
+ *
+ * Resolve a picked topic id DIRECTLY to its card (the deterministic path behind a
+ * "pick a topic" chip / slash command), bypassing the query matcher — the same
+ * localized text + transparency source `answerHelp` returns for a hit. Excludes the
+ * fallback card and any unknown id (→ null).
+ */
+export function answerHelpTopic(id, { lang } = {}) {
+  const l = lang === 'en' ? 'en' : 'nl';
+  const deck = helpDeck;
+  const k = cardById(deck, id);
+  if (!k || k.id === deck.fallbackId) return null;
+  return { text: k[l], layer: 1, source: localSource(deck, l, k.id) };
+}
+
+/**
  * helpTopics({ lang }) → [{ id, kop }]
  *
  * The answerable topics, as their localized headings — the material a caller

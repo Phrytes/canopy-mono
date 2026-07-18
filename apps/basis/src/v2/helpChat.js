@@ -1,0 +1,86 @@
+/**
+ * helpChat — the standing help Q&A router (shared web + mobile). Pure: it turns a posted message +
+ * the current language + whether an LLM is connected into a DESCRIPTOR of what the Onderling-bot
+ * should post. It never calls a network or a model:
+ *
+ *   HIT  (layer 0/1) → the deterministic kaartje answer (from `answerHelp`), carrying its transparency
+ *                      provenance so the "answered directly — no language model used" badge lights up.
+ *   MISS + an LLM connected → OFFER the consent card (the shell posts the dashed-rust card + buttons;
+ *                      on "yes" it forwards the query through the EXISTING consent-gated circle LLM
+ *                      route — that execution is the shell's job, not this pure module's).
+ *   MISS + no LLM    → the honest fallback: only the set topics can be answered without an assistant.
+ *
+ * The set-topic chips (and `/help` slash) resolve DETERMINISTICALLY to their kaartje answer via
+ * `resolveHelpTopic`. The action namespace (`help:*`) mirrors onboardingChat's `onboarding:*` so the
+ * shell routes button taps the same way.
+ */
+
+import { answerHelp, answerHelpTopic, helpTopics } from './help/helpAnswer.js';
+
+/** Inline-button action namespace for a help affordance (topic chip / consent choice). */
+export const HELP_ACTION_PREFIX = 'help:';
+const TOPIC_PREFIX = 'topic:';
+const CONSENT_PREFIX = 'consent:';
+
+/** The button `action` string for a pickable help topic. */
+export function helpTopicAction(id) { return `${HELP_ACTION_PREFIX}${TOPIC_PREFIX}${id}`; }
+
+/** The button `action` string for a consent choice ('yes' → forward · 'no' → pick a topic yourself). */
+export function helpConsentAction(value) { return `${HELP_ACTION_PREFIX}${CONSENT_PREFIX}${value}`; }
+
+/**
+ * Parse an inline-button action back to a help affordance, or null when it isn't one.
+ * @returns {{kind:'topic', id:string} | {kind:'consent', value:string} | null}
+ */
+export function parseHelpAction(action) {
+  if (typeof action !== 'string' || !action.startsWith(HELP_ACTION_PREFIX)) return null;
+  const rest = action.slice(HELP_ACTION_PREFIX.length);
+  if (rest.startsWith(TOPIC_PREFIX)) {
+    const id = rest.slice(TOPIC_PREFIX.length);
+    return id ? { kind: 'topic', id } : null;
+  }
+  if (rest.startsWith(CONSENT_PREFIX)) {
+    const value = rest.slice(CONSENT_PREFIX.length);
+    return value ? { kind: 'consent', value } : null;
+  }
+  return null;
+}
+
+/**
+ * Route a posted help query → what the bot should post.
+ *
+ *   { kind: 'hit', text, provenance }  — deterministic card answer; `provenance.llmUsed === false`
+ *                                        lights the "answered directly" badge; `source` rides along.
+ *   { kind: 'consent' }                — miss + an LLM is connected → offer the consent card.
+ *   { kind: 'topics' }                 — miss + no LLM → honest fallback + the set-topic chips.
+ *
+ * @param {string} query
+ * @param {{ lang?: string, llmReady?: boolean }} [opts]
+ */
+export function routeHelpMessage(query, { lang, llmReady } = {}) {
+  const ans = answerHelp(query, { lang });
+  if (ans) return { kind: 'hit', text: ans.text, provenance: { llmUsed: false, source: ans.source } };
+  return llmReady ? { kind: 'consent' } : { kind: 'topics' };
+}
+
+/**
+ * The pickable set-topic chips ("of kies zelf") — one per answerable heading. Each carries a
+ * `help:topic:<id>` action the shell routes through `parseHelpAction` → `resolveHelpTopic`.
+ * @param {{ lang?: string }} [opts]
+ * @returns {Array<{ label: string, action: string }>}
+ */
+export function helpTopicChips({ lang } = {}) {
+  return helpTopics({ lang }).map((topic) => ({ label: topic.kop, action: helpTopicAction(topic.id) }));
+}
+
+/**
+ * Resolve a picked topic id → its deterministic card answer, or null for an unknown id.
+ * @param {string} id
+ * @param {{ lang?: string }} [opts]
+ * @returns {{ text: string, provenance: { llmUsed: boolean, source: object } } | null}
+ */
+export function resolveHelpTopic(id, { lang } = {}) {
+  const ans = answerHelpTopic(id, { lang });
+  if (!ans) return null;
+  return { text: ans.text, provenance: { llmUsed: false, source: ans.source } };
+}

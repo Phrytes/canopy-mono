@@ -499,6 +499,40 @@
       "doc": "First-run help circle name — the standing 1:1 chat with the Onderling-bot."
     }
   },
+  "help": {
+    "consent_prompt": {
+      "text": "I don't have a set answer for that. Shall I ask the confidential assistant? Your question would then be forwarded.",
+      "doc": "Task #13 Phase 2 — the LLM-forward consent card in the help circle: shown on a deterministic MISS when an assistant is connected. Renders as the dashed-rust consent card (payload.consent)."
+    },
+    "consent_yes": {
+      "text": "yes, forward it",
+      "doc": "Task #13 Phase 2 — consent card primary button: forward the question to the confidential assistant."
+    },
+    "consent_no": {
+      "text": "no, I'll choose myself",
+      "doc": "Task #13 Phase 2 — consent card secondary button: don't forward; show the fixed topics to pick from instead."
+    },
+    "pick_topic": {
+      "text": "Fine. Then pick a topic yourself:",
+      "doc": "Task #13 Phase 2 — heading above the set-topic chips after the user declines forwarding (or types /help)."
+    },
+    "no_llm_topics": {
+      "text": "Without an assistant I can only answer these set topics. Pick one:",
+      "doc": "Task #13 Phase 2 — honest fallback on a MISS when NO assistant is connected: only the fixed topics can be answered."
+    },
+    "provenance_llm": {
+      "text": "· via the confidential assistant",
+      "doc": "Task #13 Phase 2 — transparency badge under a help answer produced by the confidential assistant (language model). Stamped verbatim as payload.provenance."
+    },
+    "llm_no_answer": {
+      "text": "Even with the assistant I couldn't work that out. Pick a topic if you like:",
+      "doc": "Task #13 Phase 2 — the assistant ran but produced no usable answer; fall back to the fixed topics."
+    },
+    "llm_unavailable": {
+      "text": "The assistant isn't reachable right now. Please try again later.",
+      "doc": "Task #13 Phase 2 — the assistant route errored/was unreachable."
+    }
+  },
   "recipeApply": {
     "button": {
       "text": "📦 Apply recipe",

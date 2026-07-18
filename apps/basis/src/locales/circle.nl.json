@@ -499,6 +499,40 @@
       "doc": "First-run help circle name — the standing 1:1 chat with the Onderling-bot."
     }
   },
+  "help": {
+    "consent_prompt": {
+      "text": "Daar heb ik geen vast antwoord op. Wil je dat ik het aan de vertrouwelijke assistent vraag? Je vraag wordt dan doorgestuurd.",
+      "doc": "Task #13 Phase 2 — the LLM-forward consent card in the help circle: shown on a deterministic MISS when an assistant is connected. Renders as the dashed-rust consent card (payload.consent)."
+    },
+    "consent_yes": {
+      "text": "ja, doorsturen",
+      "doc": "Task #13 Phase 2 — consent card primary button: forward the question to the confidential assistant."
+    },
+    "consent_no": {
+      "text": "nee, ik kies zelf",
+      "doc": "Task #13 Phase 2 — consent card secondary button: don't forward; show the fixed topics to pick from instead."
+    },
+    "pick_topic": {
+      "text": "Prima. Kies dan zelf een onderwerp:",
+      "doc": "Task #13 Phase 2 — heading above the set-topic chips after the user declines forwarding (or types /help)."
+    },
+    "no_llm_topics": {
+      "text": "Zonder assistent kan ik alleen deze vaste onderwerpen beantwoorden. Kies er een:",
+      "doc": "Task #13 Phase 2 — honest fallback on a MISS when NO assistant is connected: only the fixed topics can be answered."
+    },
+    "provenance_llm": {
+      "text": "· via de vertrouwelijke assistent",
+      "doc": "Task #13 Phase 2 — transparency badge under a help answer produced by the confidential assistant (language model). Stamped verbatim as payload.provenance."
+    },
+    "llm_no_answer": {
+      "text": "Daar kwam ik ook met de assistent niet uit. Kies eventueel een onderwerp:",
+      "doc": "Task #13 Phase 2 — the assistant ran but produced no usable answer; fall back to the fixed topics."
+    },
+    "llm_unavailable": {
+      "text": "De assistent is nu niet bereikbaar. Probeer het later nog eens.",
+      "doc": "Task #13 Phase 2 — the assistant route errored/was unreachable."
+    }
+  },
   "recipeApply": {
     "button": {
       "text": "📦 Recept toepassen",

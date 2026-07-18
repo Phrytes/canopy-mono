@@ -8,9 +8,9 @@
  * Build the optimistic kring chat-message event for the local (append-only) EventLog. The same `msgId`
  * is later passed to `broadcastKringFanOut`, so receiver-side dedup suppresses any mirrored echo.
  *
- * @param {{msgId:string, ts:number, circleId:string, actor:string, text:string, buttons?:Array, scope?:string, embeds?:Array, media?:object}} a
+ * @param {{msgId:string, ts:number, circleId:string, actor:string, text:string, buttons?:Array, scope?:string, embeds?:Array, media?:object, provenance?:(string|{llmUsed?:boolean}), consent?:*}} a
  */
-export function kringChatMessageEvent({ msgId, ts, circleId, actor, text, buttons, scope, embeds, media, review }) {
+export function kringChatMessageEvent({ msgId, ts, circleId, actor, text, buttons, scope, embeds, media, review, provenance, consent }) {
   return {
     id: msgId, ts, app: 'kring', type: 'chat-message', actor,
     // `scope` ('self' | 'kring') — is this message private to you or shared with the
@@ -29,6 +29,12 @@ export function kringChatMessageEvent({ msgId, ts, circleId, actor, text, button
       // editable per-point CARDS (renderReviewCards) instead of flattened text. Private by construction
       // (scope 'self'), so it never fans out to peers.
       ...(review ? { review } : {}),
+      // `provenance` — the per-answer transparency badge on a BOT reply: a string renders verbatim, or
+      // `{ llmUsed }` localizes to "answered directly — no language model" / the language-model note.
+      // `consent` — marks a bot bubble as the LLM-forward consent/handoff card (the dashed-rust styling).
+      // Both light dormant restyle seams; local-only presentation, never fanned out.
+      ...(provenance != null ? { provenance } : {}),
+      ...(consent != null ? { consent } : {}),
     },
   };
 }
