@@ -14,26 +14,107 @@
  * is `buildMandateGrant`, kept pure + exported so both the picker and its test
  * build the identical grant object.
  *
- * WHAT (attenuation, v1): the default is "namens jou" — act on your behalf,
- * unnarrowed. Optionally the owner narrows it to ONE of their OWN offerings; only
- * offerings the owner holds appear, so the attenuation is the visible menu.
+ * WAARVOOR (the WHAT) is a DATA-DRIVEN grant-KIND taxonomy (not offerings-only),
+ * so new kinds slot in with one entry. v1 kinds:
+ *   - actAs    — "namens jou handelen": act on your behalf, unnarrowed.
+ *   - offering — one of YOUR offerings (only offerings you hold appear → visible
+ *                attenuation).
+ *   - resource — "toegang tot een bron / iets voor je opvragen", brokered through
+ *                your device. HONEST STATE: basis surfaces no grantable-resource
+ *                enumeration yet AND the brokered in-circle fetch isn't wired
+ *                end-to-end, so this ships as a first-class taxonomy entry marked
+ *                "nog niet actief" — it does not issue. `buildMandateGrant` fully
+ *                supports the kind (pure + tested); flip its spec `active` on when
+ *                the enumeration + fetch land.
  */
 
 /**
- * Build the grant object dispatched with `attachTaskGrant`. Pure.
+ * Build the grant object dispatched with `attachTaskGrant`. Pure. Switches on the
+ * grant KIND so adding a kind is one `case` + one taxonomy entry (below).
  *
  * @param {object} o
- * @param {string} o.myWebid        the granter (acts as this identity — "namens jou")
- * @param {string} [o.offeringKey]  narrow the mandate to one of MY offerings (its key)
- * @returns {{ actingAs:string, skill?:string, constraints:{ broker:boolean } }}
+ * @param {'actAs'|'offering'|'resource'} [o.kind]  the grant kind (inferred from
+ *   the other args when omitted: offeringKey → offering, scope → resource, else actAs)
+ * @param {string} o.myWebid       the granter (acts as this identity — "namens jou")
+ * @param {string} [o.offeringKey] narrow the mandate to one of MY offerings (its key)
+ * @param {string} [o.scope]       the resource scope/path the brokered grant targets
+ * @returns {object} a TaskGrant template ({ actingAs?, skill?, pod?, constraints })
  */
-export function buildMandateGrant({ myWebid, offeringKey } = {}) {
-  return {
-    actingAs: myWebid,
-    ...(offeringKey ? { skill: offeringKey } : {}),
-    // Brokered by construction: keys stay with the granter, only answers travel.
-    constraints: { broker: true },
-  };
+export function buildMandateGrant({ kind, myWebid, offeringKey, scope } = {}) {
+  const k = kind ?? (offeringKey ? 'offering' : (scope ? 'resource' : 'actAs'));
+  switch (k) {
+    case 'offering':
+      return {
+        actingAs: myWebid,
+        ...(offeringKey ? { skill: offeringKey } : {}),
+        // Brokered by construction: keys stay with the granter, only answers travel.
+        constraints: { broker: true },
+      };
+    case 'resource':
+      // Path-scoped brokered read: the device stays the scope authority and keys
+      // never leave (via:'device'). Maps to the PodCapabilityToken / agent-proxy model.
+      return {
+        pod: scope,
+        constraints: { broker: true, via: 'device' },
+      };
+    case 'actAs':
+    default:
+      return { actingAs: myWebid, constraints: { broker: true } };
+  }
+}
+
+/**
+ * The grant-KIND taxonomy driving the WAARVOOR menu. Each spec expands into 0+
+ * selectable option rows; adding a kind = one entry here. An option:
+ *   `{ kind, id, label, params, active, note? }`
+ * `params` is spread into `buildMandateGrant` on confirm; `active:false` rows are
+ * shown (legible taxonomy) but not issuable (honest "nog niet actief").
+ */
+export const GRANT_KIND_SPECS = [
+  {
+    kind: 'actAs',
+    expand: ({ tr }) => [{
+      kind: 'actAs', id: 'actAs',
+      label: tr('circle.mandate.on_your_behalf'),
+      params: {}, active: true,
+    }],
+  },
+  {
+    kind: 'offering',
+    groupLabelKey: 'circle.mandate.kind.offering',
+    // One row per offering the owner HOLDS — visible attenuation. None held → none.
+    expand: ({ offerings, tr }) => (Array.isArray(offerings) ? offerings : [])
+      .filter((o) => o && o.key)
+      .map((o) => ({
+        kind: 'offering', id: `offering:${o.key}`,
+        label: o.text || o.label || o.key,
+        params: { offeringKey: o.key }, active: true,
+      })),
+  },
+  {
+    kind: 'resource',
+    // HONEST first-class entry — see the module header. Not issuable yet.
+    expand: ({ tr }) => [{
+      kind: 'resource', id: 'resource',
+      label: tr('circle.mandate.kind.resource'),
+      note:  tr('circle.mandate.kind.resource_note'),
+      params: {}, active: false,
+    }],
+  },
+];
+
+/**
+ * Expand the taxonomy into render-ready groups `[{ groupLabelKey, rows:[opt] }]`.
+ * A kind that expands to zero rows (e.g. offerings when you hold none) is omitted.
+ */
+export function grantKindOptions({ offerings = [], t } = {}) {
+  const tr = typeof t === 'function' ? t : (k) => k;
+  const groups = [];
+  for (const spec of GRANT_KIND_SPECS) {
+    const rows = spec.expand({ offerings, tr });
+    if (rows.length) groups.push({ groupLabelKey: spec.groupLabelKey ?? null, rows });
+  }
+  return groups;
 }
 
 /** A member's display label — a short name, falling back to a trimmed WebID. */
@@ -89,7 +170,7 @@ export function renderMandatePicker(container, {
     .filter((m) => memberWebid(m) && memberWebid(m) !== myWebid);
 
   let pickedMember = null;      // WebID
-  let pickedOffering = null;    // offering key, or null = "namens jou"
+  let pickedWhat = null;        // the selected grant-kind option (from grantKindOptions)
 
   // ── Header ────────────────────────────────────────────────────────────────
   const header = document.createElement('div');
@@ -176,47 +257,57 @@ export function renderMandatePicker(container, {
     container.appendChild(list);
   }
 
-  // ── WHAT (attenuation) ───────────────────────────────────────────────────────
+  // ── WAARVOOR (WHAT) — the data-driven grant-KIND taxonomy ────────────────────
   container.appendChild(sectionLabel('circle.mandate.what_label'));
   const whatList = document.createElement('div');
   whatList.className = 'cc-mandate-picker__what';
   whatList.setAttribute('role', 'radiogroup');
 
-  // Option rows: "namens jou" (default, key=null) + one row per offering I hold.
-  const whatOptions = [
-    { key: null, label: tr('circle.mandate.on_your_behalf') },
-    ...(Array.isArray(offerings) ? offerings : [])
-      .filter((o) => o && o.key)
-      .map((o) => ({ key: o.key, label: o.text || o.label || o.key })),
-  ];
-  for (const opt of whatOptions) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'cc-mandate-picker__what-item';
-    btn.setAttribute('role', 'radio');
-    btn.dataset.offering = opt.key ?? '';
-    const isDefault = opt.key === null;
-    btn.setAttribute('aria-checked', isDefault ? 'true' : 'false');
-    btn.style.cssText = `display:block;width:100%;text-align:left;padding:8px 10px;margin:0 0 4px;border:1px solid ${isDefault ? 'var(--accent)' : 'var(--line)'};border-radius:var(--radius-sm);background:${isDefault ? 'var(--paper-2)' : 'var(--card)'};color:var(--ink);cursor:pointer`;
-    btn.textContent = opt.label;
-    btn.addEventListener('click', () => {
-      pickedOffering = opt.key;
-      for (const el of whatList.querySelectorAll('.cc-mandate-picker__what-item')) {
-        const on = (el.dataset.offering || '') === (opt.key ?? '');
-        el.setAttribute('aria-checked', on ? 'true' : 'false');
-        el.style.borderColor = on ? 'var(--accent)' : 'var(--line)';
-        el.style.background = on ? 'var(--paper-2)' : 'var(--card)';
-      }
-    });
-    whatList.appendChild(btn);
-  }
-  pickedOffering = null;   // default = "namens jou"
-  container.appendChild(whatList);
+  // An honest note area shown when the selected kind can't be issued yet
+  // (e.g. the "resource" kind while the brokered device-fetch path is unwired).
+  const whatNote = document.createElement('div');
+  whatNote.className = 'cc-mandate-picker__what-note';
+  whatNote.style.cssText = 'margin:2px 0 4px;padding:8px;border-radius:var(--radius-sm);background:var(--paper-2);color:var(--ink-soft);font-size:0.85em;line-height:1.4';
+  whatNote.hidden = true;
 
-  // TODO(seam): when a richer per-offering scope model lands, the WHAT options
-  // here plug into the same `offerings` source the "Mij" surface uses
-  // (driversFromProperties filtered to kind 'offering'); v1 attenuation is
-  // "namens jou" ± one whole offering.
+  const selectWhat = (opt) => {
+    pickedWhat = opt;
+    for (const el of whatList.querySelectorAll('.cc-mandate-picker__what-item')) {
+      const on = el.dataset.what === opt.id;
+      el.setAttribute('aria-checked', on ? 'true' : 'false');
+      el.style.borderColor = on ? 'var(--accent)' : 'var(--line)';
+      el.style.background = on ? 'var(--paper-2)' : 'var(--card)';
+    }
+    if (opt.note) { whatNote.textContent = opt.note; whatNote.hidden = false; }
+    else { whatNote.hidden = true; whatNote.textContent = ''; }
+    syncConfirm();
+  };
+
+  // Expand the taxonomy → grouped, selectable option rows. Adding a grant kind is
+  // a one-entry change in GRANT_KIND_SPECS; this render stays generic.
+  const whatGroups = grantKindOptions({ offerings, t: tr });
+  let firstActiveOpt = null;
+  for (const group of whatGroups) {
+    if (group.groupLabelKey) whatList.appendChild(sectionLabel(group.groupLabelKey));
+    for (const opt of group.rows) {
+      if (!firstActiveOpt && opt.active) firstActiveOpt = opt;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cc-mandate-picker__what-item';
+      btn.setAttribute('role', 'radio');
+      btn.dataset.what = opt.id;
+      btn.dataset.kind = opt.kind;
+      if (!opt.active) btn.dataset.inactive = 'true';
+      btn.setAttribute('aria-checked', 'false');
+      btn.style.cssText = 'display:block;width:100%;text-align:left;padding:8px 10px;margin:0 0 4px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--card);color:var(--ink);cursor:pointer';
+      btn.textContent = opt.label;
+      btn.addEventListener('click', () => selectWhat(opt));
+      whatList.appendChild(btn);
+    }
+  }
+  container.appendChild(whatList);
+  container.appendChild(whatNote);
+  // (Default selection happens after syncConfirm is defined — see below.)
 
   // ── The promise (temporary + brokered) ───────────────────────────────────────
   const promise = document.createElement('div');
@@ -235,20 +326,26 @@ export function renderMandatePicker(container, {
   confirmBtn.style.cssText = 'width:100%;padding:10px;border:none;border-radius:var(--radius);background:var(--accent);color:var(--accent-contrast);font-weight:600;cursor:pointer';
   confirmBtn.textContent = tr('circle.mandate.confirm');
   const syncConfirm = () => {
-    const enabled = !busy && !!pickedMember;
+    // Confirmable only for an ISSUABLE grant kind — an inactive "nog niet actief"
+    // kind (e.g. resource) is selectable/legible but never dispatched.
+    const enabled = !busy && !!pickedMember && !!(pickedWhat && pickedWhat.active);
     confirmBtn.disabled = !enabled;
     confirmBtn.style.opacity = enabled ? '1' : '0.5';
     confirmBtn.style.cursor = enabled ? 'pointer' : 'default';
   };
   confirmBtn.addEventListener('click', () => {
-    if (busy || !pickedMember || typeof onConfirm !== 'function') return;
+    if (busy || !pickedMember || !(pickedWhat && pickedWhat.active) || typeof onConfirm !== 'function') return;
     onConfirm({
       taskId,
       member: pickedMember,
-      grant: buildMandateGrant({ myWebid, offeringKey: pickedOffering }),
+      grant: buildMandateGrant({ myWebid, kind: pickedWhat.kind, ...pickedWhat.params }),
     });
   });
-  syncConfirm();
+  // Default the WAARVOOR to the first issuable option ("namens jou") now that
+  // syncConfirm exists (selectWhat calls it). Falls through to a plain sync when
+  // there is no active option (defensive).
+  if (firstActiveOpt) selectWhat(firstActiveOpt);
+  else syncConfirm();
   container.appendChild(confirmBtn);
 
   return container;

@@ -34,12 +34,31 @@ describe('buildMandateGrant', () => {
     });
   });
 
-  it('narrows the grant to one offering when a key is given', () => {
-    expect(buildMandateGrant({ myWebid: 'https://me.example/#me', offeringKey: 'off-baking' })).toEqual({
+  it('kind:actAs is the explicit form of the default', () => {
+    expect(buildMandateGrant({ kind: 'actAs', myWebid: 'https://me.example/#me' })).toEqual({
+      actingAs: 'https://me.example/#me',
+      constraints: { broker: true },
+    });
+  });
+
+  it('narrows the grant to one offering when a key is given (inferred or explicit)', () => {
+    const expected = {
       actingAs: 'https://me.example/#me',
       skill: 'off-baking',
       constraints: { broker: true },
-    });
+    };
+    expect(buildMandateGrant({ myWebid: 'https://me.example/#me', offeringKey: 'off-baking' })).toEqual(expected);
+    expect(buildMandateGrant({ kind: 'offering', myWebid: 'https://me.example/#me', offeringKey: 'off-baking' })).toEqual(expected);
+  });
+
+  it('kind:resource builds a path-scoped, device-brokered pod grant', () => {
+    const expected = {
+      pod: 'mem://pod/me/agenda.json',
+      constraints: { broker: true, via: 'device' },
+    };
+    expect(buildMandateGrant({ kind: 'resource', scope: 'mem://pod/me/agenda.json' })).toEqual(expected);
+    // Inferred from a scope with no explicit kind.
+    expect(buildMandateGrant({ scope: 'mem://pod/me/agenda.json' })).toEqual(expected);
   });
 });
 
@@ -75,13 +94,37 @@ describe('renderMandatePicker', () => {
       members, offerings, taskId: 'task-9', myWebid: 'https://me.example/#me', t, onConfirm,
     });
     el.querySelector('[data-member="https://bob.example/#me"]').click();
-    el.querySelector('[data-offering="off-rides"]').click();
+    el.querySelector('[data-what="offering:off-rides"]').click();
     el.querySelector('.cc-mandate-picker__confirm').click();
     expect(onConfirm.mock.calls[0][0].grant).toEqual({
       actingAs: 'https://me.example/#me',
       skill: 'off-rides',
       constraints: { broker: true },
     });
+  });
+
+  // ── Grant-KIND taxonomy (data-driven WAARVOOR) ───────────────────────────────
+  it('renders the three grant kinds — actAs, one row per held offering, resource', () => {
+    const el = mount();
+    renderMandatePicker(el, { members, offerings, taskId: 'task-1', myWebid: 'https://me.example/#me', t });
+    expect(el.querySelector('[data-what="actAs"]')).not.toBeNull();
+    expect(el.querySelectorAll('[data-kind="offering"]')).toHaveLength(2);   // only offerings I hold
+    expect(el.querySelector('[data-kind="resource"]')).not.toBeNull();
+  });
+
+  it('resource kind is first-class but NOT issuable (nog niet actief) — shows the honest note, blocks confirm', () => {
+    const el = mount();
+    const onConfirm = vi.fn();
+    renderMandatePicker(el, { members, offerings, taskId: 'task-1', myWebid: 'https://me.example/#me', t, onConfirm });
+    el.querySelector('[data-member="https://alice.example/#me"]').click();
+    const resourceBtn = el.querySelector('[data-kind="resource"]');
+    expect(resourceBtn.dataset.inactive).toBe('true');
+    resourceBtn.click();
+    expect(el.querySelector('.cc-mandate-picker__what-note').hidden).toBe(false);
+    const confirm = el.querySelector('.cc-mandate-picker__confirm');
+    expect(confirm.disabled).toBe(true);
+    confirm.click();
+    expect(onConfirm).not.toHaveBeenCalled();
   });
 
   it('does not confirm until a member is picked (owner must choose WHO)', () => {

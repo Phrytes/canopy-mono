@@ -991,8 +991,22 @@
       "doc": "Entrust picker — attenuation section label."
     },
     "on_your_behalf": {
-      "text": "On your behalf",
-      "doc": "Entrust picker — the default, unnarrowed mandate."
+      "text": "Act on your behalf",
+      "doc": "Entrust picker — grant kind actAs: the default, unnarrowed mandate."
+    },
+    "kind": {
+      "offering": {
+        "text": "One of your offerings",
+        "doc": "Entrust picker — grant kind offering: group label above your offerings (only offerings you hold)."
+      },
+      "resource": {
+        "text": "Access to a resource / fetch something for you",
+        "doc": "Entrust picker — grant kind resource: brokered through your device (path-scoped PodCapabilityToken)."
+      },
+      "resource_note": {
+        "text": "Not active yet: basis doesn't surface your shareable resources, and fetching-through-your-device isn't wired up yet. The kind is here already; you can't entrust it yet.",
+        "doc": "Entrust picker — honest 'not active yet' note for the resource kind; no working fetch is implied."
+      }
     },
     "temporary": {
       "text": "Temporary — it expires the moment the task closes.",

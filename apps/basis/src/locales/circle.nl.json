@@ -991,8 +991,22 @@
       "doc": "Toevertrouwen-kiezer — attenuatie-sectie."
     },
     "on_your_behalf": {
-      "text": "Namens jou",
-      "doc": "Toevertrouwen-kiezer — de standaard, onversmalde bevoegdheid."
+      "text": "Namens jou handelen",
+      "doc": "Toevertrouwen-kiezer — grant-soort actAs: de standaard, onversmalde bevoegdheid."
+    },
+    "kind": {
+      "offering": {
+        "text": "Een aanbod",
+        "doc": "Toevertrouwen-kiezer — grant-soort offering: groepslabel boven jouw aanbiedingen (alleen aanbiedingen die je zelf hebt)."
+      },
+      "resource": {
+        "text": "Toegang tot een bron / iets voor je opvragen",
+        "doc": "Toevertrouwen-kiezer — grant-soort resource: bemiddeld via je apparaat (padgebonden PodCapabilityToken)."
+      },
+      "resource_note": {
+        "text": "Nog niet actief: basis toont je deelbare bronnen nog niet en het opvragen-via-je-apparaat is nog niet aangesloten. De soort staat er alvast; je kunt hem nog niet toevertrouwen.",
+        "doc": "Toevertrouwen-kiezer — eerlijke 'nog niet actief'-melding bij de resource-soort; geen werkend ophalen wordt voorgespiegeld."
+      }
     },
     "temporary": {
       "text": "Tijdelijk — vervalt zodra de taak klaar is.",
