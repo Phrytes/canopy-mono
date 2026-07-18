@@ -5,7 +5,7 @@
  * (apps/basis/src/v2/personaView.js → buildMijViewModel; web ≡ mobile by
  * construction). Three stacked sections:
  *   1. MIJN ALGEMENE PERSONA — the default profile's properties as rows
- *      (mono key · value · ladder hint) + skills/drivers as chips with a
+ *      (mono key · value · ladder hint) + offerings/drivers as chips with a
  *      dashed "+ vaardigheid of drijfveer" inline form,
  *   2. PERSONA'S — one card per profile; the root card is the truth layer
  *      (rust border); other cards show per key: volgt-algemeen / EIGEN / ∅,
@@ -61,7 +61,7 @@ export default function CircleMijScreen({ callSkill, sendPersonaUpdate, personaI
   const [model, setModel] = useState(null);
   const [openEditor, setOpenEditor] = useState(null);     // property key whose inline editor is open
   const [propDrafts, setPropDrafts] = useState({});       // free-text property edits before save
-  const [skillForm, setSkillForm] = useState(null);       // {text, tags} | null — the dashed add-skill form
+  const [offeringForm, setOfferingForm] = useState(null);       // {text, tags} | null — the dashed add-offering form
   const [personaForm, setPersonaForm] = useState(null);   // {name} | null — the dashed new-persona form
   const [addShareFor, setAddShareFor] = useState(null);   // circleId whose share-affordance is open
   const [shareState, setShareState] = useState({});       // `${circleId}:${personaId}` → 'sharing' | 'ok' | reason
@@ -80,13 +80,13 @@ export default function CircleMijScreen({ callSkill, sendPersonaUpdate, personaI
   }, [callSkill, model?.defaultId, load]);
 
   const onAddOffering = useCallback(async () => {
-    const text = (skillForm?.text ?? '').trim();
-    const tags = (skillForm?.tags ?? '').trim();
+    const text = (offeringForm?.text ?? '').trim();
+    const tags = (offeringForm?.tags ?? '').trim();
     if (!text && !tags) return;                            // nothing to match on
     await addGeneralOffering({ callSkill, defaultId: model?.defaultId, text, tags });
-    setSkillForm(null);
+    setOfferingForm(null);
     await load();
-  }, [callSkill, model?.defaultId, skillForm, load]);
+  }, [callSkill, model?.defaultId, offeringForm, load]);
 
   const onCreatePersona = useCallback(async () => {
     const name = (personaForm?.name ?? '').trim();
@@ -209,7 +209,7 @@ export default function CircleMijScreen({ callSkill, sendPersonaUpdate, personaI
             );
           })}
 
-          {/* skills & drivers — chips: bold text · mono tags · "≈ categorie" badge */}
+          {/* offerings & drivers — chips: bold text · mono tags · "≈ categorie" badge */}
           <View style={styles.propRow}>
             <View style={styles.propLine}>
               <Text style={styles.key}>{t('circle.mij.offerings_label')}</Text>
@@ -218,7 +218,7 @@ export default function CircleMijScreen({ callSkill, sendPersonaUpdate, personaI
             <View style={styles.chips}>
               {(model.general?.drivers || []).map((d) => {
                 // The coarse rung this item coarsens to under disclosure: for
-                // skills the taxonomy category (picked or derived), other
+                // offerings the taxonomy category (picked or derived), other
                 // driver kinds show their kind label.
                 const coarse = d.categoryId
                   ? ((d.categoryLabel && (d.categoryLabel[lang()] || d.categoryLabel.nl)) || d.categoryId)
@@ -234,34 +234,34 @@ export default function CircleMijScreen({ callSkill, sendPersonaUpdate, personaI
             </View>
           </View>
 
-          {/* dashed add-affordance → the inline skill form (text + tags) */}
-          {skillForm ? (
+          {/* dashed add-affordance → the inline offering form (text + tags) */}
+          {offeringForm ? (
             <View style={styles.form}>
               <TextInput
                 style={styles.input}
-                value={skillForm.text}
+                value={offeringForm.text}
                 placeholder={t('circle.mij.offering_text_ph')}
                 placeholderTextColor={c.inkSoft}
-                onChangeText={(v) => setSkillForm((s) => ({ ...s, text: v }))}
+                onChangeText={(v) => setOfferingForm((s) => ({ ...s, text: v }))}
               />
               <TextInput
                 style={styles.input}
-                value={skillForm.tags}
+                value={offeringForm.tags}
                 placeholder={t('circle.mij.offering_tags_ph')}
                 placeholderTextColor={c.inkSoft}
-                onChangeText={(v) => setSkillForm((s) => ({ ...s, tags: v }))}
+                onChangeText={(v) => setOfferingForm((s) => ({ ...s, tags: v }))}
               />
               <View style={styles.formActions}>
                 <Pressable style={styles.btnPrimary} accessibilityRole="button" onPress={onAddOffering}>
                   <Text style={styles.btnPrimaryText}>{t('circle.mij.offering_save')}</Text>
                 </Pressable>
-                <Pressable style={styles.btnGhost} accessibilityRole="button" onPress={() => setSkillForm(null)}>
+                <Pressable style={styles.btnGhost} accessibilityRole="button" onPress={() => setOfferingForm(null)}>
                   <Text style={styles.btnGhostText}>{t('circle.mij.offering_cancel')}</Text>
                 </Pressable>
               </View>
             </View>
           ) : (
-            <Pressable style={styles.addDashed} accessibilityRole="button" onPress={() => setSkillForm({ text: '', tags: '' })}>
+            <Pressable style={styles.addDashed} accessibilityRole="button" onPress={() => setOfferingForm({ text: '', tags: '' })}>
               <Text style={styles.addDashedText}>{t('circle.mij.offering_add')}</Text>
             </Pressable>
           )}
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
   btnQuiet: { paddingVertical: 3, paddingHorizontal: theme.space.sm, borderWidth: 1, borderColor: c.line },
   btnQuietText: { fontSize: 11, color: c.ink },
 
-  /* skills/driver chips */
+  /* offerings/driver chips */
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: { flexDirection: 'row', alignItems: 'baseline', gap: 6, borderWidth: 1, borderColor: c.ink, backgroundColor: c.paper, paddingVertical: 3, paddingHorizontal: theme.space.sm },
   chipText: { fontSize: 12.5, fontWeight: '700', color: c.ink },

@@ -2,7 +2,7 @@
  * basis-mobile v2 — profile (Mij) screen (RN, S2 parity).
  *
  * RN mirror of web's circleProfile: identity (handle + display name), personal
- * skills (taxonomy picker as tappable chips), and coarse location (geocode).
+ * offerings (taxonomy picker as tappable chips), and coarse location (geocode).
  * Self-contained: loads getMyProfile/listSkillCategories + dispatches the stoop
  * mutations via the injected `callSkill`. Availability/quiet-hours is a sub-screen
  * reached via `onAvailability`.
@@ -45,8 +45,8 @@ export default function CircleProfileScreen({ callSkill, onAvailability, onMyDat
     setBusy(false); load();
   }, [handle, display, profile, callSkill, load]);
 
-  const addSkill = useCallback(async (categoryId) => { try { await callSkill('stoop', 'addMyOffering', { categoryId }); } catch { /* */ } load(); }, [callSkill, load]);
-  const removeSkill = useCallback(async (categoryId) => { try { await callSkill('stoop', 'removeMyOffering', { categoryId }); } catch { /* */ } load(); }, [callSkill, load]);
+  const addOffering = useCallback(async (categoryId) => { try { await callSkill('stoop', 'addMyOffering', { categoryId }); } catch { /* */ } load(); }, [callSkill, load]);
+  const removeOffering = useCallback(async (categoryId) => { try { await callSkill('stoop', 'removeMyOffering', { categoryId }); } catch { /* */ } load(); }, [callSkill, load]);
   const geocode = useCallback(async () => {
     const q = geoQuery.trim(); if (!q) return;
     try { const r = await callSkill('stoop', 'geocode', { query: q }); setGeoResult(r?.error ? null : r); } catch { setGeoResult(null); }
@@ -59,9 +59,9 @@ export default function CircleProfileScreen({ callSkill, onAvailability, onMyDat
   const clearLocation = useCallback(async () => { try { await callSkill('stoop', 'clearMyLocation', {}); } catch { /* */ } load(); }, [callSkill, load]);
 
   // Read-accept: prefer the new `offerings` field, fall back to legacy `skills`.
-  const mySkills = Array.isArray(profile.offerings) ? profile.offerings
+  const myOfferings = Array.isArray(profile.offerings) ? profile.offerings
     : (Array.isArray(profile.skills) ? profile.skills : []);
-  const myIds = new Set(mySkills.map((s) => s.categoryId));
+  const myIds = new Set(myOfferings.map((s) => s.categoryId));
   const catLabel = (id) => categories.find((c) => c.id === id)?.label ?? id;
 
   return (
@@ -75,22 +75,22 @@ export default function CircleProfileScreen({ callSkill, onAvailability, onMyDat
       </Section>
 
       {/* Fold-in phase C (web parity, circleProfile.js) — quiet pointer to the
-          "Mij → persona's" surface where skills live now. The legacy editor
+          "Mij → persona's" surface where offerings live now. The legacy editor
           below stays functional on mobile until the fold-in completes here. */}
       {typeof onOpenMij === 'function' ? (
-        <Pressable onPress={onOpenMij} accessibilityRole="button" testID="profile-skills-moved">
-          <Text style={styles.skillsMoved}>{t('circle.profile.offerings_moved')}</Text>
+        <Pressable onPress={onOpenMij} accessibilityRole="button" testID="profile-offerings-moved">
+          <Text style={styles.offeringsMoved}>{t('circle.profile.offerings_moved')}</Text>
         </Pressable>
       ) : (
-        <Text style={styles.skillsMoved} testID="profile-skills-moved">{t('circle.profile.offerings_moved')}</Text>
+        <Text style={styles.offeringsMoved} testID="profile-offerings-moved">{t('circle.profile.offerings_moved')}</Text>
       )}
 
       <Section title={t('circle.profile.offerings')}>
-        {mySkills.length === 0 ? <Text style={styles.muted}>{t('circle.profile.no_offerings')}</Text> : (
+        {myOfferings.length === 0 ? <Text style={styles.muted}>{t('circle.profile.no_offerings')}</Text> : (
           <View style={styles.chips}>
-            {mySkills.map((s) => (
-              <Pressable key={s.categoryId} style={styles.skillChip} onPress={() => removeSkill(s.categoryId)} testID={`profile-skill-${s.categoryId}`}>
-                <Text style={styles.skillChipText}>{catLabel(s.categoryId)} ✕</Text>
+            {myOfferings.map((s) => (
+              <Pressable key={s.categoryId} style={styles.offeringChip} onPress={() => removeOffering(s.categoryId)} testID={`profile-offering-${s.categoryId}`}>
+                <Text style={styles.offeringChipText}>{catLabel(s.categoryId)} ✕</Text>
               </Pressable>
             ))}
           </View>
@@ -98,7 +98,7 @@ export default function CircleProfileScreen({ callSkill, onAvailability, onMyDat
         <Text style={styles.muted}>{t('circle.profile.pick_offering')}</Text>
         <View style={styles.chips}>
           {categories.filter((c) => !myIds.has(c.id)).map((c) => (
-            <Pressable key={c.id} style={styles.catChip} onPress={() => addSkill(c.id)} testID={`profile-cat-${c.id}`}>
+            <Pressable key={c.id} style={styles.catChip} onPress={() => addOffering(c.id)} testID={`profile-cat-${c.id}`}>
               <Text style={styles.catChipText}>+ {c.label}</Text>
             </Pressable>
           ))}
@@ -166,10 +166,10 @@ const styles = StyleSheet.create({
   secondary: { paddingVertical: 9, paddingHorizontal: 16, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.color.accent, alignSelf: 'flex-start' },
   secondaryText: { fontSize: 14, fontWeight: '600', color: theme.color.accent },
   muted: { fontSize: 13, color: theme.color.inkSoft },
-  skillsMoved: { fontSize: 12.5, fontStyle: 'italic', color: theme.color.inkSoft },
+  offeringsMoved: { fontSize: 12.5, fontStyle: 'italic', color: theme.color.inkSoft },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  skillChip: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 14, borderWidth: 1, borderColor: theme.color.line },
-  skillChipText: { fontSize: 13, color: theme.color.ink },
+  offeringChip: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 14, borderWidth: 1, borderColor: theme.color.line },
+  offeringChipText: { fontSize: 13, color: theme.color.ink },
   catChip: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 14, borderWidth: 1, borderColor: theme.color.accent },
   catChipText: { fontSize: 13, color: theme.color.accent },
   locCurrent: { fontSize: 14, color: theme.color.ink },

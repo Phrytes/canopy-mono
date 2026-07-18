@@ -255,9 +255,9 @@ export default function CreateGroupWizardModal({
                 />
               </Body>
             )}
-            {/* 5.5c — Skills step (slotted between Rules and Tech). */}
+            {/* 5.5c — Offerings step (slotted between Rules and Tech). */}
             {state.step === 4 && (
-              <Body title="Offerings (optional)" intro="What members can do / offer in this circle.  Each skill is named + has four axes.">
+              <Body title="Offerings (optional)" intro="What members can do / offer in this circle.  Each offering is named + has four axes.">
                 {state.offerings.map((row, i) => (
                   <View key={i} style={{ borderWidth: 1, borderColor: '#d8d1bc', borderRadius: 6, padding: 10, marginBottom: 10 }}>
                     <Field
