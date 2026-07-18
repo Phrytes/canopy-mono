@@ -16,7 +16,7 @@
  * V0 code unit-testable without spinning up real BLE/mDNS.
  */
 
-import { ItemStore } from '@onderling/item-store';
+import { CircleItemStore } from '@onderling/item-store';
 import { MemorySource } from '@onderling/core';
 import { ulid } from '@onderling/item-store';
 
@@ -25,7 +25,7 @@ const DEFAULT_TTL_MS = 5 * 60 * 1000;
 export class HomeAgent {
   /** @type {string} */ #homeWebid;
   /** @type {string} */ #locationId;
-  /** @type {ItemStore} */ #attestationLog;
+  /** @type {CircleItemStore} */ #attestationLog;
   /** @type {number} */ #ttlMs;
   /** @type {() => number} */ #now;
 
@@ -33,7 +33,7 @@ export class HomeAgent {
    * @param {object} args
    * @param {string} args.homeWebid           webid of the home agent (issuer)
    * @param {string} args.locationId          household identifier (e.g. 'household-de-roos')
-   * @param {ItemStore} [args.attestationLog]  optional shared item-store; auto-created if absent
+   * @param {CircleItemStore} [args.attestationLog]  optional shared item-store; auto-created if absent
    * @param {number} [args.ttlMs=DEFAULT_TTL_MS]
    * @param {() => number} [args.now]
    */
@@ -42,7 +42,11 @@ export class HomeAgent {
     if (!locationId) throw new TypeError('HomeAgent: locationId required');
     this.#homeWebid  = homeWebid;
     this.#locationId = locationId;
-    this.#attestationLog = attestationLog ?? new ItemStore({ dataSource: new MemorySource(), rootContainer: 'mem://presence/' });
+    // P1 migration step 3 (2026-07-18): the attestation log is a GENERIC
+    // one-way item log (add + list only — no task lifecycle), so it binds
+    // DIRECTLY to the converged `CircleItemStore` rather than the task-flavoured
+    // `createTaskStore` surface. Call sites below use put / listByType / list.
+    this.#attestationLog = attestationLog ?? new CircleItemStore({ dataSource: new MemorySource(), rootContainer: 'mem://presence/' });
     this.#ttlMs = ttlMs ?? DEFAULT_TTL_MS;
     this.#now   = now ?? (() => Date.now());
   }
@@ -88,14 +92,14 @@ export class HomeAgent {
     // Audit log entry — every issued attestation lands in the
     // item-store as a "presence-claim" item.  Allows after-the-fact
     // queries: "show me all presence attestations issued today."
-    await this.#attestationLog.addItems(
-      [{
+    await this.#attestationLog.put(
+      {
         type: 'presence-claim',
         text: `${subject} present at ${this.#locationId}`,
         notes: JSON.stringify({ tokenId: token.id, expiresAt }),
         source: { presence: { tokenId: token.id, location: this.#locationId } },
-      }],
-      { actor: this.#homeWebid, actorDisplayName: 'home-agent' },
+      },
+      { by: this.#homeWebid },
     );
 
     return token;
@@ -130,7 +134,14 @@ export class HomeAgent {
    * queries.
    */
   async listAttestations(filter) {
-    return this.#attestationLog.listClosed({ ...filter });
+    // Parity with the old `ItemStore.listClosed`: "closed" = `completedAt`
+    // present. Presence-claims are a one-way log that is never marked complete,
+    // so this stays empty — behaviour preserved from the ItemStore era.
+    const all = await this.#attestationLog.list();
+    const closed = all.filter((i) => i && i.completedAt != null);
+    return filter?.type
+      ? closed.filter((i) => i.type === filter.type)
+      : closed;
   }
 
   /**
@@ -139,6 +150,6 @@ export class HomeAgent {
    * — they're a one-way audit trail.
    */
   async listOpen() {
-    return this.#attestationLog.listOpen({ type: 'presence-claim' });
+    return this.#attestationLog.listByType('presence-claim');
   }
 }

@@ -35,7 +35,7 @@
  * authorisation.
  */
 import { dispatchCapability } from '@onderling/app-manifest';
-import { ItemStore } from '@onderling/item-store';
+import { CircleItemStore, createTaskStore } from '@onderling/item-store';
 import { MemorySource } from '@onderling/core';
 import { buildSkills, buildStoopScope, STOOP_CORES } from './skills/index.js';
 import { stoopManifest } from '../manifest.js';
@@ -71,7 +71,9 @@ export function createStoopService({
   bundle,
   manifest = stoopManifest,
 } = {}) {
-  const itemStore = store ?? new ItemStore({ dataSource: new MemorySource(), rootContainer: 'mem://neighborhood/' });
+  const itemStore = store ?? createTaskStore(
+    new CircleItemStore({ dataSource: new MemorySource(), rootContainer: 'mem://neighborhood/' }),
+  );
 
   // Build the dep bag ONCE (hoisting the skillMatch/muted defaults) so the wire
   // route (buildSkills) and the local route (the direct-core scope) share the

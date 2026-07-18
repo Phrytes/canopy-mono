@@ -18,7 +18,7 @@
 
 import { Agent, AgentIdentity, InternalBus, InternalTransport, MemorySource } from '@onderling/core';
 import { VaultMemory } from '@onderling/vault';
-import { ItemStore } from '@onderling/item-store';
+import { CircleItemStore, createTaskStore } from '@onderling/item-store';
 import { MemberMap, Reveals, buildIdentitySkills }    from '@onderling/identity-resolver';
 import { SkillMatch }                                 from '@onderling/skill-match';
 
@@ -265,7 +265,13 @@ export async function createNeighborhoodAgent({
   } else {
     dataSource = itemBackend ?? new MemorySource();
   }
-  const itemStore = new ItemStore({ dataSource, rootContainer: 'mem://neighborhood/' });
+  // P1 migration step 3 (2026-07-18): the LIVE store is the converged
+  // `CircleItemStore` (generic typed CRUD + type index + causal/CAS writes),
+  // wrapped by the thin `createTaskStore` ItemStore-compat surface (Emitter +
+  // audit + inbound-sync). Stoop passes NO rolePolicy — parity with the old
+  // `new ItemStore({...})` which took none here (the facade defaults to allow).
+  const circleStore = new CircleItemStore({ dataSource, rootContainer: 'mem://neighborhood/' });
+  const itemStore = createTaskStore(circleStore);
   // Member roster: pod-config-backed (Phase 4.1 contract) when `pod` is
   // supplied; hand-built array otherwise. The two paths are mutually
   // exclusive — using both is almost always a bug.

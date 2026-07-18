@@ -30,7 +30,7 @@
  *   - onCompensationChange   (Phase 41.x — invoicing)
  */
 
-import { ItemStore } from '@onderling/item-store';
+import { CircleItemStore, createTaskStore } from '@onderling/item-store';
 import { GroupManager } from '@onderling/core';
 import { MemberMap } from '@onderling/identity-resolver';
 import { buildStandardRolePolicy } from '@onderling-app/tasks-v0';
@@ -149,9 +149,14 @@ export async function buildCircleState({ circleConfig, localStoreBundle, meshAge
   const dataSource = localStoreBundle?.cache
     ?? (await _memorySource());
 
-  const itemStore = new ItemStore({
+  // P1 migration step 3 (2026-07-18): converged `CircleItemStore` +
+  // `createTaskStore` compat surface, threading the same per-circle rolePolicy
+  // + enforceDependencies the class ItemStore took (mirrors apps/tasks-v0).
+  const circleStore = new CircleItemStore({
     dataSource,
     rootContainer:        `mem://tasks/circles/${circle.circleId}/`,
+  });
+  const itemStore = createTaskStore(circleStore, {
     rolePolicy:           buildStandardRolePolicy(roles, { actorResolver }),
     enforceDependencies:  true,
   });

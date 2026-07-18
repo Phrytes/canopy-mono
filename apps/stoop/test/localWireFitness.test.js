@@ -70,7 +70,12 @@ describeLocalWireFitness(
           await invoke('postRequest', { text: 'need a ladder', intent: 'ask' });
           return invoke('listMyRequests', {});
         },
-        volatile: ['display'],   // author-hydration block carries per-route ids
+        // `display` — author-hydration block carries per-route ids.
+        // `createdBy`/`updatedBy` — the converged CircleItemStore (P1 migration
+        // step 3) stamps these from the acting identity, which differs by route
+        // (LOCAL webid vs WIRE agent key); not in DEFAULT_VOLATILE_KEYS. Same
+        // treatment as apps/basis/test/v2/householdLocalWireFitness.test.js.
+        volatile: ['display', 'createdBy', 'updatedBy'],
       },
       {
         name: 'cancelRequest (mutate, id chained from postRequest)',
