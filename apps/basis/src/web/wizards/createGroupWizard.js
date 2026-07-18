@@ -25,7 +25,7 @@ import {
   STORAGE_POLICIES, KEY_ROTATION_MODES, STEP_NAMES,
   initialState, slugify, isValidSlug, labelOf,
   buildRulesObjectFromState, finalSubmit,
-  newSkillRow, SKILL_AXES,
+  newSkillRow, OFFERING_AXES,
   // N1+E8 — kind picker + buurt size/chat advice + policy patch.
   KRING_KINDS, setKind, setSize, setChatEnabled, chatAdvice, policyPatchFromState,
   // N3 — extra role templates (admin opt-in).
@@ -269,7 +269,7 @@ function renderRulesStep(container, doc, state, onNext, onBack, onCancel, rerend
 }
 
 // 5.5c — Skills step: list `{name, openness, posture, status, radius}`
-// rows.  Each row's four axes are radio groups over `SKILL_AXES`.
+// rows.  Each row's four axes are radio groups over `OFFERING_AXES`.
 // Unnamed rows are dropped at submit (see buildRulesObjectFromState).
 function renderSkillsStep(container, doc, state, onNext, onBack, onCancel, rerender) {
   const wrap = makeBody(doc, 'Skills (optional)',
@@ -283,8 +283,8 @@ function renderSkillsStep(container, doc, state, onNext, onBack, onCancel, reren
     appendField(card, doc, 'Skill name', `skill-${i}-name`,
       row.name, (v) => { row.name = v; }, { placeholder: 'e.g. plumbing' });
 
-    for (const axis of Object.keys(SKILL_AXES)) {
-      const opts = SKILL_AXES[axis].map((id) => ({ id, label: id }));
+    for (const axis of Object.keys(OFFERING_AXES)) {
+      const opts = OFFERING_AXES[axis].map((id) => ({ id, label: id }));
       appendRadioField(card, doc, axis, row[axis], opts,
         (v) => { row[axis] = v; rerender(); }, { consequenceGroup: axis });
     }

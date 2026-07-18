@@ -30,7 +30,7 @@ import { initialState, decodeInvite, finalSubmit } from '../core/wizards/joinGro
  *
  * Skills→property fold-in phase C (Q3) — the invite optionally EMBEDS `skillsMatching: true`, the
  * circle's "this kring is about skills-matching" charter signal (the board-8 circle-skill record,
- * `skillsMatchingEnabled` in @onderling/kring-host/circleSkills — readable only on the ADMIN device
+ * `offeringsMatchingEnabled` in @onderling/kring-host/circleOfferings — readable only on the ADMIN device
  * that builds the invite, so it must ride the invite to reach the joiner pre-join). The join wizard
  * turns it into the visible pre-checked "share skills as category" default. Purely additive: absent
  * on older invites / non-matching circles ⇒ the joiner's default stays withhold.

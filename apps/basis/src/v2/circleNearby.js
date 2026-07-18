@@ -108,7 +108,7 @@ export function buildNearbyModel({
  * Internals — exposed for tests.
  * ────────────────────────────────────────────────────────────────── */
 
-/** Skill normalisation: same shape rule as findSkillMatches but keyed. */
+/** Skill normalisation: same shape rule as findOfferingMatches but keyed. */
 export function pickSkillText(s) {
   if (typeof s === 'string') return s.trim();
   if (!s || typeof s !== 'object') return null;

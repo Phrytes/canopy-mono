@@ -4,23 +4,23 @@
  * RN counterpart of web's circleSkillEditor over the SAME shared model
  * (`@onderling-app/basis`): the four skill axes (openness · posture ·
  * status · radius) as single-choice radio rows. Holds a working copy via
- * `mergeSkill`; Save returns it to the host, Back discards. Local discovery
+ * `mergeOffering`; Save returns it to the host, Back discards. Local discovery
  * is out of scope for this slice.
  */
 import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
-import { SKILL_AXES, DEFAULT_SKILL, normalizeSkill, mergeSkill, consequenceKeyFor } from '@onderling-app/basis';
+import { OFFERING_AXES, DEFAULT_OFFERING, normalizeOffering, mergeOffering, consequenceKeyFor } from '@onderling-app/basis';
 import { t } from '../../core/localisation.js';
 
 const AXES = ['openness', 'posture', 'status', 'radius'];
 
 export default function CircleSkillEditorScreen({ skill, onSave, onBack }) {
-  const [working, setWorking] = useState(() => normalizeSkill(skill ?? DEFAULT_SKILL));
+  const [working, setWorking] = useState(() => normalizeOffering(skill ?? DEFAULT_OFFERING));
   // N2.b — which (axis-option) consequence note is open.
   const [openInfo, setOpenInfo] = useState(null);
 
-  const patch = (p) => setWorking((cur) => mergeSkill(cur, p));
+  const patch = (p) => setWorking((cur) => mergeOffering(cur, p));
 
   return (
     <View style={styles.page} testID="circle-skill">
@@ -35,7 +35,7 @@ export default function CircleSkillEditorScreen({ skill, onSave, onBack }) {
         {AXES.map((axis) => (
           <View key={axis}>
             <Text style={styles.section}>{t(`circle.skills.axis.${axis}`)}</Text>
-            {SKILL_AXES[axis].map((opt) => {
+            {OFFERING_AXES[axis].map((opt) => {
               const selected = working[axis] === opt;
               const consKey = consequenceKeyFor(axis, opt);
               const infoKey = `${axis}.${opt}`;

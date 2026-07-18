@@ -1,16 +1,16 @@
 /**
- * basis v2 — skill-match source (board 8B, slice P6.7).
+ * basis v2 — offering-match source (board 8B).
  *
- * When a user posts a skill-question in a circle, the app should surface
- * inline candidate matches: members of the circle whose declared skills
+ * When a user posts an offering-question in a circle, the app should surface
+ * inline candidate matches: members of the circle whose declared offerings
  * overlap the question, plus optionally agents (board 4B) and via-hop
- * candidates (board 7A).  Phase 3.2 shipped the RENDERER + the match
- * card shape (`buildSkillMatches`); P6.7 fills in the SOURCE — picking
+ * candidates (board 7A).  The RENDERER + the match card shape
+ * (`buildOfferingMatches`) shipped earlier; this is the SOURCE — picking
  * the candidates from a real directory.
  *
- * Pure: hosts pass the directory + skill catalogue + the user query;
+ * Pure: hosts pass the directory + offering catalogue + the user query;
  * we tokenize, score, rank, and return `{id, label, source, score,
- * matchedTokens}[]` ready for `buildSkillMatches`.  The chat-shell
+ * matchedTokens}[]` ready for `buildOfferingMatches`.  The chat-shell
  * integration (rendering the matches under a posted question + wiring
  * the [Ask]/[Skip] taps) lives in the follow-up #345.
  *
@@ -21,7 +21,7 @@
  * declares them on a candidate; the helper is forward-compatible.
  */
 
-import { MATCH_SOURCES } from './circleSkills.js';
+import { MATCH_SOURCES } from './circleOfferings.js';
 
 const STOPWORDS = new Set([
   'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'do', 'for', 'from',
@@ -51,13 +51,13 @@ export function tokenize(s) {
  *
  * @param {object} args
  * @param {string} args.query                  user question text
- * @param {object[]} [args.members=[]]         circle members; each {webid|id, displayName|handle|label, skills:[{text|label, category?, openness?}]}
- * @param {object[]} [args.agents=[]]          agent participants (board 4B); same skill shape
- * @param {object[]} [args.hopCandidates=[]]   via-hop candidates (board 7A); same skill shape
+ * @param {object[]} [args.members=[]]         circle members; each {webid|id, displayName|handle|label, offerings:[{text|label, category?, openness?}]} (legacy `skills` read-accepted)
+ * @param {object[]} [args.agents=[]]          agent participants (board 4B); same offering shape
+ * @param {object[]} [args.hopCandidates=[]]   via-hop candidates (board 7A); same offering shape
  * @param {number}   [args.maxResults]
  * @returns {Array<{id:string, label:string, source:'human'|'agent'|'via-hop', score:number, matchedTokens:string[], skill:string|null}>}
  */
-export function findSkillMatches({
+export function findOfferingMatches({
   query,
   members = [],
   agents = [],
@@ -68,9 +68,12 @@ export function findSkillMatches({
   if (queryTokens.length === 0) return [];
 
   const scoreOne = (cand, source) => {
-    const skills = Array.isArray(cand?.skills) ? cand.skills : [];
+    // Read-accept: new callers pass `offerings`; legacy callers pass `skills`.
+    const offerings = Array.isArray(cand?.offerings) ? cand.offerings
+                    : Array.isArray(cand?.skills)    ? cand.skills
+                    : [];
     let best = null;
-    for (const sk of skills) {
+    for (const sk of offerings) {
       const skillText = pickText(sk);
       if (!skillText) continue;
       const skillTokens = tokenize(skillText);

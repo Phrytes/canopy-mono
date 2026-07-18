@@ -549,7 +549,7 @@ import { renderCatchUpChooser } from './catchUpChooserModal.js';
 import { renderScreensPicker } from './circleScreensPicker.js';
 import { computeAdvice, makeTooBusyEvent } from '../../src/v2/circleAdvisor.js';
 import { normalizeHopMode } from '@onderling/kring-host/circleHop';
-import { mergeSkill, normalizeSkill, skillsMatchingEnabled } from '@onderling/kring-host/circleSkills';
+import { mergeOffering, normalizeOffering, offeringsMatchingEnabled } from '@onderling/kring-host/circleOfferings';
 import { buildCircleFiles, circleFilesFromListFiles } from '../../src/v2/circleFolio.js';
 import { myThingsFromListFiles } from '../../src/v2/folioMyThings.js';
 import {
@@ -1606,7 +1606,7 @@ function buildCircleBot(agent) {
 
   // After /find returns, append (1) in-circle SKILL MATCHES for the query, and (2) a HOP PROMPT when the
   // search came up short but the user has hop-eligible contacts + hop is on. Ported from classic main.js
-  // (appendFindExtras); the building blocks (findSkillMatches / hopPrompt) are shared.
+  // (appendFindExtras); the building blocks (findOfferingMatches / hopPrompt) are shared.
   async function appendFindExtras(reply) {
     const { skillMatches, hopCard } = await buildFindExtras({
       query: reply?.payload?.query, groups: reply?.payload?.groups,
@@ -3095,7 +3095,7 @@ async function showCircleInvite(circleId) {
   let inviteSkillsMatching = false;
   try {
     const s = localStorage.getItem(skillKey(circleId));
-    inviteSkillsMatching = !!s && skillsMatchingEnabled(JSON.parse(s));
+    inviteSkillsMatching = !!s && offeringsMatchingEnabled(JSON.parse(s));
   } catch { inviteSkillsMatching = false; }
   let r;
   try {
@@ -4229,12 +4229,12 @@ function showKring(id, circle, policy) {
 // "extend the Stoop skill item" is the later real-persistence path.
 const skillKey = (id) => `cc.circleSkill.${id}`;
 function showSkills(id) {
-  let skill = normalizeSkill(null);
-  try { const s = localStorage.getItem(skillKey(id)); if (s) skill = normalizeSkill(JSON.parse(s)); } catch { /* default */ }
+  let skill = normalizeOffering(null);
+  try { const s = localStorage.getItem(skillKey(id)); if (s) skill = normalizeOffering(JSON.parse(s)); } catch { /* default */ }
   const rerender = () => renderSkillEditor(rootEl, {
     skill,
     t,
-    onChange: (patch) => { skill = mergeSkill(skill, patch); rerender(); },
+    onChange: (patch) => { skill = mergeOffering(skill, patch); rerender(); },
     onBack: () => showDetail(id),
     onSave: () => {
       try { localStorage.setItem(skillKey(id), JSON.stringify(skill)); } catch { /* ignore */ }

@@ -15,9 +15,9 @@
     "./mappingsStore":  "./src/mappingsStore.js",
     "./objectVersionsStorage": "./src/objectVersionsStorage.js",
     "./mappingsLoader":        "./src/mappingsLoader.js",
-    "./circleSkills":     "./src/circleSkills.js",
+    "./circleOfferings":     "./src/circleOfferings.js",
     "./circleHop":        "./src/circleHop.js",
-    "./findSkillMatches": "./src/findSkillMatches.js",
+    "./findOfferingMatches": "./src/findOfferingMatches.js",
     "./hopPrompt":        "./src/hopPrompt.js",
     "./findExtras":       "./src/findExtras.js"
   },

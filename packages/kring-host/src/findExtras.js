@@ -10,9 +10,9 @@
  *      on, a "search one step further?" card (localised via the injected `t`).
  *
  * Pure decision + fetch; the caller renders the returned shape into its own bubble UI (web botBubble / mobile
- * appendKringMessage). Building blocks (findSkillMatches / hopPrompt) are the same shared modules.
+ * appendKringMessage). Building blocks (findOfferingMatches / hopPrompt) are the same shared modules.
  */
-import { findSkillMatches } from './findSkillMatches.js';
+import { findOfferingMatches } from './findOfferingMatches.js';
 import { shouldAutoSuggestHop, buildHopPromptCard } from './hopPrompt.js';
 import { normalizeCircleMembers } from './circleMembers.js';
 
@@ -34,7 +34,7 @@ export async function buildFindExtras({ query, groups, circleId, callSkill, t } 
 
   let members = [];
   try { members = normalizeCircleMembers(await callSkill('listGroupMembers', { groupId: circleId })); } catch { /* no roster */ }
-  const matches = findSkillMatches({ query: q, members });
+  const matches = findOfferingMatches({ query: q, members });
 
   let hopCard = null;
   // Only prompt to hop when we DIDN'T already show something useful (items + in-circle matches).

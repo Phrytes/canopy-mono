@@ -20,7 +20,7 @@ import {
   KEY_ROTATION_MODES, STEP_NAMES,
   initialState, slugify, isValidSlug, labelOf,
   buildRulesObjectFromState, finalSubmit, encodeMembershipCodeUrl,
-  newSkillRow, SKILL_AXES,
+  newSkillRow, OFFERING_AXES,
   // N1+E8 — kind picker + buurt size/chat advice + policy patch.
   KRING_KINDS, setKind, setSize, setChatEnabled, chatAdvice, policyPatchFromState,
   // N3 — extra role templates (admin opt-in).
@@ -270,13 +270,13 @@ export default function CreateGroupWizardModal({
                       })}
                       placeholder="e.g. plumbing"
                     />
-                    {Object.keys(SKILL_AXES).map((axis) => (
+                    {Object.keys(OFFERING_AXES).map((axis) => (
                       <RadioGroup
                         key={axis}
                         label={axis}
                         value={row[axis]}
                         options={attachConsequences(axis,
-                          SKILL_AXES[axis].map((id) => ({ id, label: id })), t)}
+                          OFFERING_AXES[axis].map((id) => ({ id, label: id })), t)}
                         onChange={(v) => setState((s) => {
                           const skills = s.skills.slice();
                           skills[i] = { ...skills[i], [axis]: v };

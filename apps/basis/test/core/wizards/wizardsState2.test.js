@@ -462,7 +462,7 @@ describe('createGroupState', () => {
   it('newSkillRow seeds a row with the SKILL default axes', () => {
     const row = CG.newSkillRow();
     expect(row.name).toBe('');
-    expect(CG.SKILL_AXES.openness).toContain(row.openness);
+    expect(CG.OFFERING_AXES.openness).toContain(row.openness);
   });
 
   it('slugify normalises arbitrary names', () => {

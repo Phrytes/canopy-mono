@@ -265,7 +265,7 @@ export function setPersona(state, personaId) {
  * Skills→property fold-in phase C (NOTE-skills-properties-audit Q3, "charter-driven
  * default"). When the joined circle is ABOUT skills-matching — signalled by
  * `invite.skillsMatching: true`, embedded at invite-build from the circle's board-8
- * skill record (`skillsMatchingEnabled`, @onderling/kring-host/circleSkills) — the
+ * skill record (`offeringsMatchingEnabled`, @onderling/kring-host/circleOfferings) — the
  * disclosure default for the persona's skill keys flips from withhold to enabled at
  * the COARSE rung `'category'` (only the taxonomy category is released, never the
  * text/tags). NEVER silent: the wizard renders this as a visible pre-checked line

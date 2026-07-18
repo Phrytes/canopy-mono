@@ -1,14 +1,14 @@
 /**
  * basis v2 — skill editor (web DOM renderer, board 8).
  *
- * Controlled render of a skill's four axes (`@onderling/circleSkills`):
+ * Controlled render of a skill's four axes (`@onderling/circleOfferings`):
  * openness · posture · status · radius. Each axis is a single-choice radio
  * group (mirrors circleSettings' enum axes); selecting an option fires
  * `onChange({ [axis]: value })` and the host merges + re-renders. A Save
  * button fires `onSave`, Back fires `onBack`. Pure render → unit-testable
  * under happy-dom. Local discovery is out of scope for this slice.
  */
-import { SKILL_AXES } from '@onderling/kring-host/circleSkills';
+import { OFFERING_AXES } from '@onderling/kring-host/circleOfferings';
 
 const AXES = ['openness', 'posture', 'status', 'radius'];
 
@@ -42,7 +42,7 @@ export function renderSkillEditor(container, {
     h.textContent = tr(`circle.skills.axis.${axis}`);
     sec.appendChild(h);
 
-    for (const opt of SKILL_AXES[axis]) {
+    for (const opt of OFFERING_AXES[axis]) {
       const label = document.createElement('label');
       label.className = 'circle-skill__opt';
       const radio = document.createElement('input');

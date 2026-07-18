@@ -26,11 +26,11 @@ export { WEB_MAPPINGS_DEVICE, localStorageMappingsStore } from './mappingsStore.
 export { createObjectVersionsAdapter, localStorageBackend, localStorageObjectVersions, fingerprintHex } from './objectVersionsStorage.js';
 export { loadVerifyMappings } from './mappingsLoader.js';
 
-// W5 extraction: the /find-enrichment cluster (findExtras + its shared building blocks findSkillMatches
-// and hopPrompt) plus the two pure skill/hop model leaves those depend on (circleSkills, circleHop). All
+// W5 extraction: the /find-enrichment cluster (findExtras + its shared building blocks findOfferingMatches
+// and hopPrompt) plus the two pure skill/hop model leaves those depend on (circleOfferings, circleHop). All
 // pure-neutral: their only deps are each other + the already-extracted circleMembers leaf.
-export { SKILL_AXES, DEFAULT_SKILL, normalizeSkill, mergeSkill, MATCH_SOURCES, buildSkillMatches } from './circleSkills.js';
+export { OFFERING_AXES, DEFAULT_OFFERING, normalizeOffering, mergeOffering, MATCH_SOURCES, buildOfferingMatches } from './circleOfferings.js';
 export { MAX_HOPS, normalizeHopMode, buildHopChain, makeHopRelayRequest } from './circleHop.js';
-export { findSkillMatches, tokenize } from './findSkillMatches.js';
+export { findOfferingMatches, tokenize } from './findOfferingMatches.js';
 export { shouldAutoSuggestHop, buildHopPromptCard, rememberDismissed, hasDismissed } from './hopPrompt.js';
 export { buildFindExtras } from './findExtras.js';

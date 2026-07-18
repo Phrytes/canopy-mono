@@ -1,13 +1,13 @@
 /**
  * basis v2 — skill match list (web DOM renderer, board 8).
  *
- * Renders an INJECTED match list (`buildSkillMatches`) as one row per match,
+ * Renders an INJECTED match list (`buildOfferingMatches`) as one row per match,
  * each carrying a label + a source badge (human / agent / via-hop). The host
  * supplies the matches; no fetching or local discovery happens here. Empty
  * input shows a "no matches" state. Pure render → unit-testable under
  * happy-dom; mirrors circleStream's list renderer.
  */
-import { buildSkillMatches } from '@onderling/kring-host/circleSkills';
+import { buildOfferingMatches } from '@onderling/kring-host/circleOfferings';
 
 export function renderSkillMatches(container, {
   matches = [], t, onBack,
@@ -28,7 +28,7 @@ export function renderSkillMatches(container, {
   head.textContent = tr('circle.skills.matches_title');
   container.appendChild(head);
 
-  const rows = buildSkillMatches({ matches });
+  const rows = buildOfferingMatches({ matches });
 
   if (!rows.length) {
     const empty = document.createElement('div');

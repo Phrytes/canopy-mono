@@ -2,18 +2,18 @@
  * basis-mobile v2 — skill match list (RN screen, board 8).
  *
  * RN counterpart of web's circleSkillMatches over the SAME shared projection
- * (`buildSkillMatches`): one row per INJECTED match, each carrying a label +
+ * (`buildOfferingMatches`): one row per INJECTED match, each carrying a label +
  * a source badge (human / agent / via-hop). The host supplies the matches;
  * no fetching or local discovery happens here. Mirrors CircleStreamScreen.
  */
 import React, { useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
-import { buildSkillMatches } from '@onderling-app/basis';
+import { buildOfferingMatches } from '@onderling-app/basis';
 import { t } from '../../core/localisation.js';
 
 export default function CircleSkillMatchesScreen({ matches = [], onBack }) {
-  const rows = useMemo(() => buildSkillMatches({ matches }), [matches]);
+  const rows = useMemo(() => buildOfferingMatches({ matches }), [matches]);
 
   return (
     <View style={styles.page} testID="circle-skill-matches">

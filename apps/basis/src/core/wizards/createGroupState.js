@@ -15,9 +15,9 @@ import {
   DEFAULT_RULES_DOC, buildRulesDoc, RULES_FIELDS,
 } from '../../v2/circleRules.js';
 // 5.5c — Step 4 captures the v2 skill list (the four axes per skill).
-// `normalizeSkill` coerces partial rows; `DEFAULT_SKILL` seeds a new row.
-import { SKILL_AXES, DEFAULT_SKILL, normalizeSkill } from '@onderling/kring-host/circleSkills';
-export { SKILL_AXES };
+// `normalizeOffering` coerces partial rows; `DEFAULT_OFFERING` seeds a new row.
+import { OFFERING_AXES, DEFAULT_OFFERING, normalizeOffering } from '@onderling/kring-host/circleOfferings';
+export { OFFERING_AXES };
 // β.4 — kind-aware "+ new circle" templates.  Picking a kind in Step 1
 // pre-fills the policy axes (features / revealPolicy / pod / llmTool /
 // agents / consensusRequired) with the matching template's defaults
@@ -64,7 +64,7 @@ export const STEP_NAMES = Object.freeze(['Identity', 'Governance', 'Rules', 'Ski
 
 /** A fresh blank skill row for the wizard's "+ Add skill" affordance. */
 export function newSkillRow() {
-  return { ...DEFAULT_SKILL };
+  return { ...DEFAULT_OFFERING };
 }
 
 /* ─── Helpers ───────────────────────────────────────────────── */
@@ -268,7 +268,7 @@ export function buildRulesObjectFromState(state) {
   // persists them under the group-rules item without needing its own
   // skills arg (a dedicated substrate slot is a follow-up).
   if (Array.isArray(state.skills) && state.skills.length > 0) {
-    const named = state.skills.map(normalizeSkill).filter((s) => s.name.trim() !== '');
+    const named = state.skills.map(normalizeOffering).filter((s) => s.name.trim() !== '');
     if (named.length > 0) rules.skills = named;
   }
   // N3 — persist the admin's opted-in extra roles (from templates) so

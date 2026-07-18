@@ -212,8 +212,8 @@ export {
   rememberDismissed, hasDismissed,
 } from '@onderling/kring-host/hopPrompt';
 // P6.7 — skill-match source: rank circle members / agents / hop candidates
-// against a free-text question (board 8B).  Renderer is `buildSkillMatches`.
-export { findSkillMatches, tokenize as tokenizeSkillQuery } from '@onderling/kring-host/findSkillMatches';
+// against a free-text question (board 8B).  Renderer is `buildOfferingMatches`.
+export { findOfferingMatches, tokenize as tokenizeOfferingQuery } from '@onderling/kring-host/findOfferingMatches';
 // P6.8 — Nearby screen model (board 8C): intersect local-network peers with my skills.
 export {
   buildNearbyModel,
@@ -264,9 +264,9 @@ export {
   MAX_HOPS, normalizeHopMode, buildHopChain, makeHopRelayRequest,
 } from '@onderling/kring-host/circleHop';
 export {
-  SKILL_AXES, DEFAULT_SKILL, normalizeSkill, mergeSkill,
-  MATCH_SOURCES, buildSkillMatches,
-} from '@onderling/kring-host/circleSkills';
+  OFFERING_AXES, DEFAULT_OFFERING, normalizeOffering, mergeOffering,
+  MATCH_SOURCES, buildOfferingMatches,
+} from '@onderling/kring-host/circleOfferings';
 export { normalizeFolioFile, buildCircleFiles, circleFilesFromListFiles, folioFileOpenTreatment } from './v2/circleFolio.js';
 // N5 — Drive tree (folder nav + rich rows).  Re-exported from folio's
 // browser-safe barrel so web + mobile share one import path (folio/browser

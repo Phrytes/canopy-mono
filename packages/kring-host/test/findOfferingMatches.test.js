@@ -2,7 +2,7 @@
  * P6.7 — skill-match source-side tests.
  */
 import { describe, it, expect } from 'vitest';
-import { findSkillMatches, tokenize, MATCH_SOURCES } from '../src/findSkillMatches.js';
+import { findOfferingMatches, tokenize, MATCH_SOURCES } from '../src/findOfferingMatches.js';
 
 describe('tokenize', () => {
   it('lowercases + splits on non-letters', () => {
@@ -25,7 +25,7 @@ describe('tokenize', () => {
   });
 });
 
-describe('findSkillMatches', () => {
+describe('findOfferingMatches', () => {
   const members = [
     { id: 'm1', displayName: 'Anne',   skills: [{ text: 'Fietsband plakken', openness: 'buurt' }] },
     { id: 'm2', displayName: 'Bob',    skills: [{ text: 'Belasting-aangifte' }] },
@@ -39,14 +39,14 @@ describe('findSkillMatches', () => {
   ];
 
   it('returns [] for an empty / non-skill query', () => {
-    expect(findSkillMatches({ query: '', members })).toEqual([]);
-    expect(findSkillMatches({ query: '   ', members })).toEqual([]);
-    expect(findSkillMatches({ query: null, members })).toEqual([]);
-    expect(findSkillMatches({ query: 'and the of', members })).toEqual([]); // all stopwords
+    expect(findOfferingMatches({ query: '', members })).toEqual([]);
+    expect(findOfferingMatches({ query: '   ', members })).toEqual([]);
+    expect(findOfferingMatches({ query: null, members })).toEqual([]);
+    expect(findOfferingMatches({ query: 'and the of', members })).toEqual([]); // all stopwords
   });
 
   it('ranks direct member matches first', () => {
-    const out = findSkillMatches({
+    const out = findOfferingMatches({
       query: 'mijn fietsband is lek',
       members, agents, hopCandidates,
     });
@@ -57,7 +57,7 @@ describe('findSkillMatches', () => {
   });
 
   it('attaches source labels (human/agent/via-hop) from the input slot', () => {
-    const out = findSkillMatches({ query: 'fietsband', members, agents, hopCandidates });
+    const out = findOfferingMatches({ query: 'fietsband', members, agents, hopCandidates });
     const sources = out.map((m) => m.source);
     expect(sources).toContain('human');
     expect(sources).toContain('via-hop');
@@ -68,7 +68,7 @@ describe('findSkillMatches', () => {
   });
 
   it('includes the agent when the query token overlaps the agent skill', () => {
-    const out = findSkillMatches({ query: 'fietsen onderhoud', members, agents });
+    const out = findOfferingMatches({ query: 'fietsen onderhoud', members, agents });
     const labels = out.map((m) => m.label);
     expect(labels).toContain('Buurtwerkplaats');
     expect(out.find((m) => m.label === 'Buurtwerkplaats').source).toBe('agent');
@@ -81,7 +81,7 @@ describe('findSkillMatches', () => {
     const sameAgents = [
       { id: 'b', displayName: 'B', skills: [{ text: 'plakken' }] },
     ];
-    const out = findSkillMatches({ query: 'plakken', members: sameTokens, agents: sameAgents });
+    const out = findOfferingMatches({ query: 'plakken', members: sameTokens, agents: sameAgents });
     expect(out[0].label).toBe('A');
     expect(out[0].source).toBe('human');
     expect(out[1].label).toBe('B');
@@ -92,12 +92,12 @@ describe('findSkillMatches', () => {
     const many = Array.from({ length: 10 }, (_, i) => ({
       id: `m${i}`, displayName: `M${i}`, skills: [{ text: 'fietsband plakken' }],
     }));
-    const out = findSkillMatches({ query: 'fietsband', members: many, maxResults: 3 });
+    const out = findOfferingMatches({ query: 'fietsband', members: many, maxResults: 3 });
     expect(out).toHaveLength(3);
   });
 
   it('reports matchedTokens + chosen skill text per result', () => {
-    const out = findSkillMatches({ query: 'fietsband plakken', members });
+    const out = findOfferingMatches({ query: 'fietsband plakken', members });
     const anne = out.find((m) => m.label === 'Anne');
     expect(anne.matchedTokens.sort()).toEqual(['fietsband', 'plakken']);
     expect(anne.skill).toBe('Fietsband plakken');
@@ -110,7 +110,7 @@ describe('findSkillMatches', () => {
         { text: 'Fietsband plakken' },
       ] },
     ];
-    const out = findSkillMatches({ query: 'fietsband plakken', members: mike });
+    const out = findOfferingMatches({ query: 'fietsband plakken', members: mike });
     expect(out[0].skill).toBe('Fietsband plakken');
   });
 
@@ -119,19 +119,19 @@ describe('findSkillMatches', () => {
       { id: 'x', displayName: 'X', skills: [{ text: '   ' }, { foo: 'bar' }] },
       { id: 'y', displayName: 'Y', skills: [{ text: 'fietsband plakken' }] },
     ];
-    const out = findSkillMatches({ query: 'fietsband', members: m });
+    const out = findOfferingMatches({ query: 'fietsband', members: m });
     expect(out.map((r) => r.label)).toEqual(['Y']);
   });
 
   it('accepts skills as plain strings too', () => {
     const m = [{ id: 'x', displayName: 'X', skills: ['Fietsband plakken'] }];
-    const out = findSkillMatches({ query: 'fietsband', members: m });
+    const out = findOfferingMatches({ query: 'fietsband', members: m });
     expect(out[0].label).toBe('X');
   });
 
   it('falls back to webid / id when displayName/handle/label/name are absent', () => {
     const m = [{ webid: 'webid:anne', skills: [{ text: 'fietsband plakken' }] }];
-    const out = findSkillMatches({ query: 'fietsband', members: m });
+    const out = findOfferingMatches({ query: 'fietsband', members: m });
     expect(out[0].label).toBe('webid:anne');
   });
 

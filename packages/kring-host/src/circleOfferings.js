@@ -1,10 +1,10 @@
 /**
- * basis v2 — skill 4-axis model + match list (shared, board 8).
+ * basis v2 — offering 4-axis model + match list (shared, board 8).
  *
- * A skill is a structured object across four axes (board 8): how openly it
+ * An offering is a structured object across four axes (board 8): how openly it
  * is shared (`openness`), whether the offer is fixed or up for negotiation
  * (`posture`), its lifecycle (`status`), and how far it reaches (`radius`).
- * This module is the pure model: enum tables, a default skill, normalisation
+ * This module is the pure model: enum tables, a default offering, normalisation
  * (coerce a stored partial onto valid enum values), and deep-merge for edits
  * — mirroring circlePolicy's normalize/merge exactly. It also normalises an
  * INJECTED match list into tagged rows (human / agent / via-hop) — no
@@ -12,14 +12,14 @@
  * (mDNS/BLE "who's here") is intentionally NOT part of this slice.
  */
 
-export const SKILL_AXES = {
+export const OFFERING_AXES = {
   openness: ['private', 'circle', 'contacts', 'public'],
   posture:  ['always', 'negotiable'],
   status:   ['active', 'paused', 'archived'],
   radius:   ['home', 'street', 'neighbourhood', 'city'],
 };
 
-export const DEFAULT_SKILL = {
+export const DEFAULT_OFFERING = {
   name:     '',
   openness: 'private',
   posture:  'always',
@@ -27,13 +27,13 @@ export const DEFAULT_SKILL = {
   radius:   'home',
 };
 
-/** Coerce any stored partial into a complete, valid skill (invalid axis values fall back to defaults; `name` kept). */
-export function normalizeSkill(raw = {}) {
+/** Coerce any stored partial into a complete, valid offering (invalid axis values fall back to defaults; `name` kept). */
+export function normalizeOffering(raw = {}) {
   const s = raw && typeof raw === 'object' ? raw : {};
   const pickEnum = (axis) =>
-    SKILL_AXES[axis].includes(s[axis]) ? s[axis] : DEFAULT_SKILL[axis];
+    OFFERING_AXES[axis].includes(s[axis]) ? s[axis] : DEFAULT_OFFERING[axis];
   return {
-    name:     typeof s.name === 'string' ? s.name : DEFAULT_SKILL.name,
+    name:     typeof s.name === 'string' ? s.name : DEFAULT_OFFERING.name,
     openness: pickEnum('openness'),
     posture:  pickEnum('posture'),
     status:   pickEnum('status'),
@@ -42,26 +42,26 @@ export function normalizeSkill(raw = {}) {
 }
 
 /** Deep-merge an edit `patch` onto `base`, then normalise. */
-export function mergeSkill(base, patch = {}) {
-  return normalizeSkill({ ...normalizeSkill(base), ...patch });
+export function mergeOffering(base, patch = {}) {
+  return normalizeOffering({ ...normalizeOffering(base), ...patch });
 }
 
 /**
- * The circle's "skills-matching is ON here" signal (skills→property fold-in
- * phase C, NOTE-skills-properties-audit Q3). Today the only per-circle skill
+ * The circle's "offering-matching is ON here" signal (offering→property fold-in,
+ * NOTE-skills-properties-audit Q3). Today the only per-circle offering
  * policy is this board-8 record: matching is ON when it is shared beyond
  * `private` and still `active`. The default record (openness 'private') reads
  * as OFF, so an unconfigured circle never triggers the join-time share default.
  */
-export function skillsMatchingEnabled(raw) {
-  const s = normalizeSkill(raw);
+export function offeringsMatchingEnabled(raw) {
+  const s = normalizeOffering(raw);
   return s.openness !== 'private' && s.status === 'active';
 }
 
 export const MATCH_SOURCES = ['human', 'agent', 'via-hop'];
 
 /** Normalise an INJECTED match list into `{ id, label, source }` rows (source coerced into MATCH_SOURCES, default 'human'). */
-export function buildSkillMatches({ matches = [] } = {}) {
+export function buildOfferingMatches({ matches = [] } = {}) {
   const list = Array.isArray(matches) ? matches : [];
   return list
     .filter((m) => m && typeof m === 'object')
