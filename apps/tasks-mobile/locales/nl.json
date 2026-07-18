@@ -143,7 +143,7 @@
       "text_placeholder": { "text": "bijv. Maak de lekkende kraan",       "doc": "Task text placeholder." },
       "due_label":       { "text": "Deadline",                          "doc": "Due-date label." },
       "due_placeholder": { "text": "JJJJ-MM-DD (optioneel)",             "doc": "Due-date placeholder." },
-      "skill_label":     { "text": "Vereiste vaardigheden (optioneel)",  "doc": "Skill label." },
+      "skill_label":     { "text": "Gevraagd aanbod (optioneel)",  "doc": "Skill label." },
       "skill_placeholder": { "text": "bijv. loodgieten",                 "doc": "Skill placeholder." },
       "skill_placeholder_multi": { "text": "bijv. loodgieten, elektra",  "doc": "Skill placeholder hinting comma-separated list." },
       "dod_label":       { "text": "Definition of done",                 "doc": "DoD label." },
@@ -295,7 +295,7 @@
       "recovery_warning":    { "text": "Maak geen screenshot. Iedereen met deze woorden heeft toegang tot je account.", "doc": "Warning above the grid." },
       "recovery_copy":       { "text": "Kopieer",                             "doc": "Copy button label." },
       "unknown_member":      { "text": "Lid niet gevonden in deze kring.",     "doc": "ProfileOther empty state." },
-      "edit_skills_cta":     { "text": "Bewerk mijn vaardigheden voor deze kring", "doc": "CTA opening EditSkillsScreen." },
+      "edit_skills_cta":     { "text": "Bewerk mijn aanbod voor deze kring", "doc": "CTA opening EditSkillsScreen." },
       "edit_skills_hint":    { "text": "Kies uit de kring-vocab of voeg eigen tags toe.", "doc": "Hint under the CTA." }
     },
     "settings": {
@@ -424,7 +424,7 @@
       "section_app":       { "text": "App",                                                         "doc": "Section header for app-wide links." },
       "profile":           { "text": "Profiel",                                                     "doc": "Link to ProfileMine." },
       "availability":      { "text": "Mijn beschikbaarheid",                                        "doc": "Link to Availability." },
-      "edit_skills":       { "text": "Mijn vaardigheden (deze kring)",                               "doc": "Link to EditSkills." },
+      "edit_skills":       { "text": "Mijn aanbod (deze kring)",                               "doc": "Link to EditSkills." },
       "circle_settings":     { "text": "Kring-instellingen",                                           "doc": "Link to CircleSettings." },
       "dag":               { "text": "Sub-taak-boom",                                               "doc": "Link to DAG." },
       "settings":          { "text": "Instellingen",                                                "doc": "Link to Settings." },
@@ -451,7 +451,7 @@
       "send":             { "text": "Verzend",                                                     "doc": "Send-button label." }
     },
     "edit_skills": {
-      "title":              { "text": "Bewerk mijn vaardigheden",                                    "doc": "EditSkillsScreen title." },
+      "title":              { "text": "Bewerk mijn aanbod",                                    "doc": "EditSkillsScreen title." },
       "intro":              { "text": "Schakel bestaande tags in/uit + voeg nieuwe toe. Keuzes blijven binnen deze kring, tenzij je ze ook op je canonieke profiel laat verschijnen.", "doc": "EditSkillsScreen intro." },
       "section_prefilled":  { "text": "Huidig geclaimd",                                             "doc": "Section header for skills already on my profile." },
       "section_suggestions": { "text": "Voorgesteld door de kring-vocab",                             "doc": "Section header for unclaimed circle vocabulary entries." },

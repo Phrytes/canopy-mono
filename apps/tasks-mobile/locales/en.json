@@ -143,7 +143,7 @@
       "text_placeholder": { "text": "e.g. Fix the leaky faucet",       "doc": "Task text placeholder." },
       "due_label":       { "text": "Due date",                         "doc": "Due-date label." },
       "due_placeholder": { "text": "YYYY-MM-DD (optional)",            "doc": "Due-date placeholder." },
-      "skill_label":     { "text": "Required skills (optional)",       "doc": "Skill label." },
+      "skill_label":     { "text": "Requested offerings (optional)",       "doc": "Skill label." },
       "skill_placeholder": { "text": "e.g. plumbing",                  "doc": "Skill placeholder." },
       "skill_placeholder_multi": { "text": "e.g. plumbing, electrics", "doc": "Skill placeholder hinting comma-separated list." },
       "dod_label":       { "text": "Definition of done",               "doc": "DoD label." },
@@ -295,7 +295,7 @@
       "recovery_warning":    { "text": "Don't screenshot. Anyone with these words controls your account.", "doc": "Warning above the grid." },
       "recovery_copy":       { "text": "Copy",                                "doc": "Copy button label." },
       "unknown_member":      { "text": "Member not found in this circle.",      "doc": "ProfileOther empty state." },
-      "edit_skills_cta":     { "text": "Edit my skills for this circle",        "doc": "CTA opening EditSkillsScreen." },
+      "edit_skills_cta":     { "text": "Edit my offerings for this circle",        "doc": "CTA opening EditSkillsScreen." },
       "edit_skills_hint":    { "text": "Pick from the circle's vocabulary or add free-form tags.", "doc": "Hint under the CTA." }
     },
     "settings": {
@@ -424,7 +424,7 @@
       "section_app":       { "text": "App",                                                         "doc": "Section header for app-wide links." },
       "profile":           { "text": "Profile",                                                     "doc": "Link to ProfileMine." },
       "availability":      { "text": "My availability",                                             "doc": "Link to Availability." },
-      "edit_skills":       { "text": "My skills (this circle)",                                       "doc": "Link to EditSkills." },
+      "edit_skills":       { "text": "My offerings (this circle)",                                       "doc": "Link to EditSkills." },
       "circle_settings":     { "text": "Circle settings",                                               "doc": "Link to CircleSettings." },
       "dag":               { "text": "Sub-task tree",                                               "doc": "Link to DAG." },
       "settings":          { "text": "Settings",                                                    "doc": "Link to Settings." },
@@ -451,7 +451,7 @@
       "send":             { "text": "Send",                                                         "doc": "Send-button label." }
     },
     "edit_skills": {
-      "title":              { "text": "Edit my skills",                                              "doc": "EditSkillsScreen title." },
+      "title":              { "text": "Edit my offerings",                                              "doc": "EditSkillsScreen title." },
       "intro":              { "text": "Toggle existing tags + add new ones. Choices stay in this circle unless you opt to mirror them on your canonical profile.", "doc": "EditSkillsScreen intro." },
       "section_prefilled":  { "text": "Currently claimed",                                           "doc": "Section header for skills already on my profile." },
       "section_suggestions": { "text": "Suggested by the circle vocabulary",                           "doc": "Section header for unclaimed circle vocabulary entries." },

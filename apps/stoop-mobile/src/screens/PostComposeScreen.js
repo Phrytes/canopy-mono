@@ -300,7 +300,7 @@ export function PostComposeScreen() {
             </View>
             <Text style={styles.scopeLabel}>
               {t('compose.scope_contacts',
-                 'Ook auto-matchen bij mijn contacten (skill-match-suggesties).')}
+                 'Ook auto-matchen bij mijn contacten (aanbod-suggesties).')}
             </Text>
           </Pressable>
           <Pressable

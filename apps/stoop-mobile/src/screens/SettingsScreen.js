@@ -148,7 +148,7 @@ export function SettingsScreen() {
 
         <ToggleRow
           label={t('settings.broadcastable',
-                   'Anderen mogen me skill-match-suggesties sturen')}
+                   'Anderen mogen me aanbod-suggesties sturen')}
           hint={t('settings.broadcastable_hint',
                   'Aan = je krijgt voorgestelde matches uit de bredere connectielijst (groepen + contacten + hops). Uit = stilte.')}
           on={!!settings?.broadcastable}
