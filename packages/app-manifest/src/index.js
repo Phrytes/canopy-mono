@@ -116,25 +116,42 @@ import { renderMobile }      from './renderMobile.js';
 //   renderChat  — LLM tool definitions + system prompt.
 //   renderSlash — /commands + deterministic NL grammar.
 //   renderGate  — deterministic pre-LLM token-gate rules (from each op's
-//                 `surfaces.slash.match`); shared by the household TG-bot +
+//                 `surfaces.slash.match`); shared by the household Telegram bot +
 //                 the basis circle bot. Wraps renderSlash into the gate shape.
 //   renderAttachments — the attach ("+") menu (from each op's `surfaces.attach`);
 //                 peer of renderSlash. See renderAttachments.js.
-export { renderChat, renderSlash, renderGate, renderAttachments };
+// Re-exported in `from`-form so a documentation generator resolves each
+// projector's own JSDoc at its defining module.
+export { renderChat } from './renderChat.js';
+export { renderSlash } from './renderSlash.js';
+export { renderGate } from './renderGate.js';
+export { renderAttachments } from './renderAttachments.js';
 
-// SHELL family (2026-05-20 — web mobile surface projection).
-//   renderWeb    — DOM pages + forms (NavModel). See DESIGN-navmodel-sketch.md.
-//   renderMobile — V0 alias: renderMobile === renderWeb (same NavModel, different
+// SHELL family (web + mobile surface projection).
+//   renderWeb    — DOM pages + forms (NavModel).
+//   renderMobile — alias: renderMobile === renderWeb (same NavModel, different
 //                  adapter). Cross-surface equivalence is locked by
 //                  test/crossSurfaceEquivalence.test.js (strict JSON equality).
-export { renderWeb, renderMobile };
+export { renderWeb } from './renderWeb.js';
+export { renderMobile } from './renderMobile.js';
 
-// Named family groupings — the two categories as data, so consumers/tests can
-// iterate a family without re-listing its members (drift guard: a new projector
-// joins its family here, once).
+/**
+ * The AFFORDANCE projectors keyed by name — each turns the manifest's ops into one
+ * invocation surface (chat tool-call, slash command, deterministic gate, attach menu),
+ * all compiling to the same `{ opId, args }`. Frozen so consumers/tests can iterate a
+ * family without re-listing its members (drift guard: a new projector joins here once).
+ * @type {Readonly<Record<string, function>>}
+ */
 export const AFFORDANCE_PROJECTORS = Object.freeze({
   renderChat, renderSlash, renderGate, renderAttachments,
 });
+
+/**
+ * The SHELL projectors keyed by name — each renders the whole platform UI (screens + nav)
+ * from the same manifest. renderMobile re-exports renderWeb's NavModel; they differ only in
+ * the platform adapter. Frozen (same drift-guard rationale as AFFORDANCE_PROJECTORS).
+ * @type {Readonly<Record<string, function>>}
+ */
 export const SHELL_PROJECTORS = Object.freeze({ renderWeb, renderMobile });
 
 // renderCoverage — manifest → surface-coverage matrix (op × chat/slash/gate/
