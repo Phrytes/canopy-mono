@@ -151,7 +151,7 @@ function _placeholder({ id, type, ref, source, reason }) {
 }
 
 /**
- * createCrossPodRefResolver — Phase 3.3c. A ready-made
+ * createCrossPodRefResolver — a ready-made
  * `resolveExternalRef` for {@link treeOf}, dispatching the three
  * canonical `embeds` ref shapes (`conventions/cross-pod-refs.md`):
  *

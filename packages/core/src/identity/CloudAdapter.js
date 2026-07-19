@@ -73,7 +73,7 @@ export class CloudAdapter {
  * MemoryAdapter — in-memory `CloudAdapter` for tests and local development.
  *
  * Not for production: no persistence, no concurrency control, no quota.
- * Useful as a stand-in while concrete adapters are deferred (Q-C.5) and as
+ * Useful as a stand-in while concrete adapters are deferred and as
  * the substrate for `CloudBackup.test.js`.
  */
 export class MemoryAdapter extends CloudAdapter {

@@ -31,7 +31,7 @@ export const ENDORSEMENT_RESOURCE_VERSION = 1;
  * Shared-readable endorsement-list path for an endorser's pod / device.
  *
  * Lives under `/public/` (contrast the registry's `/private/`) because the
- * catalog read-path reads it cross-pod. The pseudo-pod path is the V0 default,
+ * catalog read-path reads it cross-pod. The pseudo-pod path is the default,
  * same as the registry.
  *
  * // real-pod: public-read ACP — on a real Solid pod this resource carries a
@@ -96,7 +96,7 @@ export function normaliseEndorsementResource(raw) {
  * @param {object} opts
  * @param {object}  opts.pseudoPod           — injected pod I/O (read/write)
  * @param {string}  [opts.anchorPodUri]
- * @param {string}  [opts.deviceId]          — strongly recommended; V0 store path
+ * @param {string}  [opts.deviceId]          — strongly recommended; default store path
  * @param {boolean} [opts.preferPodUri]
  * @param {string}  [opts.resourceUri]       — explicit override (wins)
  * @param {number}  [opts.maxRetries=3]

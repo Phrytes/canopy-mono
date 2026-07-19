@@ -23,8 +23,6 @@
  * enforced authority; `capabilities[]` only mirrors the coarse
  * `capability` of each grant. v1 resources (no `grants`) migrate
  * forward with `grants → []`.
- *
- * Standardisation Phase 52.10 — see plan §52.10.
  */
 
 import { normaliseProperties } from './profileProperties.js';
@@ -37,12 +35,11 @@ export const RESOURCE_VERSION = 3;
 /**
  * Default registry-resource path for a given pod / device.
  *
- * **V0 default — pseudo-pod-authoritative.** Per the Phase 52.10
- * lock the registry lives on the *pseudo-pod*: `pod-onboarding`
- * seeds it there during provisioning, and the underlying
- * pseudo-pod V0 (Phase 52.2) can only write to `pseudo-pod://`
+ * **Pseudo-pod-authoritative by default.** The registry lives on the
+ * *pseudo-pod*: `pod-onboarding` seeds it there during provisioning, and
+ * the underlying pseudo-pod can only write to `pseudo-pod://`
  * URIs. Pod-side mirroring at `<anchorPodUri>/private/agent-registry`
- * is V1+ work — wired through cache-mode pseudo-pod (Phase 52.8) once
+ * is later work — wired through cache-mode pseudo-pod once
  * the consuming app composes the registry's pseudo-pod in cache mode.
  *
  * Callers that want the pod-side path today can pass `preferPodUri: true`

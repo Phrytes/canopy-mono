@@ -5,8 +5,7 @@
  * value space is fixed to a handful of buckets here. New attributes are added
  * centrally (with a coarsening), never invented per-project.
  *
- * See plans/NOTE-requested-attributes-charter.md §2. Sits inside the general
- * personal-properties / disclosure model (NOTE-personal-personal-and-disclosure).
+ * Sits inside the general personal-properties / disclosure model.
  */
 
 // `buckets: null` = an open value that is coarse by KIND rather than by enum.

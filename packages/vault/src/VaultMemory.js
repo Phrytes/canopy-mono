@@ -4,7 +4,7 @@ import { Vault } from './Vault.js';
  * In-memory vault. Secrets are lost when the process exits.
  * Use for tests and ephemeral server agents.
  *
- * follow-up B — `snapshot` + `VaultMemory.fromSnapshot`
+ * `snapshot` + `VaultMemory.fromSnapshot`
  * support callers that want to persist a vault's contents to a
  * regular DataSource (e.g. Tasks's cap-token-bound bot agents
  * serialise their vault under the local-store cache so cap-token

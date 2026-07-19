@@ -89,10 +89,10 @@ export function recipientStrategy({ recipients, privateKey } = {}) {
  * returning the same `{ seal, open }` shape:
  *
  *   • SINGLE-KEY (back-compat): `groupKeyStrategy({ groupKey })`. `seal` and `open` both use that one
- *     symmetric key — byte-for-byte the pre-Phase-3 behaviour. Content that has never rotated round-trips
+ *     symmetric key — byte-for-byte the original single-key behaviour. Content that has never rotated round-trips
  *     exactly as before (the single-version fast path).
  *
- *   • CROSS-VERSION reader (Phase 3): `groupKeyStrategy({ resource, privateKey })`, where `resource` is the
+ *   • CROSS-VERSION reader: `groupKeyStrategy({ resource, privateKey })`, where `resource` is the
  *     retained group-key resource (the CURRENT version + its `history[]` of prior versions) and `privateKey`
  *     is the reader's sealing key. `open` resolves the version the content was sealed under by AUTHENTICATED
  *     TRIAL across EVERY version this reader can unwrap (`openSealedAcrossVersions` → `readableGroupKeys`), so

@@ -28,7 +28,7 @@ import { withCAS } from './concurrency.js';
  * @param {object}  opts.pseudoPod
  * @param {string}  [opts.anchorPodUri]   — pod URI (metadata; pod-side mirroring
  *                                          lands with cache-mode pseudo-pod).
- * @param {string}  [opts.deviceId]       — strongly recommended; V0 store path.
+ * @param {string}  [opts.deviceId]       — strongly recommended; default store path.
  * @param {boolean} [opts.preferPodUri]   — force the https:// resource path
  *                                          (caller's pseudo-pod must accept it).
  * @param {string}  [opts.resourceUri]    — explicit override (wins over all defaults).

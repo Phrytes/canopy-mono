@@ -1,13 +1,13 @@
 /**
  * OAuthVault — typed OAuth-token storage on top of any Vault adapter.
  *
- * Locked Q-F.1 (2026-04-29): multi-account support via
+ * Multi-account support via
  *     oauth:<service>:<accountId>
  * key scheme.  Single-account users get a 'default' accountId fallback so
  * `getTokens('google')` works without specifying when only one account is
  * configured for that service.
  *
- * Locked Q-F.2 (2026-04-29):
+ * Token-refresh policy:
  *   - Proactive: refresh when access token is within 60s of expiry.
  *   - Reactive: if a 401 surfaces despite the proactive path (clock skew,
  *     server-side revocation, refresh-token rotation mid-flight), call
@@ -207,7 +207,7 @@ export class OAuthVault {
 /**
  * Wrap an arbitrary `fetch` so a 401 triggers a single refresh + retry
  * via OAuthVault, transparently.  This is the "reactive safety net"
- * half of Q-F.2.
+ * half of the token-refresh policy.
  *
  * @param {OAuthVault} oauthVault
  * @param {string}     service

@@ -105,7 +105,7 @@ export async function sealItem(item, sealText, { reserved = SEAL_RESERVED_KEYS }
  *
  * @param {object} opts
  * @param {{ list:(o:object)=>Promise<Array<{subject:string,agent?:string,modes:string[]}>> }} opts.sharing
- *        the `client.sharing` surface (Phase 52.16). We call `sharing.list({ resourceUri, agentsToQuery })`
+ *        the `client.sharing` surface. We call `sharing.list({ resourceUri, agentsToQuery })`
  *        and require a `read` grant for the recipient (or a public read grant).
  * @param {(text:string)=>string|Promise<string>} [opts.open]  the sealing/`open` shape — opens a sealed
  *        envelope with the reader's key; passes plaintext through. Omit to skip unsealing.

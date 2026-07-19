@@ -1,7 +1,7 @@
 {
   "name": "@onderling/app-scaffold",
   "version": "0.1.0",
-  "description": "SP-10 v0 — a pure manifest→app scaffolder. Takes an app manifest + a `requires` capability list (SP-9 vocabulary), validates the requires, and returns a runnable app skeleton (package.json + createAgent entry + one wireSkill stub per manifest operation) as path→content strings. PURE codegen — a `writer` may be injected to also write to disk, but the core is string-returning + testable.",
+  "description": "A pure manifest→app scaffolder. Takes an app manifest + a `requires` capability list (the capability vocabulary), validates the requires, and returns a runnable app skeleton (package.json + createAgent entry + one wireSkill stub per manifest operation) as path→content strings. PURE codegen — a `writer` may be injected to also write to disk, but the core is string-returning + testable.",
   "type": "module",
   "license": "Apache-2.0",
   "homepage": "https://github.com/Onderling/basis/tree/master/packages/app-scaffold#readme",

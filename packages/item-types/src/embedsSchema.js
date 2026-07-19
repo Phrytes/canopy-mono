@@ -16,7 +16,7 @@
  * registered locally. Cross-pod refs may legitimately point at
  * types this client doesn't know about; the receiver renders
  * them via the interface-registry's default permission-denied /
- * unknown-type fallback (Phase 52.12).
+ * unknown-type fallback.
  */
 
 export const EMBEDS_SCHEMA = Object.freeze({

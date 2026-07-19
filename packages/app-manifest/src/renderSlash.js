@@ -7,7 +7,7 @@
  *   | Array<{ skillId, args }>              (multi-item, when an op opts
  *                                            into splitItems)
  *
- * Drop-in for the byte-equivalence gate (PLAN §1.4).
+ * Drop-in for the byte-equivalence gate.
  *
  * Driven by:
  *   - manifest.slashGrammar              (addressedPrefixes, specials,

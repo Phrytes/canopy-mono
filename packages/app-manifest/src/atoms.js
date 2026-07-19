@@ -87,8 +87,8 @@ export const ATOM_VERBS = Object.freeze(ATOMS.map((a) => a.verb));
  * category/aliases/semantics), which flows here automatically.
  *
  * Alias to `ATOM_VERBS` so there is ONE source (CLAUDE.md invariant #3) — this
- * name exists to make the CONVENTION greppable under the plan's `CANONICAL_ATOMS`
- * label (PLAN-capabilities-tasks-roles.md Phase 0).
+ * name exists to make the CONVENTION greppable under the `CANONICAL_ATOMS`
+ * label.
  *
  * ⚠ `claim` here is the ATOM (lifecycle verb: self-assign an open item — a CAS
  * on the item's assignee, in-place). It is DISTINCT from the `claim` **noun**

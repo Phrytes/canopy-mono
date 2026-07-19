@@ -1,7 +1,7 @@
 {
   "name": "@onderling/vault",
   "version": "0.1.0",
-  "description": "Vault — agent identity + token storage (Vault, VaultMemory, VaultLocalStorage, VaultIndexedDB, VaultNodeFs, OAuthVault). Platform-portable: Node, browser via IndexedDB / LocalStorage, RN via the storage adapters in @onderling/react-native. Extracted from @onderling/core/identity 2026-05-11 as part of the standardisation P1 work (Phase 50.1.A) to fix the layering inversion that the Phase 50.1 SolidVault deprecation re-export introduced.",
+  "description": "Vault — agent identity + token storage (Vault, VaultMemory, VaultLocalStorage, VaultIndexedDB, VaultNodeFs, OAuthVault). Platform-portable: Node, browser via IndexedDB / LocalStorage, RN via the storage adapters in @onderling/react-native. Extracted from @onderling/core/identity 2026-05-11 to fix the layering inversion that an earlier SolidVault deprecation re-export introduced.",
   "type": "module",
   "license": "Apache-2.0",
   "homepage": "https://github.com/Onderling/basis/tree/master/packages/vault#readme",

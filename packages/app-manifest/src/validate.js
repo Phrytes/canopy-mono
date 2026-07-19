@@ -97,7 +97,7 @@ export const CHAT_REPLY_SHAPES = Object.freeze([
 export const RUNTIME_VALUES = Object.freeze(['browser', 'node', 'both']);
 
 /**
- * (feedback-extension DESIGN §1.3) — frozen allow-list of an
+ * Frozen allow-list of an
  * `Operation.onError` policy for composite ops.  'stop' (default when
  * absent) halts the composite on the first failing step; 'continue'
  * runs every step best-effort.  No rollback either way (v0 non-goal).

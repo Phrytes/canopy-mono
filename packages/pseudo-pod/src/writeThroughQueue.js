@@ -1,5 +1,5 @@
 /**
- * Write-through queue — cache-mode V1.
+ * Write-through queue for cache mode.
  *
  * When the pseudo-pod is in `cache` mode (or has a per-URI override
  * set to `cache`), every local write is also enqueued here for
@@ -17,11 +17,9 @@
  * Drain semantics:
  *   On upload failure (network, transient pod error), the drain
  *   stops on that entry — the next reconnect retries from there.
- *   412 (conflict) handling is V0-deferred: the substrate logs the
+ *   412 (conflict) handling is deferred: the substrate logs the
  *   conflict and stops; caller-side conflict resolution is left as
- *   a future hook (52.8 open question).
- *
- * Standardisation Phase 52.8.3.
+ *   a future hook.
  *
  * @typedef {object} WriteThroughEntry
  * @property {string} id

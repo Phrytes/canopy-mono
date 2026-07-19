@@ -23,7 +23,7 @@
  *   });
  *   // parts[0] is a DataPart with `{ uri, bytes, etag? }`
  *
- * **Phase 52.2.x (2026-05-14, Q#2) — peer-fetch gates.** Two opt-in
+ * **Peer-fetch gates.** Two opt-in
  * hooks gate outbound fetches:
  *
  *   - `groupCheck(uri, ctx) → boolean | Promise<boolean>`
@@ -41,9 +41,6 @@
  * already past the SecurityLayer's hello/identity gate; back-compat
  * with apps that haven't migrated.
  *
- * Standardisation Phase 50.3 (skill shape) + Phase 52.2.x (gates) —
- * see `Project Files/Substrates/substrates-v2-coding-plan-2026-05-11.md`
- * §"Open questions" #2.
  */
 
 import { defineSkill } from './defineSkill.js';
@@ -76,12 +73,12 @@ import { DataPart }    from '../Parts.js';
  *   `null`/`undefined` on miss. Errors propagate as a
  *   `NOT_READABLE` skill error.
  * @param {(uri: string, ctx: FetchResourceGateCtx) => boolean|Promise<boolean>} [opts.groupCheck]
- *   Phase 52.2.x peer-fetch gate (Q#2 2026-05-14). When supplied,
+ *   Peer-fetch gate. When supplied,
  *   invoked per request — if truthy, the fetch is allowed. Used by
  *   apps that track group-membership rosters (Stoop, etc.) to deny
  *   ex-members.
  * @param {(uri: string, ctx: FetchResourceGateCtx) => boolean|Promise<boolean>} [opts.capCheck]
- *   Phase 52.2.x peer-fetch gate (Q#2 2026-05-14). Orthogonal
+ *   Peer-fetch gate. Orthogonal
  *   cap-token verification. When supplied, invoked per request with
  *   `ctx.capToken` populated from the request parts. If truthy, the
  *   fetch is allowed.
@@ -128,7 +125,7 @@ export function makeFetchResourceSkill({
       );
     }
 
-    // Phase 52.2.x — peer-fetch gates. Both opt-in; when either is
+    // Peer-fetch gates. Both opt-in; when either is
     // supplied, at least one must pass before the read happens.
     // When neither is supplied, we fall back to trust-the-transport
     // (the caller is past SecurityLayer's hello already).
@@ -232,7 +229,7 @@ function _extractUri(parts) {
 
 /**
  * Pull an optional `capToken` out of skill input parts. Returns
- * `undefined` if the caller didn't supply one. Phase 52.2.x.
+ * `undefined` if the caller didn't supply one.
  *
  * @param {Array} parts
  * @returns {*|undefined}

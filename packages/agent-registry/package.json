@@ -1,7 +1,7 @@
 {
   "name": "@onderling/agent-registry",
   "version": "0.1.0",
-  "description": "Canonical agent registry — the user's agents listed in one pod resource. Implements core's ActorResolver. Etag-based optimistic concurrency. Standardisation Phase 52.10.",
+  "description": "Canonical agent registry — the user's agents listed in one pod resource. Implements core's ActorResolver. Etag-based optimistic concurrency.",
   "type": "module",
   "main": "index.js",
   "exports": {

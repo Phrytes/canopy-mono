@@ -86,7 +86,7 @@ export function communityCatalogUri({ circleId, anchorPodUri, deviceId, preferPo
  *   — the CIRCLE's admin/policy gate (reuse circles' `inAudience('role:admin')`).
  * @param {object}   opts.pseudoPod — injected pod I/O (same as the G1 resource).
  * @param {string}   [opts.anchorPodUri]
- * @param {string}   [opts.deviceId]      — V0 store path (strongly recommended).
+ * @param {string}   [opts.deviceId]      — default store path (strongly recommended).
  * @param {boolean}  [opts.preferPodUri]
  * @param {string}   [opts.resourceUri]   — explicit override (wins).
  * @param {number}   [opts.maxRetries]

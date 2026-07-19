@@ -1,7 +1,7 @@
 {
   "name": "@onderling/app-manifest",
   "version": "0.1.0",
-  "description": "Per-app declarative manifest + pure projectors (validateManifest, paramsToJsonSchema, renderChat, renderSlash). The bundle-declaration format feeding the §0 destination substrates (@onderling/interface-registry, @onderling/protocol) and shipping the chat/slash surface those substrates don't cover. Phase: SP-0 (greenfield).",
+  "description": "Per-app declarative manifest + pure projectors (validateManifest, paramsToJsonSchema, renderChat, renderSlash). The bundle-declaration format feeding the destination substrates (@onderling/interface-registry, @onderling/protocol) and shipping the chat/slash surface those substrates don't cover.",
   "type": "module",
   "license": "Apache-2.0",
   "homepage": "https://github.com/Onderling/basis/tree/master/packages/app-manifest#readme",

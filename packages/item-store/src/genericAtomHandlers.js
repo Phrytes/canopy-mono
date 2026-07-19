@@ -1,6 +1,6 @@
 /**
  * createGenericAtomHandlers — the store-backed generic CRUD handlers that make "declare a noun → get CRUD
- * for free" real (PLAN-capability-arc §1b). Keyed by CANONICAL atom; each takes `(noun, args, ctx)` and
+ * for free" real. Keyed by CANONICAL atom; each takes `(noun, args, ctx)` and
  * operates on ANY item type via a CircleItemStore-shaped store (`put` / `get` / `delete` / `listByType`).
  * The noun IS the item type — no per-noun code.
  *

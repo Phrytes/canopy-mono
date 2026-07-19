@@ -100,7 +100,7 @@ function labelAtRung(value, rung) {
  *   • `coords` (finest) — releases the whole stored value, incl. any raw coordinates.
  *   • a named coarse rung (district/municipality/region) — a coarse place label, NEVER coords.
  *   • `in-area` (coarsest) — and any null/unknown rung — the y/n predicate only.
- * `sensitive` (location + possessions + availability is the burglary vector, design §9).
+ * `sensitive` (location + possessions + availability is the burglary vector).
  *
  * @param {string} [key='location']
  */

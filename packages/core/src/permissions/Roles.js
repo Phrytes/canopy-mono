@@ -1,7 +1,7 @@
 /**
  * Roles — standard role taxonomy + custom-role registration API.
  *
- * Locked Q-D.1 (2026-04-28): five standard roles plus an
+ * Five standard roles plus an
  * app-defined-extension API. Apps can register custom role IDs with an
  * explicit numeric rank that slots them into the hierarchy.
  *

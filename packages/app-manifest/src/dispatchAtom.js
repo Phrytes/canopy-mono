@@ -7,7 +7,7 @@
  * bespoke op-id (`addTask`). `resolveAtom` looks the (atom × noun) up against the manifest's declared/derived
  * capability surface; the caller-provided `dispatch(opId, args)` runs the (existing) handler.
  *
- * This is the §1b SEAM: it does NOT replace the per-op handlers — it routes to them by (atom, noun), so a new
+ * This is the capability-routing SEAM: it does NOT replace the per-op handlers — it routes to them by (atom, noun), so a new
  * app that DECLARES a noun becomes reachable through the standard verb vocabulary immediately. Later slices can
  * put a generic store-backed handler *behind* the resolved op; nothing here assumes one.
  *
@@ -45,7 +45,7 @@ export async function dispatchAtom(manifest, { atom, noun, args = {} } = {}, dis
 }
 
 /**
- * dispatchCapability — the full §1b router: resolve a capability `(atom × noun)` and run it via the bespoke
+ * dispatchCapability — the full capability router: resolve a capability `(atom × noun)` and run it via the bespoke
  * op if one exists (`dispatch(opId, args)`), OR the generic store-backed handler if the noun merely DECLARES
  * the atom (`generic[atom](noun, args, ctx)`). So a caller invokes by (atom, noun) and gets either the app's
  * bespoke behaviour or free CRUD — "declare a noun, get CRUD". `generic` is the map from

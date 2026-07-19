@@ -72,7 +72,7 @@ export function resolveAtom(manifest, atom, noun) {
 }
 
 /**
- * Resolve HOW a capability `(atom × noun)` is served (PLAN §1b):
+ * Resolve HOW a capability `(atom × noun)` is served:
  *  - `{ kind:'op', opId }`            — a bespoke op implements it → dispatch that op.
  *  - `{ kind:'generic', atom, noun }` — the noun DECLARES the atom but no op implements it → serve with the
  *                                       generic store-backed handler (`createGenericAtomHandlers`). This is
