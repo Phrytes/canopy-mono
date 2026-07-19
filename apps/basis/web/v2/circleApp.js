@@ -159,7 +159,7 @@ import { startGuidedSetup, submitGuidedStep, guidedPolicyPatch, loadSettingsTemp
 import {
   HELP_CIRCLE_ID, helpCircleSpec, helpCircleRoster, onderlingBotMember, provisionHelpCircle,
 } from '../../src/v2/helpCircle.js';
-import { DEFAULT_ONBOARDING_TEMPLATE, loadOnboardingTemplate } from '../../src/v2/onboardingTemplate.js';
+import { buildOnboardingTemplate, loadOnboardingTemplate } from '../../src/v2/onboardingTemplate.js';
 import { onboardingTurn, answerOnboarding, parseOnboardingAction } from '../../src/v2/onboardingChat.js';
 import { createOnboardingFlags, localStorageOnboardingIo } from '../../src/v2/onboardingFlags.js';
 // Task #13 Phase 2 — the standing help Q&A: the tag-to-address gate + the deterministic-answer router
@@ -1042,10 +1042,22 @@ loadSettingsTemplate({ url: SETTINGS_TEMPLATE_URL }).then((tpl) => { settingsTem
 // updated (open-source) template at this URL; we fall back to the bundled build for the current language.
 const onboardingFlags = createOnboardingFlags(localStorageOnboardingIo());
 const ONBOARDING_TEMPLATE_URL = import.meta.env?.VITE_ONBOARDING_TEMPLATE_URL ?? null;
-let onboardingTemplate = DEFAULT_ONBOARDING_TEMPLATE;
-loadOnboardingTemplate({ url: ONBOARDING_TEMPLATE_URL, lang: currentLang() })
-  .then((tpl) => { onboardingTemplate = tpl; })
-  .catch(() => { /* keep the bundled build */ });
+// The onboarding copy must render in the language ACTIVE when the flow starts, not the one
+// resolved at import (before the NL locale is applied) — else a Dutch user sees English bubbles.
+// So the bundled template is (re)built with `currentLang()` at onboarding start (see
+// `maybeStartOnboarding` / `resolveOnboardingTemplate`), mirroring how the kaartjes answers
+// localise at call-time. HQ may still host a remote (open-source) copy; it overrides when present.
+let remoteOnboardingTemplate = null;
+if (ONBOARDING_TEMPLATE_URL) {
+  loadOnboardingTemplate({ url: ONBOARDING_TEMPLATE_URL, lang: currentLang() })
+    .then((tpl) => { remoteOnboardingTemplate = tpl; })
+    .catch(() => { /* fall back to the per-run bundled build */ });
+}
+// Resolve the template for THIS run: a hosted remote copy if one loaded, else the bundled
+// build for the current app language. Called when onboarding starts so the language is live.
+function resolveOnboardingTemplate() {
+  return remoteOnboardingTemplate ?? buildOnboardingTemplate(currentLang());
+}
 const FEEDBACK_LLM_BASEURL = absLocalBase(import.meta.env?.VITE_FEEDBACK_LLM_BASEURL ?? undefined);
 const FEEDBACK_LLM_MODEL = import.meta.env?.VITE_FEEDBACK_LLM_MODEL ?? undefined;   // the model the route serves (default qwen2.5 404s on Privatemode)
 // cluster J — feedback real-pod activation env (parity with classic main.js' VITE_FEEDBACK_*).
@@ -3791,6 +3803,9 @@ async function maybeProvisionHelpCircle() {
 // flag guards across reloads (the help circle + bot stay as a standing chat regardless).
 let onboardingRunState = null;
 let onboardingPosted = false;
+// The template the ACTIVE run walks — resolved (current language) when the flow starts, so the
+// answer handler advances the SAME template the intro was built from.
+let onboardingTemplate = null;
 
 // Post the driver's bot bubbles into the help circle's kring stream (each a bot message; a choice bubble
 // carries its option buttons). Uses the SAME `_kringRender.botBubble` the circle bot + feedback use.
@@ -3805,6 +3820,7 @@ async function maybeStartOnboarding(id) {
   if (id !== HELP_CIRCLE_ID || onboardingPosted) return;
   if (await onboardingFlags.isOnboardingDone()) { onboardingPosted = true; return; }
   onboardingPosted = true;
+  onboardingTemplate = resolveOnboardingTemplate();   // resolve language NOW, not at import
   onboardingRunState = startGuidedSetup(onboardingTemplate);
   const turn = onboardingTurn(onboardingTemplate, onboardingRunState);
   postOnboardingBubbles(turn.bubbles);

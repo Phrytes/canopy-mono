@@ -34,6 +34,17 @@ describe('onboarding template', () => {
       .not.toBe(buildOnboardingTemplate('en').steps.welkom.say);
   });
 
+  it('resolves to the ACTIVE language when built at call time (nl → Dutch, en → English)', () => {
+    // The shells now build the template with the current language WHEN onboarding starts (not at
+    // import), so a Dutch app gets Dutch bubbles. Lock the per-language leaf copy here.
+    const nl = buildOnboardingTemplate('nl');
+    expect(nl.steps.welkom.say).toContain('Hoi, ik ben Onderling');
+    expect(nl.steps.eigen_kring.options.map((o) => o.label)).toContain('Ja, help me');
+    const en = buildOnboardingTemplate('en');
+    expect(en.steps.welkom.say).toContain("Hi, I'm Onderling");
+    expect(en.steps.eigen_kring.options.map((o) => o.label)).toContain('Yes, help me');
+  });
+
   it('walks welcome → choice → handoff when the user says yes', () => {
     const T = buildOnboardingTemplate('nl');
     let s = startGuidedSetup(T);

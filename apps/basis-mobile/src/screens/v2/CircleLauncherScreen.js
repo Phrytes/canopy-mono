@@ -2719,9 +2719,11 @@ function CircleDetail({
     };
   }, [circleLlmPolicy, llmRuntime]);
 
-  // The onboarding conversation run-state (shared driver) + the first-run guards. The template is built
-  // for the current app language (bundled default; web additionally hot-loads a remote copy — parity tail).
-  const onboardingTemplate = useMemo(() => buildOnboardingTemplate(lang()), []);
+  // The onboarding conversation run-state (shared driver) + the first-run guards. The template is built for
+  // the language ACTIVE when the flow starts (see maybeStartOnboarding) — NOT at mount, which resolved
+  // before the app language settled and rendered English bubbles on a Dutch app. Mirrors how the kaartjes
+  // answers localise at call-time. (Web additionally hot-loads a remote copy — parity tail.)
+  const onboardingTemplateRef = useRef(null);
   const onboardingRunStateRef = useRef(null);
   const onboardingPostedRef = useRef(false);
   const helpPendingQueryRef = useRef(null);   // the miss awaiting a "ja, doorsturen" tap
@@ -2742,26 +2744,28 @@ function CircleDetail({
     if (await onboardingFlags.isOnboardingDone()) { onboardingPostedRef.current = true; return; }
     if ((rowsRef.current || []).some((r) => r.actor === 'bot' || r.event?.actor === 'bot')) { onboardingPostedRef.current = true; return; }
     onboardingPostedRef.current = true;
-    const turn = onboardingTurn(onboardingTemplate, startGuidedSetup(onboardingTemplate));
+    const template = buildOnboardingTemplate(lang());   // resolve language NOW, not at mount
+    onboardingTemplateRef.current = template;
+    const turn = onboardingTurn(template, startGuidedSetup(template));
     postOnboardingBubbles(turn.bubbles);
     onboardingRunStateRef.current = turn.state;
     if (turn.done) {
       if (turn.handoff) onCreateCircle?.();
       await onboardingFlags.markOnboardingDone();
     }
-  }, [circle?.id, onboardingFlags, onboardingTemplate, postOnboardingBubbles, onCreateCircle]);
+  }, [circle?.id, onboardingFlags, postOnboardingBubbles, onCreateCircle]);
 
   // A tapped onboarding option: echo the pick, advance the flow, post the next bubbles, and on a handoff
   // open the mobile create flow (marking onboarding done either way).
   const handleOnboardingAnswer = useCallback(async (value) => {
     if (circle?.id !== HELP_CIRCLE_ID || !onboardingRunStateRef.current) return;
-    const r = answerOnboarding(onboardingTemplate, onboardingRunStateRef.current, value);
+    const r = answerOnboarding(onboardingTemplateRef.current, onboardingRunStateRef.current, value);
     if (r.echo) appendKringMessage({ actor: 'me', text: r.echo });
     onboardingRunStateRef.current = r.state;
     if (r.handoff) { await onboardingFlags?.markOnboardingDone(); onCreateCircle?.(); return; }
     postOnboardingBubbles(r.bubbles);
     if (r.done) await onboardingFlags?.markOnboardingDone();
-  }, [circle?.id, onboardingTemplate, appendKringMessage, postOnboardingBubbles, onboardingFlags, onCreateCircle]);
+  }, [circle?.id, appendKringMessage, postOnboardingBubbles, onboardingFlags, onCreateCircle]);
 
   // Post the deterministic set-topic chips ("of kies zelf"); honest=true frames them as the ONLY answerable
   // topics (the no-assistant fallback). Each chip carries its help:topic:<id> action as the mobile button id.
