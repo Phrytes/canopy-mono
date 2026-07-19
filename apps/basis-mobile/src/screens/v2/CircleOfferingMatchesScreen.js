@@ -8,11 +8,13 @@
  */
 import React, { useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { buildOfferingMatches } from '@onderling-app/basis';
 import { t } from '../../core/localisation.js';
 
 export default function CircleOfferingMatchesScreen({ matches = [], onBack }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const rows = useMemo(() => buildOfferingMatches({ matches }), [matches]);
 
   return (
@@ -40,7 +42,7 @@ export default function CircleOfferingMatchesScreen({ matches = [], onBack }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   page:   { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:    { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
   back:   { fontSize: 13, color: theme.color.inkSoft },

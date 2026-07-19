@@ -9,7 +9,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Switch, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { mergeMemberOverride } from '@onderling-app/basis';
 // the member capability opt-out section (web≡mobile via the shared projector).
 import { buildCapabilityMatrix } from '@onderling/app-manifest';
@@ -29,6 +29,8 @@ const PUSH_TOGGLES = [
 ];
 
 export default function CircleOverrideScreen({ store, circleId, onBack, policyStore }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [working, setWorking] = useState(null);
   const [policy, setPolicy] = useState({});
 
@@ -147,7 +149,7 @@ function verbLabel(atom) {
   return v && v !== k ? v : atom;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   page:     { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:      { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
   back:     { fontSize: 13, color: theme.color.inkSoft },

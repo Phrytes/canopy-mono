@@ -28,7 +28,7 @@
  */
 import React, { useMemo, useState, useEffect } from 'react';
 import { Modal, View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { t } from '../../core/localisation.js';
 import {
   grantKindOptions,
@@ -52,6 +52,8 @@ export default function CircleMandatePicker({
   onConfirm,
   onCancel,
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   // Selectable roster + the grouped WAARVOOR options — the SHARED pure projections.
   const roster = useMemo(() => mandateRoster({ members, myWebid }), [members, myWebid]);
   const whatGroups = useMemo(() => grantKindOptions({ offerings, t }), [offerings]);
@@ -183,7 +185,7 @@ export default function CircleMandatePicker({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   backdrop:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 16 },
   sheet:     { backgroundColor: theme.color.card, borderRadius: theme.radius?.lg ?? 12, padding: 18, width: '100%', maxWidth: 440, maxHeight: '85%' },
   header:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

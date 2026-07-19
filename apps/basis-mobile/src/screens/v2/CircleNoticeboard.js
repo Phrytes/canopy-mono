@@ -8,10 +8,10 @@
  * `callSkill` (the same already-wired stoop ops). Shows the shared buurt's posts
  * (one stoop agent today); per-circle scoping arrives with the pod foundation.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, TextInput, StyleSheet, Image, Modal } from 'react-native';
 import { t } from '../../core/localisation.js';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { pickAndEncodeImage } from '../../v2/attachmentPicker.js';
 // embeds[] — cross-object reference chips ("See also"), shared with web.
 import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '../../../../basis/src/v2/embedChips.js';
@@ -29,6 +29,8 @@ const INTENTS = ['ask', 'offer', 'lend'];
 // CircleLauncherScreen (web parity `kringMedia`): gates the 📎 attach affordance (sealed-only —
 // hidden when null) and opens sealed full images through the per-circle gateway on tap.
 export default function CircleNoticeboard({ callSkill, onStoopEvent, onEmbedOpen, media = null }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [posts, setPosts] = useState([]);
   const [intent, setIntent] = useState('ask');
   const [text, setText] = useState('');
@@ -296,6 +298,8 @@ export default function CircleNoticeboard({ callSkill, onStoopEvent, onEmbedOpen
 }
 
 function Chip({ label, onPress, muted }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <Pressable style={[styles.chip, muted && styles.chipMuted]} onPress={onPress}>
       <Text style={[styles.chipText, muted && styles.chipTextMuted]}>{label}</Text>
@@ -303,7 +307,7 @@ function Chip({ label, onPress, muted }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   wrap: { gap: 12, paddingVertical: 4 },
   intents: { flexDirection: 'row', gap: 6 },
   intent: { paddingVertical: 5, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: theme.color.line },

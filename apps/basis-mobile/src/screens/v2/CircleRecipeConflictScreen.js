@@ -20,7 +20,7 @@
  */
 import React, { useState, useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, Modal, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { t } from '../../core/localisation.js';
 import { BLOCK_REGISTRY } from '@onderling-app/basis';
 
@@ -45,6 +45,8 @@ export default function CircleRecipeConflictScreen({
   onCancel,
   title = null,
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [blockDecisions, setBlockDecisions] = useState({});
   const [metaDecisions, setMetaDecisions]   = useState({});
 
@@ -189,7 +191,7 @@ function formatPreview(v) {
   } catch { return String(v); }
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   backdrop:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center', padding: 16 },
   sheet:      { backgroundColor: theme.color.card, borderColor: theme.color.line, borderWidth: 1, borderRadius: 10, padding: 18, maxWidth: 560, width: '100%', maxHeight: '85%' },
   title:      { fontSize: 18, fontWeight: '600', fontFamily: theme.font.serif, color: theme.color.ink, marginBottom: 4 },

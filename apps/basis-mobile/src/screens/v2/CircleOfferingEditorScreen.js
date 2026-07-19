@@ -7,15 +7,17 @@
  * `mergeOffering`; Save returns it to the host, Back discards. Local discovery
  * is out of scope for this slice.
  */
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { OFFERING_AXES, DEFAULT_OFFERING, normalizeOffering, mergeOffering, consequenceKeyFor } from '@onderling-app/basis';
 import { t } from '../../core/localisation.js';
 
 const AXES = ['openness', 'posture', 'status', 'radius'];
 
 export default function CircleOfferingEditorScreen({ skill, onSave, onBack }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [working, setWorking] = useState(() => normalizeOffering(skill ?? DEFAULT_OFFERING));
   // N2.b — which (axis-option) consequence note is open.
   const [openInfo, setOpenInfo] = useState(null);
@@ -90,7 +92,7 @@ export default function CircleOfferingEditorScreen({ skill, onSave, onBack }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   page:      { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:       { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
   back:      { fontSize: 13, color: theme.color.inkSoft },

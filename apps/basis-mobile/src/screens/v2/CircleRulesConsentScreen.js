@@ -6,13 +6,15 @@
  * Reached as a preview from the editor (real join-flow consent is the
  * follow-on).
  */
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { RULES_FIELDS, normalizeRulesDoc, isRulesEmpty } from '@onderling-app/basis';
 import { t } from '../../core/localisation.js';
 
 export default function CircleRulesConsentScreen({ doc, onAgree, onDecline, onBack }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const d = normalizeRulesDoc(doc);
   const empty = isRulesEmpty(d);
 
@@ -50,7 +52,7 @@ export default function CircleRulesConsentScreen({ doc, onAgree, onDecline, onBa
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   page:        { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:         { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
   back:        { fontSize: 13, color: theme.color.inkSoft },

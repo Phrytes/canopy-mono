@@ -11,13 +11,15 @@
  * empty state reuses the panel's existing `circle.screen.empty` key
  * (invariant #8), exactly like web.
  */
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { t } from '../../core/localisation.js';
 import { recordFields } from '../../core/screenPanelDrilldown.js';
 
 export default function CircleRecordScreen({ record }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const fields = recordFields(record);
   if (!fields.length) {
     return (
@@ -38,7 +40,7 @@ export default function CircleRecordScreen({ record }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   empty: { color: theme.color.inkSoft, fontStyle: 'italic', textAlign: 'center', paddingVertical: 24, paddingHorizontal: 12 },
   field: { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.color.line },
   key:   { fontSize: 11, fontWeight: '700', color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
