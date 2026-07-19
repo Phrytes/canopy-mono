@@ -301,3 +301,171 @@ person-profile datum reads as *offering*/property. Compatibility for third-party
 the Basis UI — Basis ships the default and lets others build the fine-grained (e.g. professional /
 emergency) workflows. The skills→property fold-in already shipped (persona layer) is the offering
 half; this decision fixes the vocabulary and the bridge's shape for when it lands.
+
+---
+
+## 2026-07-18 — The skill/offering rename is executed; the requestable bridge is live
+
+**Status:** settled and shipped (`packages/agent-registry`, `packages/identity-resolver`,
+`packages/offering-match`, `apps/basis`, `apps/stoop`).
+
+**Context:** the 2026-07-17 decision fixed the *vocabulary* (skill = the invocable/A2A capability; a
+person's "I can do X" is a disclosure-controlled **offering**, NL *aanbod*) but left the rename and the
+offering→skill bridge as paydown / deferred. Both have now landed.
+
+**Decision:** "skill" means the invocable capability throughout the code; the human offering is a
+profile property. Concretely: `MemberMap.skills` → `MemberMap.offerings` (transitional `skills`
+read-alias); `@onderling/skill-match` → `@onderling/offering-match` (class `OfferingMatch`); the profile
+driver kind is `offering`; the fixed offerings taxonomy lives in `agent-registry`
+(`OFFERINGS_TAXONOMY`). The offering→skill **bridge** is the `requestOffering` dispatcher on the host
+agent: invoking a *requestable* offering does **not** execute it — it mints a `request`-kind task the
+owner can accept, adapt, or refuse (the consent/judgment step from the 2026-07-17 execution-mode model).
+
+**Alternatives / why:** over leaving the two "skill" meanings colliding — the code actively misled.
+Over building member-to-member direct invocation now — a requestable offering is a *request for a task*,
+not a remote function call, so it converges on the existing task substrate rather than standing up a
+second invocation path.
+
+**Consequences:** legacy `skills` fields and op ids are read-accepted (the `skills` alias, the
+`listSkillCategories` legacy op id) so stored data and third-party callers keep working; the disclosure
+axes (below) decide whether an offering is *requestable* at all.
+
+---
+
+## 2026-07-18 — Kernel agent-to-agent invocation renamed `callSkill` → `invokeAgentSkill`
+
+**Status:** settled and shipped (`packages/core`, commit `b8457e56`).
+
+**Context:** two unrelated functions were both named `callSkill`: the kernel's outbound A2A capability
+dispatch (`protocol/taskExchange.js`, wrapped by the public `Agent.call()`) and the app-dispatch **thin
+waist** every interface compiles to (`web-adapter`'s `callSkill`, injected into `runDispatch`). One
+symbol, two concerns — the kernel one even collided with the app-dispatch parameter of the same name.
+
+**Decision:** rename the *kernel* export to `invokeAgentSkill`; the app-dispatch / manifest-waist
+`callSkill` keeps its name. So: inter-agent, over-the-wire invocation = `invokeAgentSkill`; the local
+`{opId, args}` → dispatcher the architecture calls the "waist" = `callSkill` (unchanged). Public
+`Agent.call()` is unchanged.
+
+**Alternatives / why:** over renaming the waist instead — the waist name is load-bearing across these
+docs and app dispatch, whereas the kernel export was the newer, narrower, core-internal one (only
+`Agent.call` and the index re-export consumed it). Over leaving them ambiguous — a shared symbol across
+two subsystems misleads every reader.
+
+**Consequences:** no external consumer changed (no package or app imported the kernel function). The
+"which `callSkill`?" ambiguity the glossary and architecture carried is resolved; the enforced
+per-inbound permission check on the invoke path remains `PolicyEngine.checkInbound`.
+
+---
+
+## 2026-07-18 — Roles are capability bundles that materialize signed cap-tokens on grant
+
+**Status:** settled and shipped (`packages/core/src/permissions` — `RoleBundle`, `RoleGrantManager`).
+
+**Context:** role names (admin / coordinator / member) gated actions via a per-skill `requiredRole`
+check, but a "role" was not a first-class object you could grant and revoke as a unit, and nothing bound
+a role to the capability tokens the security gate actually enforces.
+
+**Decision:** a role is a **`RoleBundle`** — a named, frozen bundle of capability grant-templates
+(`defineRoleBundle` / `registerRoleBundle`). Assigning a role calls `RoleGrantManager.materializeBundle`,
+which **signs each template into a real `CapabilityToken`** scoped to the member and group. Granting a
+role therefore produces the same enforced cap-tokens as any other grant; `PolicyEngine` stays the single
+enforcement point.
+
+**Alternatives / why:** over keeping `requiredRole` string-matching as the whole story — it couldn't
+express "grant this whole role to this member" or revoke it atomically, and left the *display* role
+disconnected from the *signed* authority (the drift the 2026-07-09 registry decision warned about, now
+closed on the enforcement side too).
+
+**Consequences:** roles compose with the task-scoped grant primitive below (both mint attenuated
+cap-tokens through the same substrate); `ADMIN_ROLE_BUNDLE` ships as the built-in.
+
+---
+
+## 2026-07-18 — A property carries three independent disclosure axes: disclosed / matchable / requestable
+
+**Status:** settled and shipped (`packages/agent-registry` — `disclosure.js`, `resource.js`).
+
+**Context:** "what I share" had been a single knob. But three genuinely different questions hang off one
+property: may its *value* be shown, may it participate in on-device *matching* without being shown, and
+may another agent *invoke or ask* about it.
+
+**Decision:** three independent axes on each property. **disclosed** = `{enabled, rung}` — the only
+value-releasing axis (`rung` is the coarsening ladder). **matchable** — may be used in on-device
+matching while staying undisclosed (`matchable` can be true while `disclosed` is false). **requestable**
+— another's agent may invoke or ask about it (default false; this is the axis the `requestOffering`
+bridge reads). The three are preserved **independently** across a registry round-trip.
+
+**Alternatives / why:** over collapsing them into one show/hide flag — that conflates "you may see it",
+"you may match on it", and "you may act on it", which users want to set separately (match me without
+revealing my location; let a neighbour request my drill without publishing that I own one).
+
+**Consequences:** matching runs on the *matchable* set (`matchProfilesMatchable`) and never requires
+disclosure; the *requestable* axis gates whether `requestOffering` will mint a task; the persistence
+allowlist was widened so `matchable` / `requestable` stop being silently dropped on save.
+
+---
+
+## 2026-07-18 — Task-scoped delegation: code term "mandate", UI term "entrust" (NL *toevertrouwen*)
+
+**Status:** settled and shipped (`packages/core/src/permissions/TaskGrant.js` + the basis mandate UI).
+
+**Context:** to hand someone authority to act on *one specific task* — act as you, or use one of your
+offerings — without granting a standing capability, the delegation must be attenuated, task-scoped, and
+auto-revoked when the task closes.
+
+**Decision:** the primitive is **`TaskGrantManager`**. `attachGrant` issues **one** cap-token
+equal-or-narrower than the granter's, stamped `constraints.task = taskId`, **off by default**;
+`revokeTaskGrants(taskId)` revokes every token minted for the task and is called on complete/cancel. The
+user-facing concept is **entrust** (NL *toevertrouwen*); the code / domain term is **mandate**. The
+picker's "what for" is an extensible **grant-kind taxonomy** (act-as, an offering, and a not-yet-active
+resource kind), and the grant is routed through the same confirm/consent gate as any sensitive action.
+
+**Alternatives / why:** over a standing role grant — too broad, and it doesn't self-expire. Over a
+bespoke per-feature permission — this reuses the one cap-token / `PolicyEngine` substrate, so the
+delegation is enforced and revocable like everything else.
+
+**Consequences:** the grant / legibility logic lives once (the shared basis mandate module) with web and
+mobile pickers as thin projectors; the kring Taken tab exposes *entrust* per task to the task owner.
+
+---
+
+## 2026-07-18 — The help assistant's wording is conditional on the resolved LLM route
+
+**Status:** settled and shipped (`apps/basis` — `helpChat.js`, `userLlmRuntime.js`).
+
+**Context:** the standing help bot answers first from a deterministic in-app card deck; on a miss it can,
+**with consent**, forward the question to an LLM. Whether that LLM is *confidential* depends on the
+resolved route (a confidential enclave proxy vs a plain provider).
+
+**Decision:** the assistant never claims confidentiality it does not have. The consent card and
+provenance wording are chosen by the route's **actual** confidentiality — a confidential preset in effect
+picks the "via de vertrouwelijke assistent" copy; otherwise the plain wording, with **no** confidential
+claim. The LLM forward is consent-gated per question.
+
+**Alternatives / why:** over a fixed "confidential assistant" label — it would lie whenever the
+confidential route is not the one actually in effect. Honesty about the route is a privacy property, not
+cosmetic copy.
+
+**Consequences:** the label keys are route-derived (`helpLlmLabelKeys`), so a deployment not wired to a
+confidential proxy automatically shows honest wording rather than an aspirational claim.
+
+---
+
+## 2026-07-19 — The bot is addressed directly only in a 1:1; in a group it must be tagged
+
+**Status:** settled and shipped (`apps/basis` — `botAddress.js`, `botChat.js`).
+
+**Context:** the Onderling bot is a **real peer member** of a circle (e.g. the help circle "Uitleg"). In
+a 1:1 with the bot every line is for it; in a circle with other people, treating every message as
+bot-directed would make the bot talk over the humans.
+
+**Decision:** the **tag-to-address** gate. In a genuine 1:1-with-a-bot (you + exactly one agent member)
+the bot always answers. In a circle with two or more members it answers **only** when the line names or
+@-tags it; otherwise it stays silent. The same rule drives the 1:1 assistant-header strip — shown only
+in a real 1:1-bot chat.
+
+**Alternatives / why:** over always-on in every circle — the bot would spam group chat. Over never-auto
+in a 1:1 — you would have to tag a bot you are plainly talking to alone.
+
+**Consequences:** one shared gate (`botIsAddressed` / `oneToOneBotLabel`) is used by both web and mobile,
+so the addressing behaviour and the header cannot drift between platforms.
