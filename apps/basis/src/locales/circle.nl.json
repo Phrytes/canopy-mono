@@ -415,6 +415,28 @@
       "doc": "SP-13.3."
     }
   },
+  "taskStatus": {
+    "open": {
+      "text": "open",
+      "doc": "Taken-tab — status-badge: taak is nog niet opgepakt."
+    },
+    "claimed": {
+      "text": "opgepakt",
+      "doc": "Taken-tab — status-badge: iemand doet de taak."
+    },
+    "submitted": {
+      "text": "ingediend",
+      "doc": "Taken-tab — status-badge: ingediend ter beoordeling."
+    },
+    "done": {
+      "text": "klaar",
+      "doc": "Taken-tab — status-badge: taak afgerond."
+    },
+    "completed": {
+      "text": "klaar",
+      "doc": "Taken-tab — status-badge: taak afgerond (alias)."
+    }
+  },
   "scope": {
     "self": {
       "text": "alleen jij",
@@ -637,6 +659,22 @@
     "tab_coming": {
       "text": "{{tab}} komt in een vervolg-slice.",
       "doc": "SP-13.3 — placeholder voor tabs zonder eigen scherm (yet)."
+    },
+    "taken_empty": {
+      "text": "Nog geen taken in deze kring.",
+      "doc": "Taken-tab — lege staat (geen taken)."
+    },
+    "taken_add": {
+      "text": "＋ Taak toevoegen",
+      "doc": "Taken-tab — compose-knop om een taak toe te voegen."
+    },
+    "taken_add_prompt": {
+      "text": "Wat moet er gedaan worden?",
+      "doc": "Taken-tab — prompt bij het toevoegen van een taak."
+    },
+    "taken_untitled": {
+      "text": "(naamloze taak)",
+      "doc": "Taken-tab — fallback als een taak geen tekst heeft."
     },
     "tabs_label": {
       "text": "Kring-tabs",

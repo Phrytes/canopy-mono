@@ -209,6 +209,7 @@ import {
 } from '../../src/v2/circleStream.js';
 import { isFeatureEnabled, defaultViewModeFromPolicy } from '../../src/v2/circlePolicy.js';
 import { buildKringTabs, DEFAULT_KRING_TAB, featureTabId, featureForTabId } from '../../src/v2/kringTabs.js';
+import { buildTaskRows } from '../../src/v2/taskRows.js';
 // D1 (§5A) — per-circle action-frequency counter behind the quickActions block.
 import { createActionFrequencyStore } from '../../src/v2/actionFrequency.js';
 import { makePeerRouter } from '../../src/core/handlers/peerRouter.js';
@@ -4084,6 +4085,12 @@ function showKring(id, circle, policy) {
   let noticeboardPosts = [];
   let noticeboardIntent = 'ask';
   let noticeboardBusy = false;
+  // Taken (tasks) tab — the circle's tasks, projected to stream rows via the shared
+  // `buildTaskRows`. Loaded from the composed tasks agent's `listOpen` (scoped to THIS
+  // circle by the explicit `circleId` arg the tasks resolver reads). Refreshed on open,
+  // on tab-switch, after each task op, and after a `/addtask` turn — so a task created
+  // any way (button / `/addtask` / bot) appears here.
+  let kringTasks = [];
   let noticeboardPendingAttachment = null;   // S5 — { encoded, thumbnail, name } before posting
   let myWebid = null;   // fetched once, best-effort (whoAmI is a stoop skill, not chat-manifested)
   let myCircleRole = null;   // my role in THIS circle ('admin' | …), for mandate owner-visibility
@@ -4170,6 +4177,34 @@ function showKring(id, circle, policy) {
     // embeds[] — progressively resolve each embed ref to its live title, then
     // re-render to upgrade the "See also" chips (ref → real title). Best-effort.
     enrichNoticeboardEmbeds();
+  }
+
+  // Taken (tasks) tab — load THIS circle's tasks from the composed tasks agent, projected
+  // to stream rows via the shared `buildTaskRows` (so the Taken tab's chips + the owner-only
+  // entrust action come from the SAME actionsForStreamRow the chat stream uses). The explicit
+  // `circleId` scopes the read (basis is multi-pod; the tasks resolver reads `circleId`).
+  async function loadTasks() {
+    try {
+      const res = await rawCallSkill('tasks', 'listOpen', { circleId: id });
+      const items = Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []);
+      kringTasks = buildTaskRows(items, { circleId: id });
+    } catch { kringTasks = []; }
+    if (getActiveCircle() === id) rerender();
+  }
+
+  // Add a task from the Taken tab. Routes through the SAME dispatch waist every op uses
+  // (circleDispatchReady → scope-inject the active circle onto the create), then refreshes
+  // the list. A `/addtask` typed in the composer reaches the tasks agent by its own path;
+  // both end up in the same list via loadTasks().
+  async function addTaskFromTab() {
+    const text = (globalThis.prompt?.(t('circle.kring.taken_add_prompt')) || '').trim();
+    if (!text) return;
+    try {
+      if (typeof circleDispatchReady === 'function') {
+        await circleDispatchReady({ opId: 'addTask', args: { text }, appOrigin: 'tasks' });
+      }
+    } catch { /* the reload reflects the real state */ }
+    await loadTasks();
   }
 
   async function enrichNoticeboardEmbeds() {
@@ -4305,6 +4340,10 @@ function showKring(id, circle, policy) {
       tabs, activeTab,
       viewMode,
       screenBlocks,
+      // Taken (tasks) tab — the circle's tasks (stream rows) + the compose affordance.
+      // The view only reads these when the taken tab is active.
+      tasks: kringTasks,
+      onAddTask: addTaskFromTab,
       // S6.A — tap an inline manifest button on a bot reply → dispatch its op.
       // Task #13 — an onboarding option button (help circle) routes to the onboarding driver instead.
       onEmbedButton: (b) => {
@@ -4419,6 +4458,7 @@ function showKring(id, circle, policy) {
         const f = featureForTabId(tabId);
         if (f) actionFrequency.bump(id, f);
         if (tabId === 'prikbord') loadNoticeboard();   // S1 — lazy-load the buurt posts
+        if (tabId === 'taken') loadTasks();            // Taken — lazy-load the circle's tasks
         rerender();
       },
       // D1 (§5A) — a "Veel-gebruikt" pill tap.  Bump the feature's count,
@@ -4581,15 +4621,32 @@ function showKring(id, circle, policy) {
           // a feedback circle routes ALL free text to its co-hosted feedback bot (the user's
           // line was already appended above; the bot's replies render via emit → _kringRender.botBubble).
           try { await _fbSurface.handle(line, id); } catch (e) { _kringRender?.botBubble?.(`⚠ ${e?.message ?? e}`); }
-        } else if (circleBot) { noteCircleBotTurn(await circleBot.handle(line, { id, msgId, ts }), line); }
+        } else if (circleBot) {
+          noteCircleBotTurn(await circleBot.handle(line, { id, msgId, ts }), line);
+          // A `/addtask` (or any task-touching) turn ran through the bot — refresh the Taken
+          // tab so a newly-created task appears there without a manual reload.
+          if (activeTab === 'taken') loadTasks();
+        }
         else { broadcastFanOut({ msgId, text: line, ts }); }   // fallback before the bot is built
       },
-      onAction: (action /*, row */) => {
+      onAction: async (action /*, row */) => {
         // Entrust (mandate) — open the task-scoped grant picker. Owner-only
         // visibility got it here; the `attachTaskGrant` handler is the real gate.
         if (action?.action === 'mandate') {
           const taskId = action.payload?.taskId ?? action.payload?.ref ?? null;
           if (taskId) openMandatePicker({ taskId, circleId: id });
+          return;
+        }
+        // Task lifecycle — claim / done route to the tasks agent through the SAME
+        // dispatch waist (scope-injected to the active circle), then refresh the tab.
+        if (action?.action === 'claim' || action?.action === 'done') {
+          const taskId = action.payload?.taskId ?? action.payload?.ref ?? null;
+          if (taskId && typeof circleDispatchReady === 'function') {
+            const opId = action.action === 'claim' ? 'claimTask' : 'completeTask';
+            try { await circleDispatchReady({ opId, args: { id: taskId }, appOrigin: 'tasks' }); }
+            catch { /* the reload reflects the real state */ }
+            await loadTasks();
+          }
           return;
         }
         // Feedback bot buttons (Send all / Send 1 / ✏ / Send nothing → fp:consent:* / fp:edit:* / fp:cancel)
@@ -4636,6 +4693,9 @@ function showKring(id, circle, policy) {
   // until they resolve, the action stays hidden.
   ensureMyWebid().then(() => { if (getActiveCircle() === id) rerender(); }).catch(() => {});
   ensureMyRole().catch(() => {});
+  // Taken tab — load the circle's tasks in the background so the tab is populated the
+  // moment it's opened (a task created via /addtask or the bot also lands here). Fail-soft.
+  loadTasks().catch(() => {});
   // Task #13 — first time the help circle opens, run the guided onboarding conversation as the
   // Onderling-bot's chat (idempotent via the persisted onboardingDone flag + a per-session guard).
   maybeStartOnboarding(id).catch((err) => console.warn('[circleApp] onboarding start failed', err?.message ?? err));

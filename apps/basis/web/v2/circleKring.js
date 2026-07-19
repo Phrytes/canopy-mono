@@ -133,6 +133,15 @@ export function renderCircleKring(container, {
   // its own). `null` = host hasn't loaded it → falls back to the placeholder.
   //   `{ posts, intent, busy, onPost, onAction, onIntent }`
   noticeboard = null,
+  // Taken (tasks) tab — the circle's tasks projected to stream rows via the shared
+  // `buildTaskRows` (host-loaded from the composed tasks agent's `listOpen`). When the
+  // active tab is `taken`, the body lists these rows with their lifecycle chips (claim /
+  // done / snooze via `actionsForStreamRow`) + the owner-only "Toevertrouwen" (entrust)
+  // chip — the same seam the chat stream uses. `null` = host hasn't loaded yet → the tab
+  // renders its empty state (a friendly line, not the tab-coming placeholder).
+  //   `onAddTask()` — the tab's compose affordance (host adds a task, then refreshes).
+  tasks = null,
+  onAddTask = null,
   // media — the sealed media path (live wiring). Both optional; without them the
   // composer + bubbles render exactly as before.
   //   `onAttachMedia(file)`  host runs the picked image through createMediaEmbed (sealed
@@ -282,6 +291,14 @@ export function renderCircleKring(container, {
       onClearAttach:    noticeboard.onClearAttach,
       onViewAttachment: noticeboard.onViewAttachment,
       onEmbedOpen,
+    });
+  } else if (effectiveTab === 'taken') {
+    // Taken (tasks) tab — list the circle's tasks with their lifecycle chips + the
+    // owner-only entrust chip (via the shared actionsForStreamRow). This is what makes
+    // the Mandate/entrust picker reachable in the GUI.
+    renderTakenTab(body, {
+      tasks: Array.isArray(tasks) ? tasks : [],
+      tr, onAction, onAddTask, viewerWebid, viewerIsAdmin,
     });
   } else if (effectiveTab !== 'gesprek') {
     const placeholder = document.createElement('div');
@@ -524,6 +541,76 @@ export function renderCircleKring(container, {
 /* ──────────────────────────────────────────────────────────────────
  * Internals
  * ────────────────────────────────────────────────────────────────── */
+
+/**
+ * Taken (tasks) tab body — a compose affordance, then one card per task with its
+ * text + true status + the `actionsForStreamRow` chips (claim / done / snooze + the
+ * owner-only "Toevertrouwen" entrust chip). Empty state when there are no tasks.
+ *
+ * The chips come from the SAME selector the chat stream uses (invariant #1/#3); the
+ * host wires their taps (`onAction`) to the tasks agent + the mandate picker.
+ */
+function renderTakenTab(body, { tasks = [], tr, onAction, onAddTask, viewerWebid = null, viewerIsAdmin = false } = {}) {
+  const wrap = document.createElement('div');
+  wrap.className = 'circle-kring__taken';
+
+  // Compose affordance — add a task straight from the tab. `/addtask` in the composer
+  // lands here too (both flow through the tasks agent); this is the explicit button.
+  if (typeof onAddTask === 'function') {
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'circle-kring__taken-add';
+    add.textContent = tr('circle.kring.taken_add');
+    add.addEventListener('click', () => onAddTask());
+    wrap.appendChild(add);
+  }
+
+  if (!tasks.length) {
+    const empty = document.createElement('div');
+    empty.className = 'circle-kring__taken-empty';
+    empty.textContent = tr('circle.kring.taken_empty');
+    wrap.appendChild(empty);
+    body.appendChild(wrap);
+    return;
+  }
+
+  for (const row of tasks) {
+    const card = document.createElement('div');
+    card.className = 'circle-kring__task';
+    card.dataset.taskId = row.taskId ?? '';
+
+    const textEl = document.createElement('div');
+    textEl.className = 'circle-kring__task-text';
+    textEl.textContent = row.text || tr('circle.kring.taken_untitled');
+    card.appendChild(textEl);
+
+    const status = row.status ?? 'open';
+    const statusEl = document.createElement('span');
+    statusEl.className = `circle-kring__task-status circle-kring__task-status--${status}`;
+    statusEl.textContent = tr(`circle.taskStatus.${status}`, { defaultValue: status });
+    card.appendChild(statusEl);
+
+    // Lifecycle + owner-only mandate chips — the SAME selector the chat stream uses.
+    const actions = actionsForStreamRow(row, { viewerWebid, isAdmin: viewerIsAdmin });
+    if (actions.length) {
+      const actRow = document.createElement('div');
+      actRow.className = 'circle-kring__task-actions';
+      for (const a of actions) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'circle-kring__bubble-action';
+        if (a.action === 'mandate') btn.classList.add('circle-kring__bubble-action--mandate');
+        btn.dataset.action = a.action;
+        btn.textContent = tr(a.label);
+        btn.addEventListener('click', () => { if (typeof onAction === 'function') onAction(a, row); });
+        actRow.appendChild(btn);
+      }
+      card.appendChild(actRow);
+    }
+    wrap.appendChild(card);
+  }
+  body.appendChild(wrap);
+}
 
 function renderBubble(row, {
   tr, onAction,

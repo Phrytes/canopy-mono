@@ -415,6 +415,28 @@
       "doc": "SP-13.3 — bottom-tab when memberDirectory is on (renders last per board ordering)."
     }
   },
+  "taskStatus": {
+    "open": {
+      "text": "open",
+      "doc": "Taken (tasks) tab — status badge: not yet claimed."
+    },
+    "claimed": {
+      "text": "claimed",
+      "doc": "Taken (tasks) tab — status badge: someone is on it."
+    },
+    "submitted": {
+      "text": "submitted",
+      "doc": "Taken (tasks) tab — status badge: submitted for review."
+    },
+    "done": {
+      "text": "done",
+      "doc": "Taken (tasks) tab — status badge: task completed."
+    },
+    "completed": {
+      "text": "done",
+      "doc": "Taken (tasks) tab — status badge: task completed (alias)."
+    }
+  },
   "scope": {
     "self": {
       "text": "only you",
@@ -637,6 +659,22 @@
     "tab_coming": {
       "text": "{{tab}} content lands in a follow-up slice.",
       "doc": "SP-13.3 — placeholder body for a tab whose content surface isn't built yet (e.g. PRIKBORD / LEDEN)."
+    },
+    "taken_empty": {
+      "text": "No tasks in this circle yet.",
+      "doc": "Taken (tasks) tab — empty state (no tasks)."
+    },
+    "taken_add": {
+      "text": "＋ Add task",
+      "doc": "Taken (tasks) tab — compose button to add a task."
+    },
+    "taken_add_prompt": {
+      "text": "What needs doing?",
+      "doc": "Taken (tasks) tab — prompt when adding a task."
+    },
+    "taken_untitled": {
+      "text": "(untitled task)",
+      "doc": "Taken (tasks) tab — fallback when a task has no text."
     },
     "tabs_label": {
       "text": "Kring tabs",
