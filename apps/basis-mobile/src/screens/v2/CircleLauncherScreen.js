@@ -36,6 +36,8 @@ import {
   myThingsFromListFiles,
   // kring-scoped event stream + per-row action chips.
   buildKringStream, actionsForStreamRow,
+  // Taken (tasks) tab — task-store item → stream-row projection (shared web≡mobile).
+  buildTaskRows,
   // per-kring bottom tabs from policy.features (v2 §1).
   buildKringTabs, DEFAULT_KRING_TAB,
   // D1 (§5A) — quickActions row: feature↔tab mapping + frequency counter.
@@ -2016,6 +2018,27 @@ function CircleDetail({
     return () => { alive = false; };
   }, [activeTab, circle?.id, rawCallSkill]);
 
+  // Taken (tasks) tab — the circle's tasks from the composed tasks agent, projected to
+  // stream rows via the SHARED buildTaskRows (web≡mobile), so the tab's lifecycle chips +
+  // the owner-only entrust action come from the same actionsForStreamRow the chat stream
+  // uses. Loads lazily when the tab opens; `tasksReloadTick` forces a refresh after a task
+  // op or an /addtask turn. The explicit circleId scopes the read (basis is multi-pod).
+  const [kringTasks, setKringTasks] = useState([]);
+  const [tasksReloadTick, setTasksReloadTick] = useState(0);
+  useEffect(() => {
+    if (activeTab !== 'taken' || !circle?.id || typeof rawCallSkill !== 'function') return undefined;
+    let alive = true;
+    (async () => {
+      let items = [];
+      try {
+        const res = await rawCallSkill('tasks', 'listOpen', { circleId: circle.id });
+        items = Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []);
+      } catch { items = []; }
+      if (alive) setKringTasks(buildTaskRows(items, { circleId: circle.id }));
+    })();
+    return () => { alive = false; };
+  }, [activeTab, circle?.id, rawCallSkill, tasksReloadTick]);
+
   // α.1e — materialized scherm blocks for the active recipe.  null
   // until the load below resolves; [] when the book is empty.
   // D1 — `screenReloadTick` bumps after a quickActions tap to re-rank.
@@ -2382,14 +2405,25 @@ function CircleDetail({
   // Row-action dispatcher for the stream bubbles — the "entrust" (mandate) action opens the
   // picker (owner-only visibility got it here; the handler is the real gate). Other row actions
   // are not yet wired on mobile (parity gap tracked in web-mobile-exceptions is unrelated).
-  const onRowAction = useCallback((a, row) => {
+  const onRowAction = useCallback(async (a, row) => {
     if (a?.action === 'mandate') {
       const taskId = a?.payload?.taskId ?? a?.payload?.ref ?? null;
       if (taskId) openMandatePicker({ taskId });
       return;
     }
+    // Task lifecycle — claim / done route to the tasks agent through the SAME dispatch waist
+    // (runCircleCommandResolved → scope-injected to the active circle), then refresh the tab.
+    if (a?.action === 'claim' || a?.action === 'done') {
+      const taskId = a?.payload?.taskId ?? a?.payload?.ref ?? null;
+      if (taskId) {
+        const opId = a.action === 'claim' ? 'claimTask' : 'completeTask';
+        await runCircleCommandResolved({ opId, args: { id: taskId }, appOrigin: 'tasks' });
+        setTasksReloadTick((n) => n + 1);
+      }
+      return;
+    }
     console.info('[kring] action', a?.action, row?.id);
-  }, [openMandatePicker]);
+  }, [openMandatePicker, runCircleCommandResolved]);
 
   // E2 — run a bulk route ("/done all") over the most-recent listing's items (web≡mobile parity via the shared
   // executeBulkDispatch). Mobile has no filter-router; cross-thread propagation is the fan-out itself.
@@ -2944,8 +2978,13 @@ function CircleDetail({
     // Fire-and-forget: the bot posts its own reply bubble; swallow rejections so a failed turn can't
     // surface as an unhandled promise rejection. noteBotTurn arms the conversational follow-up if the
     // bot replied with a question.
-    Promise.resolve(circleBot.handle(text, { id: circle.id, msgId: appended?.msgId, ts: appended?.ts })).then((r) => noteBotTurn(r, text)).catch(() => {});
-  }, [composerText, eventLog, circle?.id, appendKringMessage, circleBot, pendingFollowUp, runCircleCommandResolved, awaitingBotReply, noteBotTurn, manifestsByOrigin, buildFeedbackMount, emitFeedbackLangOptions, postHelpTopicChips, answerHelpMessage]);
+    Promise.resolve(circleBot.handle(text, { id: circle.id, msgId: appended?.msgId, ts: appended?.ts })).then((r) => {
+      noteBotTurn(r, text);
+      // An /addtask (or any task-touching) turn ran through the bot — refresh the Taken tab
+      // so a newly-created task appears there without a manual reload.
+      if (activeTab === 'taken') setTasksReloadTick((n) => n + 1);
+    }).catch(() => {});
+  }, [composerText, eventLog, circle?.id, appendKringMessage, circleBot, pendingFollowUp, runCircleCommandResolved, awaitingBotReply, noteBotTurn, manifestsByOrigin, buildFeedbackMount, emitFeedbackLangOptions, postHelpTopicChips, answerHelpMessage, activeTab]);
 
   // δ.2 — tap-to-retry on the failed icon.  Looks up the original
   // text from the eventLog so we don't have to remember it elsewhere.
@@ -3105,6 +3144,50 @@ function CircleDetail({
               </View>
             ))
           )
+        ) : activeTab === 'taken' ? (
+          // Taken (tasks) tab — list the circle's tasks with their lifecycle chips + the
+          // owner-only entrust chip (the same seam the chat stream uses). Tapping entrust
+          // opens the mandate picker; claim/done route to the tasks agent. web≡mobile.
+          <View testID="circle-detail-taken">
+            <Pressable
+              style={styles.takenAdd}
+              accessibilityRole="button"
+              testID="circle-taken-add"
+              onPress={() => setComposerText('/addtask ')}
+            >
+              <Text style={styles.takenAddText}>{t('circle.kring.taken_add')}</Text>
+            </Pressable>
+            {kringTasks.length === 0 ? (
+              <Text style={styles.placeholder}>{t('circle.kring.taken_empty')}</Text>
+            ) : (
+              kringTasks.map((row) => (
+                <View key={row.id} style={styles.taskCard} testID="circle-task-row">
+                  <Text style={styles.taskText} numberOfLines={2}>
+                    {row.text || t('circle.kring.taken_untitled')}
+                  </Text>
+                  <Text style={styles.taskStatus}>
+                    {t(`circle.taskStatus.${row.status || 'open'}`, { defaultValue: row.status || '' })}
+                  </Text>
+                  <View style={styles.rowActions}>
+                    {actionsForStreamRow(row, {
+                      viewerWebid: mandateViewer.viewerWebid ?? null,
+                      isAdmin: mandateViewer.isAdmin ?? false,
+                    }).map((a) => (
+                      <Pressable
+                        key={a.id}
+                        style={[styles.rowActionBtn, a.action === 'mandate' && styles.taskChipMandate]}
+                        accessibilityRole="button"
+                        testID={`circle-task-chip-${a.action}`}
+                        onPress={() => onRowAction(a, row)}
+                      >
+                        <Text style={styles.rowActionText}>{t(a.label)}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
         ) : activeTab !== 'gesprek' ? (
           <Text style={styles.placeholder}>
             {t('circle.kring.tab_coming', { tab: t(`circle.tabs.${activeTab}`) })}
@@ -3777,9 +3860,16 @@ const makeStyles = (theme) => StyleSheet.create({
   memberHandle:     { fontSize: 15, color: theme.color.ink, fontWeight: '600' },
   memberName:       { fontSize: 13, color: theme.color.inkSoft, marginTop: 1 },
   // Per-row action buttons (Ik help / Negeer …) — used by chat bubbles.
-  rowActions:     { flexDirection: 'row', gap: 6, marginTop: 8 },
+  rowActions:     { flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap' },
   rowActionBtn:   { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.paper },
   rowActionText:  { fontSize: 12, color: theme.color.ink },
+  // Taken (tasks) tab — compose affordance + one card per task (text + status + chips).
+  takenAdd:       { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 8, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.card, marginBottom: 10 },
+  takenAddText:   { fontSize: 13, fontWeight: '600', color: theme.color.ink },
+  taskCard:       { padding: 12, borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius.md, backgroundColor: theme.color.card, marginBottom: 8 },
+  taskText:       { fontSize: 14, color: theme.color.ink },
+  taskStatus:     { fontSize: 11, color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 3 },
+  taskChipMandate:{ borderColor: theme.color.accentInk },
   // Consent-card button variants (web parity): primary = filled ink, secondary = ink-outline.
   consentBtnPrimary:     { backgroundColor: theme.color.accent, borderColor: theme.color.accent },
   consentBtnPrimaryText: { color: theme.color.accentContrast, fontWeight: '700' },

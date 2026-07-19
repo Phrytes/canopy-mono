@@ -243,6 +243,8 @@ export {
 } from './v2/viewAsAttributes.js';
 // Stream per-row actions + pinned compose.
 export { actionsForStreamRow, buildStreamComposeContext } from './v2/streamActions.js';
+// Taken (tasks) tab — task-store item → stream-row projection (shared web≡mobile).
+export { buildTaskRows, taskItemToStreamRow, taskStatusOf } from './v2/taskRows.js';
 // holiday-mode extension shortcuts + outgoing auto-reply.
 export {
   extendHolidayDays, setHolidayUntil, buildHolidayAutoReply,
