@@ -26,7 +26,7 @@ Take the two agents from Tutorial 1 and replace each `InternalTransport` with a
 `RelayTransport` pointed at your relay:
 
 ```js
-import { Agent, AgentIdentity, Parts, callSkill, sendMessage } from '@onderling/core';
+import { Agent, AgentIdentity, Parts, invokeAgentSkill, sendMessage } from '@onderling/core';
 import { VaultMemory } from '@onderling/vault';
 import { RelayTransport } from '@onderling/transports';
 
@@ -70,7 +70,7 @@ host.addPeer(bot.address, bot.pubKey);
 
 await sendMessage(bot, host.address, 'ping over the relay');
 
-const task   = callSkill(bot, host.address, 'greet', Parts.wrap({ name: 'Relay Bot' }));
+const task   = invokeAgentSkill(bot, host.address, 'greet', Parts.wrap({ name: 'Relay Bot' }));
 const result = await task.done();
 Parts.data(result.parts);   // → { greeting: 'Hello, Relay Bot!' }
 ```

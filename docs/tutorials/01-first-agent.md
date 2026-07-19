@@ -13,7 +13,7 @@ Every agent owns a cryptographic identity, stored in a vault. For a first run, t
 vault is enough:
 
 ```js
-import { Agent, AgentIdentity, InternalBus, InternalTransport, callSkill, sendMessage, Parts } from '@onderling/core';
+import { Agent, AgentIdentity, InternalBus, InternalTransport, invokeAgentSkill, sendMessage, Parts } from '@onderling/core';
 import { VaultMemory } from '@onderling/vault';
 
 const hostId = await AgentIdentity.generate(new VaultMemory());
@@ -69,7 +69,7 @@ A plain message, and a skill call over the task protocol:
 ```js
 await sendMessage(bot, host.address, 'ping from the wire bot');
 
-const task   = callSkill(bot, host.address, 'greet', Parts.wrap({ name: 'Journey Bot' }));
+const task   = invokeAgentSkill(bot, host.address, 'greet', Parts.wrap({ name: 'Journey Bot' }));
 const result = await task.done();
 Parts.data(result.parts);   // → { greeting: 'Hello, Journey Bot!' }
 ```

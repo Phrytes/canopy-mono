@@ -93,7 +93,7 @@ Layering is a project invariant: apps compose substrates, substrates compose the
 | App | What it does |
 |---|---|
 | **basis** (`apps/basis`, `apps/basis-mobile`) | The unified front door — one chat + GUI shell composing every module below through the merged manifest. Web is static-deployable; mobile is Expo/React Native. Web and mobile are peers — one shared core, two thin shells. |
-| **household · stoop · tasks-v0 · folio · calendar** | Functionality modules — shared household state, neighborhood sharing and skill-matching, tasks and circles, pod file sharing, events with cross-peer RSVP. Their manifests are the source of truth; Basis composes them as one product. |
+| **household · stoop · tasks · folio · calendar** | Functionality modules — shared household state, neighborhood sharing and offering-matching (*aanbod*), tasks and circles, pod file sharing, events with cross-peer RSVP. Their manifests are the source of truth; Basis composes them as one product. (`@onderling-app/tasks` is the task ledger; its directory is still `apps/tasks-v0`.) |
 | **feedback** | Privacy-first community feedback — split to its own repository: [Onderling/feedback](https://github.com/Onderling/feedback). It consumes the published platform like any third party. |
 
 ## Engineering principles
@@ -142,8 +142,16 @@ executable SDK journeys run with `cd apps/sdk-journeys && npm test`.
   split-out feedback app as the first external tenant.
 - Basis web + mobile shells are live and compose the same manifest-driven core; cross-device peer
   flows verified on physical Android hardware.
-- Per-persona **disclosure** (what you share, per circle) and on-device **matching** (drivers —
-  interests matched locally, never uploaded) shipped recently.
+- The **chat surface** is now conversational, not command-only: a guided onboarding and a standing
+  help bot (a real peer member of a help circle) that answers from an in-app card deck first and, on
+  consent, forwards to an LLM — with wording honest about whether that route is confidential. A
+  systeem/licht/donker **theme toggle** is live on both platforms.
+- **Tasks** gained co-ownership (`assignees[]`), a cross-circle "my tasks" view, sendable lists, and
+  task-scoped delegation (**entrust** / *toevertrouwen*). A kring **Taken** tab exposes both.
+- A person's **offering** (*aanbod*) is disclosure-controlled on three independent axes —
+  **disclosed** (what you reveal, per circle, coarsely, with k-anonymity guards), **matchable**
+  (matched on-device, never uploaded), and **requestable** (a neighbour's agent can request it, which
+  mints a task you accept or refuse).
 - Operational hardening (public relay deployment, deployment automation) is in progress.
 
 Honest per-app phase notes live in each app's own README.
