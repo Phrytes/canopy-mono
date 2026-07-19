@@ -14,12 +14,14 @@ they fit together.
   eventually split on: interface clients above it, functionality/substrate below, the manifest between.
 - **`callSkill`** — the single entry point that runs an op. *Where* the op resolves is a separate axis: a
   local handler, an external agent, a model, the pod, an MCP service, or a scheduled job.
-- **Projector** — a pure function that turns the one manifest into one surface: `renderChat` (LLM tools +
-  system prompt), `renderSlash` (`/commands` + grammar), `renderGate` (deterministic pre-LLM token-gate),
-  `renderWeb` (DOM pages/forms), `renderMobile` (RN NavModel). Same manifest, every surface. The five fall in
-  **two groups**: `renderChat`/`renderSlash`/`renderGate` are **platform-agnostic input modalities** (the
-  `web ≡ mobile` invariant); `renderWeb`/`renderMobile` are **platform shells** (`renderMobile` re-exports
-  `renderWeb`'s NavModel — only the adapter differs).
+- **Projector** — a pure function that turns the one manifest into one surface. They fall in **two families**:
+  **affordance** projectors turn ops into one *invocation* surface each — `renderChat` (LLM tools + system
+  prompt), `renderSlash` (`/commands` + grammar), `renderGate` (deterministic pre-LLM token-gate),
+  `renderAttachments` (the attach "+" menu, from each op's `surfaces.attach`); **shell** projectors render the
+  whole GUI — `renderWeb` (DOM pages/forms) and `renderMobile` (RN NavModel, a re-export of `renderWeb`'s
+  NavModel — only the adapter differs). The affordance surfaces are interchangeable at the waist (the
+  `web ≡ mobile` invariant on the input side). `renderCoverage` is the *meta*-projector — a matrix over the
+  surfaces, not a surface of its own.
 - **Gate** — the deterministic, *pre-LLM* router: it matches common phrases ("add X", "done X") to ops via
   token rules projected from the manifest, so routine input doesn't need the model.
 - **Doorgeefluik** (Dutch: "pass-through hatch") — the principle that interfaces are pass-throughs to
@@ -28,8 +30,10 @@ they fit together.
 ## Layers
 
 - **Kernel** (`packages/core`) — the lean bottom of the stack: the `Agent`, envelope/parts, the skill registry,
-  the `callSkill` security gate, identity, `InternalTransport`, and the **ports**. It holds *no concrete adapters*
-  and depends *up* on nothing (fitness-fn-guarded).
+  the inbound permission check (`PolicyEngine.checkInbound`), the inter-agent invoke (`invokeAgentSkill`),
+  identity, `InternalTransport`, and the **ports**. It holds *no concrete adapters* and depends *up* on nothing
+  (fitness-fn-guarded). (The kernel's over-the-wire invoke is `invokeAgentSkill`; the app-dispatch **waist**
+  `callSkill` above is a separate, unrenamed symbol — see `decisions.md`, 2026-07-18.)
 - **Port** — an interface the kernel declares as its **compatibility contract**: `Transport`, `DataSource`,
   `ActorResolver`. A third-party adapter is compatible iff it *implements the port + passes its conformance harness*
   (see [`conventions/ports.md`](./conventions/ports.md)).
@@ -40,9 +44,9 @@ they fit together.
   re-exports the kernel + default adapters (pass your own explicitly); high layer adds `createAgent()`
   (batteries-included run-as-agent) + `connectSkill()` (map any app function to a skill). "Import one thing, done."
 - **Substrate** — a reusable building block in `packages/` that composes the kernel + adapters (e.g. `item-store`,
-  `skill-match`, `notifier`). Apps compose substrates; substrates don't reinvent the kernel. *The tier is a
+  `offering-match`, `notifier`). Apps compose substrates; substrates don't reinvent the kernel. *The tier is a
   **gradient**:* runtime-foundation (near-required: vault, oidc-session, pod-client) → feature (optional:
-  skill-match, notifier) → facade (composes others: secure-agent, agent-provisioning).
+  offering-match, notifier) → facade (composes others: secure-agent, agent-provisioning).
 - **Deployment / hosting layer** — server-side services outside the client apps: **pod-hosting**, relay/proxy,
   the private-LLM enclave, rollout. Placed by trust + latency; the `feedback` deployment occupies it today.
 - **Agent** — one `core.Agent` per service-context. Transports are routes plugged into that one agent;
@@ -83,6 +87,23 @@ they fit together.
 - **Envelope** — the inter-agent message primitive on the wire: it syncs circle stores, carries direct exchanges
   (offer→claim, request→respond), and carries identity/permission for **remote skill-acquisition** (an agent
   authenticating into another's gated skill surface over a transport).
+- **Role bundle** — a role expressed as a named, frozen bundle of capability grant-templates (`RoleBundle`).
+  Assigning it materializes each template into a signed `CapabilityToken` (`RoleGrantManager`), so the display
+  role and the enforced authority are one object.
+- **Mandate / entrust** — task-scoped delegation. `TaskGrantManager` issues one attenuated (equal-or-narrower)
+  cap-token stamped to a single `taskId`, off by default and auto-revoked on task complete/cancel. *Mandate* is
+  the code/domain term; **entrust** (NL *toevertrouwen*) is the user-facing word.
+
+## Offerings & disclosure
+
+- **Skill vs offering** — a **skill** is an *invocable* capability an agent advertises (the A2A sense). An
+  **offering** (NL *aanbod*) is a person's own "I can do X" — disclosure-controlled profile *data*
+  (`MemberMap.offerings`), not a callable. An offering becomes reachable only through the disclosure policy.
+- **The three disclosure axes** — each property carries **disclosed** `{enabled, rung}` (the only value-releasing
+  axis; `rung` is the coarsening ladder), **matchable** (may be matched on-device without being disclosed), and
+  **requestable** (another's agent may invoke or ask about it; default off). The three are independent.
+- **Requestable bridge** — the `requestOffering` dispatcher: invoking a *requestable* offering does not execute
+  it, it **mints a `request`-kind task** the owner accepts/adapts/refuses — the offering→task convergence.
 
 ## Reachability (transports)
 

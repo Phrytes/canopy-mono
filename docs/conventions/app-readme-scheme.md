@@ -84,7 +84,7 @@ This app composes the following substrate packages
 | Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
 | `@onderling/item-store` (L1b) | Open/closed task ledger with attribution + audit. | The pod write paths + per-field merge contracts are non-trivial; substrate amortises across H4/H5/H8. |
-| `@onderling/skill-match` (L1e) | Pubsub-of-skills broadcast + claim. | The local-profile filter + posture flag is shared with H4 (tasks) and H8 (presence). |
+| `@onderling/offering-match` (L1e) | Pubsub-of-offerings broadcast + claim. | The local-profile filter + posture flag is shared with H4 (tasks) and H8 (presence). |
 | `@onderling/agent-ui` (L1d) | REST + SSE skill exposure. | Same pattern as H4's web UI — the substrate owns the auth + dispatch. |
 | `@onderling/identity-resolver` (L1h) | Member webid map + display-name resolution. | Cross-source identity is reused by H4/H5/H7. |
 ```
@@ -218,7 +218,7 @@ plan.
 | Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
 | `@onderling/item-store` (L1b) | Records every request as a structured item; audit log. | Pod write paths + per-field merge are shared with H4/H8. |
-| `@onderling/skill-match` (L1e) | Broadcast requests + collect claims. | Pubsub-of-skills + posture flag is the H5/H4/H8 shared primitive. |
+| `@onderling/offering-match` (L1e) | Broadcast requests + collect claims. | Pubsub-of-offerings + posture flag is the H5/H4/H8 shared primitive. |
 | `@onderling/identity-resolver` (L1h) | Member webid map for `resolveMember` skill. | Cross-app identity reconciliation. |
 | `@onderling/agent-ui` (L1d) | REST + SSE skill exposure (when wired). | UI host pattern shared with H4's web UI. |
 | `@onderling/notifier` (L1f) | Push wake when humans need to decide (apps wire). | Scheduling + push channel shared with H4/H8. |

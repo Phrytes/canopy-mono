@@ -10,7 +10,7 @@ reachability primitives the agent picks among at send time.
 Apps with multiple scopes (groups, accounts, projects, circles, …)
 keep per-scope state **outside** the agent — typically a
 `Map<scopeId, ScopeState>` where each `ScopeState` has its own
-`ItemStore` / `MemberMap` / `SkillMatch` / mirror but **shares**
+`ItemStore` / `MemberMap` / `OfferingMatch` / mirror but **shares**
 the agent. Skills register on the agent **once**, with a
 context-resolver (`getBundle(args, ctx)`) so dispatch picks the
 right scope based on the call's `args.scopeId` (e.g. `groupId`,
@@ -83,7 +83,7 @@ This pattern is currently implemented per-app:
 
 When the second consumer (Tasks) implements it, lift the common
 helpers to a substrate — likely `@onderling/scoped-skill-bus` or
-folded into `@onderling/skill-match`. The shape worth lifting:
+folded into `@onderling/offering-match`. The shape worth lifting:
 
 ```js
 buildScopedSkillBus({

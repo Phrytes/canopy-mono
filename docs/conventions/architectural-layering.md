@@ -37,7 +37,7 @@ the whole platform; see [`../architecture.md`](../architecture.md).)
      │ (preferred)                                  (allowed with  │
      ▼                                               justification)│
 ┌───────────────────────────────────────────────────────────────┐  │
-│  packages/{item-store, agent-ui, skill-match, notifier,       │  │
+│  packages/{item-store, agent-ui, offering-match, notifier,    │  │
 │            identity-resolver, sync-engine, chat-agent,        │  │
 │            llm-client, oauth-vault, pod-search}               │  │
 │  Substrates compose core.  They MUST NOT reinvent kernel      │  │

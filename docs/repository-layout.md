@@ -10,10 +10,11 @@ Code depends downward only — **apps → substrates → kernel**. This is a pro
 ```
 apps/                          thin compositions — per-app glue + UI
   ↓
-packages/{substrates}          reusable building blocks (item-store, skill-match, notifier, pod-client, …)
+packages/{substrates}          reusable building blocks (item-store, offering-match, notifier, pod-client, …)
   ↓
 packages/core                  the KERNEL — a lean set of PORTS (Transport/DataSource/ActorResolver)
-                               + kernel logic (Agent, envelope, skill registry, callSkill gate)
+                               + kernel logic (Agent, envelope, skill registry, PolicyEngine permission gate,
+                                 invokeAgentSkill)
 ```
 
 Substrates compose the kernel + adapters and must not reinvent the kernel. Apps compose substrates, and may use
@@ -28,7 +29,7 @@ the kernel directly **only with an explicit justification in the app's README**.
   (`createAgent` · `connectSkill`). See [`conventions/ports.md`](./conventions/ports.md) for the contract a
   third-party adapter satisfies.
 - The substrate tier is a **gradient**: runtime-foundation (vault, oidc-session, pod-client) → feature
-  (skill-match, notifier, …) → facade (secure-agent, agent-provisioning). Extracted under a **rule of two**.
+  (offering-match, notifier, …) → facade (secure-agent, agent-provisioning). Extracted under a **rule of two**.
 - A region the layers omit: a **deployment / hosting layer** (pod-hosting, relay/proxy, private-LLM enclave,
   rollout) *outside* the client apps; the `feedback` deployment occupies it today.
 
@@ -42,8 +43,8 @@ neither is the primitive one. The direction is that the separate apps **dissolve
 |---|---|
 | **basis** (+ `-mobile`) | The front door — one chat/command UI that composes every app's manifest. Static web bundle; the mesh agent runs browser-side. |
 | **household** | Shared household state (chores, lists) on a Solid pod; chat- or Telegram-driven. |
-| **stoop** (+ `-mobile`) | Neighbourhood (*buurt*) sharing — borrow/lend/give, prikbord, skill-matching, closed groups with their own governance. |
-| **tasks-v0** (+ `tasks-mobile`) | Task ledger with DAG dependencies, skill-based dispatch, role-aware governance. |
+| **stoop** (+ `-mobile`) | Neighbourhood (*buurt*) sharing — borrow/lend/give, prikbord, offering-matching (*aanbod*), closed groups with their own governance. |
+| **tasks-v0** (+ `tasks-mobile`) | Task ledger (`@onderling-app/tasks`) with DAG dependencies, offering-based dispatch, role-aware governance, co-ownership, and task-scoped delegation. |
 | **folio** (+ `-mobile`) | Markdown notes/files mirrored to and from a Solid pod. |
 | **calendar** | Appointments/events with cross-peer invite + RSVP over the mesh. |
 | **archive**, **import-bridge-v0**, **presence-v0** | Pod-content search (FTS5); external-document import; presence attestation — *presence is heading toward a **compatibility surface** for external "Proof-of-X" attestors, not a plain app.* |
@@ -56,7 +57,8 @@ honest "demoable vs. primitive-complete" phase table.
 ## `packages/` — the platform (kernel · adapters · SDK) + substrates
 
 **Kernel + adapters (what `@onderling/sdk` re-exports):**
-- `core` — the **KERNEL**: the `Agent`, envelope/parts, skill registry, `callSkill` security gate, identity,
+- `core` — the **KERNEL**: the `Agent`, envelope/parts, skill registry, the `PolicyEngine` inbound-permission
+  gate, the inter-agent invoke (`invokeAgentSkill`), identity,
   `InternalTransport`, and the **ports** (`Transport`/`DataSource`/`ActorResolver` — see
   [`conventions/ports.md`](./conventions/ports.md)). Concrete adapters live outside it.
 - `transports` (`@onderling/transports`) — the concrete network transports (Nkn/Mqtt/Relay/Rendezvous), each an
@@ -80,7 +82,7 @@ honest "demoable vs. primitive-complete" phase table.
 **Identity & security:** `vault`, `oidc-session` (+ `-rn`), `agent-registry`, `agent-provisioning`,
 `webid-discovery`, `identity-resolver`, `secure-agent`.
 
-**Interaction & matching:** `chat-agent`, `chat-p2p`, `skill-match`, `notifier`, `circles`, `llm-client`,
+**Interaction & matching:** `chat-agent`, `chat-p2p`, `offering-match`, `notifier`, `circles`, `llm-client`,
 `redaction`, `online-cadence`. **Testing:** `integration-tests` (cross-component scenarios).
 
 Substrates are extracted under a **rule of two** — generalise on the second independent need, not the first.

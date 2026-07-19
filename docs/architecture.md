@@ -15,8 +15,8 @@ it models, then the system it runs on, then where it's going:
 | Part | Sections | What you get |
 |---|---|---|
 | **1 · The model** | The one idea · The manifest is the contract | the thin waist, and the single declaration every surface reads |
-| **2 · How it runs** | How a request flows · Retrieval (RAG) · Chat and screens compose | a request end to end, how answers are grounded, and how surfaces trigger each other |
-| **3 · The domain** | Circles/types/capabilities · Sharing | the one `(circle, type, verb)` algebra, and how sealed sharing rides on it |
+| **2 · How it runs** | How a request flows · Retrieval (RAG) · The help bot · Chat and screens compose | a request end to end, how answers are grounded, the standing bot, and how surfaces trigger each other |
+| **3 · The domain** | Circles/types/capabilities · Tasks/roles/grants · Offerings/disclosure · Sharing | the one `(circle, type, verb)` algebra, the task + delegation substrate, the offering model, and how sealed sharing rides on it |
 | **4 · The system** | The layers · Placement by trust+latency · Agents interacting · Reachability | kernel/adapters/substrates, where compute is placed, and the inter-agent axis |
 | **5 · Direction** | Direction · Where to go next | what's being enforced next, and pointers onward |
 
@@ -145,6 +145,25 @@ survives an app restart on a signed-in pod, and exercises the ACP grant path aga
 - Retrieval is local; embeddings run only through the configured provider, so nothing leaves the device unless
   that provider's base URL says so. Vectors live under `private/state/search-index/`, never under `sharing/`.
 
+### The standing help bot and onboarding
+
+A first run drops the user into a help circle ("Uitleg") whose only other member is the **Onderling bot** — a
+real peer member of the circle, not a modal overlay. Onboarding is therefore *just the bot's chat*: a guided
+conversation whose copy is resolved in the active language at the moment it starts (not frozen at import), and
+whose "make my own circle" branch hands off to the create-circle wizard.
+
+Two rules make the bot honest and unobtrusive:
+
+- **Answer deterministically first, LLM only on consent.** The bot answers from a pure in-app card deck
+  (`answerHelp` over `helpDeck`, ported from the onderling.org site — no DOM, no network, no storage). On a miss
+  it *offers* to forward the question to an LLM; only after consent does it take the grounded help-answer path
+  (`answerHelpViaLlm` — retrieval over the same cards, a plain chat call, no tool list, `null` on any failure).
+  The wording is **conditional on the resolved route**: it says "via de vertrouwelijke assistent" only when a
+  confidential route is actually in effect, plain wording otherwise (see `decisions.md`, 2026-07-18).
+- **Tag-to-address.** Because the bot is a genuine circle member, it answers *every* line only in a real
+  1:1-with-a-bot chat; in a circle with other people it answers only when the message names or @-tags it
+  (`botIsAddressed`). The same gate drives the 1:1 assistant-header strip. One shared gate, both platforms.
+
 ### Chat and screens compose (and trigger each other)
 
 There are two surface *families* over the waist, not one: **conversational** (chat/gate/slash) and **screen**
@@ -197,6 +216,63 @@ The upshot: the **type axis** (item-types), the **verb axis** (atoms), and the *
 — **storage, permissions, and surfaces are all projections of one `(circle, type, verb)` space.** That is why a
 new noun added to a manifest becomes storable, gate-able, and renderable at once.
 
+### Tasks, roles, and task-scoped grants
+
+Tasks are the worked example of the algebra above, and their substrate is deliberately thin. The canonical store
+is **`CircleItemStore`** (`@onderling/item-store`) — a generic, per-circle, type-indexed item store over an
+injected `DataSource`; the older monolithic `ItemStore` is **retired** (kept only as a parity reference for
+migration tests and the pure `computeStatus`). Every task behaviour is a **pure function over that store**, not a
+method on a god-object: the lifecycle verbs (`claim` · `reassign` · `markComplete` · `submit` · `approve` ·
+`reject` · `revoke`) live in `taskLifecycle`, CRUD/query in `taskCrud`, and `createTaskStore` wraps the pair back
+into an ergonomic (emitter + audit + sync) surface for callers that want one.
+
+Three capabilities fall out of that shape:
+
+- **Co-ownership.** A task's owners are an `assignees[]` array capped by `maxAssignees` (default 1); the singular
+  `assignee` is a mirror of `assignees[0]`. `claim` compare-and-swap-appends the actor, so several people can own
+  one task without a second code path.
+- **Cross-circle "my tasks".** A pure aggregator walks a user's circle bundles and projects a per-circle
+  `{open, overdue, awaitingApproval, mine}` roll-up (mine = `assignees` includes you), sorted busiest-first — one
+  view across every circle without merging their stores.
+- **Sendable lists.** A whole container subtree can travel into another circle: a pre-order subtree walk
+  (`collectSubtree`, depth-guarded) fans the single-item in-place share over every node
+  (`shareContainerTree`), so sending a list is the sharing primitive applied N times, not a bulk copy.
+
+Authority over tasks rides on two capability-token primitives, both enforced by the one `PolicyEngine`:
+
+- **Roles as capability bundles.** A role is a `RoleBundle` — a named, frozen set of grant-templates; assigning
+  it calls `RoleGrantManager.materializeBundle`, which signs each template into a real `CapabilityToken` scoped to
+  the member and group. The display role and the enforced authority are the same object.
+- **Task-scoped grants (the mandate / *entrust* primitive).** `TaskGrantManager.attachGrant` issues **one**
+  cap-token equal-or-narrower than the granter's, stamped `constraints.task = taskId`, **off by default**;
+  `revokeTaskGrants(taskId)` revokes it on task complete/cancel. In the UI this is **entrust** (NL
+  *toevertrouwen*): a task owner delegates "act as me" or "use this offering" for just this task, chosen from an
+  extensible grant-kind taxonomy and routed through the confirm gate. The kring **Taken** tab surfaces both the
+  task list and the entrust picker; the grant/legibility logic is shared, the web and mobile pickers are thin
+  projectors over it.
+
+### Offerings and the three disclosure axes
+
+Alongside the *invocable* skills an agent advertises (the A2A sense — see `decisions.md`, 2026-07-17), a person's
+own "I can do X" is an **offering** (NL *aanbod*) — a disclosure-controlled profile property, held on the roster
+as `MemberMap.offerings` and normalised against a fixed taxonomy in `@onderling/agent-registry`. It is *data*,
+not a callable, and it becomes reachable to others only through the disclosure policy.
+
+That policy is **three independent axes** per property, not one show/hide flag:
+
+- **disclosed** `{enabled, rung}` — the only axis that releases a value, at a chosen rung on the coarsening
+  ladder.
+- **matchable** — may participate in on-device matching *without* being disclosed (`matchable` can be true while
+  `disclosed` is false). Matching runs on the matchable set (`matchProfilesMatchable`) and never forces a
+  disclosure.
+- **requestable** — another person's agent may invoke or ask about it (default false).
+
+All three persist independently across a registry round-trip. The **requestable bridge** is where an offering
+crosses into the invocable world without becoming a remote function call: the `requestOffering` dispatcher on the
+host agent, guarded by the requestable axis, does **not** execute the offering — it **mints a `request`-kind
+task** the owner can accept, adapt, or refuse. So "ask a neighbour to do X" converges on the same task substrate
+above, with the owner's consent step intact.
+
 ### Sharing — in place, across circles, and beyond them
 
 Sealed circles (postures p2/p3) encrypt content under a per-circle **group key**, kept in a *versioned*
@@ -244,14 +320,15 @@ Code depends downward only — a project-wide invariant (full detail:
 ```
 apps/                        thin compositions — per-app glue + UI
   ↓
-packages/{substrates}        reusable building blocks — item-store, skill-match, notifier, app-manifest,
+packages/{substrates}        reusable building blocks — item-store, offering-match, notifier, app-manifest,
                              pod-client, sync-engine, … (a gradient: runtime-foundation → feature → facade)
   ↓
 packages/core                the KERNEL — a lean set of PORTS + kernel logic
 ```
 
 - **The kernel (`packages/core`) is lean.** It holds the `Agent`, envelope/parts, the skill registry, the
-  `callSkill` security gate, `InternalTransport`, and the **ports** — `Transport` · `DataSource` · `ActorResolver`.
+  inbound-permission gate (`PolicyEngine`), the inter-agent invoke (`invokeAgentSkill`), `InternalTransport`, and
+  the **ports** — `Transport` · `DataSource` · `ActorResolver`.
   The ports are the **named compatibility contract**: *implement the port + pass its conformance harness =
   compatible with the kernel* ([`conventions/ports.md`](./conventions/ports.md)). The concrete **adapters** live
   OUTSIDE the kernel — network transports in **`@onderling/transports`**, Solid-pod storage + on-pod identity in
@@ -265,7 +342,7 @@ packages/core                the KERNEL — a lean set of PORTS + kernel logic
 - **Substrates** compose the kernel + adapters into reusable pieces, building on kernel primitives rather
   than reinventing them — a parallel transport or vault implementation would drift away from the security and
   compatibility guarantees the kernel carries. They form a **gradient**: *runtime-foundation* (vault, oidc-session, pod-client — near-required for a networked
-  agent) → *feature* (skill-match, notifier, pod-search — optional) → *facade* (secure-agent, agent-provisioning —
+  agent) → *feature* (offering-match, notifier, pod-search — optional) → *facade* (secure-agent, agent-provisioning —
   compose others). Extracted under a **rule of two** — generalise on the second independent need, not the first.
 - **Apps** compose substrates (or `@onderling/sdk`), using the kernel directly only with a justification in the app
   README.
