@@ -11,14 +11,16 @@
  * in the manifest; web ≡ mobile by construction, both consume the same
  * projection).
  */
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { t } from '../../core/localisation.js';
 import { circleTabsMobile } from '../../../../basis/src/v2/tabProjection.js';
 import { basisManifest } from '../../../../basis/src/index.js';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 
 export default function CircleTabBar({ active, onSelect }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.bar} testID="circle-tabbar">
       {circleTabsMobile(basisManifest).map((tab) => {
@@ -40,7 +42,7 @@ export default function CircleTabBar({ active, onSelect }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   bar: {
     flexDirection: 'row', justifyContent: 'center', gap: 4,
     paddingHorizontal: 8, paddingTop: 6, paddingBottom: 10,

@@ -7,12 +7,14 @@
  * mutations via the injected `callSkill`. Availability/quiet-hours is a sub-screen
  * reached via `onAvailability`.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from 'react-native';
 import { t, currentLang } from '../../core/localisation.js';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 
 export default function CircleProfileScreen({ callSkill, onAvailability, onMyData, onSharedWithMe, onOpenMij }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [profile, setProfile] = useState({});
   const [categories, setCategories] = useState([]);
   const [handle, setHandle] = useState('');
@@ -135,6 +137,8 @@ export default function CircleProfileScreen({ callSkill, onAvailability, onMyDat
 }
 
 function Section({ title, children }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -143,6 +147,8 @@ function Section({ title, children }) {
   );
 }
 function Field({ label, value, onChangeText, testID }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -151,7 +157,7 @@ function Field({ label, value, onChangeText, testID }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   wrap: { flex: 1, backgroundColor: theme.color.paper },
   content: { padding: 16, gap: 16, paddingBottom: 80 },
   title: { fontFamily: theme.font.serif, fontSize: 22, fontWeight: '600', color: theme.color.ink },

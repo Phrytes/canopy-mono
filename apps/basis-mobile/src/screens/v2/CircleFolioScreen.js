@@ -17,7 +17,7 @@
  */
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import {
   buildCircleFiles,
   // share-toggle re-projects the raw list through the
@@ -45,6 +45,8 @@ export default function CircleFolioScreen({
   capabilityMatrix = [],
   appOrigin = 'folio',
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [shareFilter, setShareFilter] = useState(null);
   const [currentPath, setCurrentPath] = useState('');   // N5 — folder being viewed
   // Uniform across all file rows (same get × file capability): resolve once.
@@ -176,7 +178,7 @@ function emptyKeyFor(shareFilter) {
   return 'circle.folio.empty';
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   page:   { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:    { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
   back:   { fontSize: 13, color: theme.color.inkSoft },

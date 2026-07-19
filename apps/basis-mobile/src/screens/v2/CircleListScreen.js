@@ -13,7 +13,7 @@
  */
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { buildScreenModel } from '../../../../basis/src/v2/screenModel.js';
 import { t } from '../../core/localisation.js';
 
@@ -21,6 +21,8 @@ export default function CircleListScreen({
   items = [], categoryField, searchFields, labelField, manifestsByOrigin, appOrigin, capabilityMatrix = [],
   title, onRowAction, onRowOpen, onClose,
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [query, setQuery] = useState('');
   const [activeCategories, setActiveCategories] = useState(null);   // null = all checked
 
@@ -112,7 +114,7 @@ export default function CircleListScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   page:        { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 26 },
   title:       { fontSize: 20, fontWeight: '600', fontFamily: theme.font.serif, color: theme.color.ink },

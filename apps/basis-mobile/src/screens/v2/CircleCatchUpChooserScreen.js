@@ -19,9 +19,9 @@
  *   - chooser_cancel
  *   - chooser_unknown_provider  — fallback display name
  */
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, Modal, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { t } from '../../core/localisation.js';
 
 /**
@@ -43,6 +43,8 @@ export default function CircleCatchUpChooserScreen({
   onResolve,
   nowMs,
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const now = Number.isFinite(nowMs) ? nowMs : Date.now();
   const resolved = typeof onResolve === 'function' ? onResolve : () => {};
 
@@ -145,7 +147,7 @@ function formatRelativeTs(ts, now) {
   } catch { return `${d}d ago`; }
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   backdrop:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center', padding: 16 },
   sheet:      { backgroundColor: theme.color.card, borderColor: theme.color.line, borderWidth: 1, borderRadius: 10, padding: 18, maxWidth: 520, width: '100%', maxHeight: '85%' },
   title:      { fontSize: 18, fontWeight: '600', fontFamily: theme.font.serif, color: theme.color.ink, marginBottom: 4 },

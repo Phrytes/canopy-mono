@@ -7,17 +7,19 @@
  * AMBIGUOUS container (a board: item OR sub-list, no default) it first shows the type PICKER. Row-actions
  * complete/remove. PERSISTENT via an AsyncStorage-backed DataSource (in-memory fallback).
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, TextInput, StyleSheet, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { t } from '../../core/localisation.js';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { makeCircleLists } from '@onderling/kring-host/circleLists';
 import { buildHouseholdDataSource } from '../../../../household/src/index.js';
 
 const typeLabel = (type) => t(`circle.container.type.${type}`);
 
 export default function CircleListsScreen({ circleId, onBack }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const svcRef = useRef(null);
   const [ready, setReady] = useState(false);
   const [containers, setContainers] = useState([]);   // lists + boards
@@ -164,6 +166,8 @@ export default function CircleListsScreen({ circleId, onBack }) {
 }
 
 function Chip({ label, onPress, accent, testID }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <Pressable style={[styles.chip, accent && styles.chipAccent]} onPress={onPress} testID={testID}>
       <Text style={[styles.chipText, accent && styles.chipTextAccent]}>{label}</Text>
@@ -171,7 +175,7 @@ function Chip({ label, onPress, accent, testID }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   wrap: { flex: 1, backgroundColor: theme.color.bg },
   header: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
   back: { fontSize: 16, color: theme.color.accent, fontWeight: '600' },

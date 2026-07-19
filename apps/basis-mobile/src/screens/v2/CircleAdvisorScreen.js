@@ -7,9 +7,9 @@
  * "I'm too busy" button that logs a strain signal into the shared EventLog.
  * The monthly cooldown persists per-circle in AsyncStorage.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { computeAdvice, makeTooBusyEvent } from '@onderling-app/basis';
 import { t } from '../../core/localisation.js';
@@ -17,6 +17,8 @@ import { t } from '../../core/localisation.js';
 const seenKey = (id) => `cc.advisorShown.${id}`;
 
 export default function CircleAdvisorScreen({ eventLog, circleId, onBack }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [advice, setAdvice] = useState(null);
 
   const recompute = useCallback(async () => {
@@ -66,7 +68,7 @@ export default function CircleAdvisorScreen({ eventLog, circleId, onBack }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   page:       { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:        { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
   back:       { fontSize: 13, color: theme.color.inkSoft },

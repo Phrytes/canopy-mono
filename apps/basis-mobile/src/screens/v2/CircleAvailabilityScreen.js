@@ -11,12 +11,14 @@
  * editing — the store's mergeAvailability normalises on save (a malformed
  * time falls back to the model default rather than blocking each keystroke).
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Switch, TextInput, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { t } from '../../core/localisation.js';
 
 export default function CircleAvailabilityScreen({ store, onBack }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [working, setWorking] = useState(null);
 
   useEffect(() => {
@@ -118,7 +120,7 @@ export default function CircleAvailabilityScreen({ store, onBack }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   page:     { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:      { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
   back:     { fontSize: 13, color: theme.color.inkSoft },

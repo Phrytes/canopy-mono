@@ -6,13 +6,15 @@
  * toggle). Per-contact hop flags + the hop-match card chain live in Stoop /
  * land later; this surfaces the global stance + explains hopping.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, Switch, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { normalizeHopMode } from '@onderling-app/basis';
 import { t } from '../../core/localisation.js';
 
 export default function CircleHopScreen({ callSkill, onBack }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [hopMode, setHopMode] = useState({ global: false });
 
   useEffect(() => {
@@ -54,7 +56,7 @@ export default function CircleHopScreen({ callSkill, onBack }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   page:     { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:      { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
   back:     { fontSize: 13, color: theme.color.inkSoft },

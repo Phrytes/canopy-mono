@@ -6,12 +6,14 @@
  * loads listGroupMembers/listReports/listMutedPeers + dispatches the admin-gated
  * stoop ops via the injected `callSkill` (a refusal surfaces a notice).
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from 'react-native';
 import { t } from '../../core/localisation.js';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 
 export default function CircleAdminPanelScreen({ callSkill, groupId, onBack }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [members, setMembers] = useState([]);
   const [reports, setReports] = useState([]);
   const [muted, setMuted] = useState([]);
@@ -91,6 +93,8 @@ export default function CircleAdminPanelScreen({ callSkill, groupId, onBack }) {
 }
 
 function Section({ title, children }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -99,7 +103,7 @@ function Section({ title, children }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   wrap: { flex: 1, backgroundColor: theme.color.paper },
   content: { padding: 16, gap: 16, paddingBottom: 80 },
   header: { flexDirection: 'row', alignItems: 'baseline', gap: 12 },
