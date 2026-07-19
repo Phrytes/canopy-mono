@@ -17,11 +17,11 @@
  * for iOS-style input; on Android we fall back to a quick inline
  * input pattern — Alert.prompt is iOS-only).
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, Pressable, ScrollView, TextInput, Switch, StyleSheet, Alert, Platform,
 } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { t } from '../../core/localisation.js';
 import {
   BLOCK_TYPES, BLOCK_REGISTRY,
@@ -178,6 +178,8 @@ async function persistMerged({ recipeStore, circleId, merged }) {
 /* ─────────────────────────────────────────────────────────────────────── */
 
 function BookMode({ book, onBack, onOpenRecipe, onAddRecipe, onRenameRecipe, onRemoveRecipe, onSetActive }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [newName, setNewName] = useState('');
   const handleAdd = () => {
     const trimmed = newName.trim();
@@ -236,6 +238,8 @@ function BookMode({ book, onBack, onOpenRecipe, onAddRecipe, onRenameRecipe, onR
 }
 
 function RecipeRow({ recipe, isActive, onOpenRecipe, onRenameRecipe, onRemoveRecipe, onSetActive }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const handleRename = () => {
     const promptUser = () => promptForName(
       t('circle.recipe.editor.rename_prompt'), recipe.name,
@@ -292,6 +296,8 @@ function RecipeRow({ recipe, isActive, onOpenRecipe, onRenameRecipe, onRemoveRec
 /* ─────────────────────────────────────────────────────────────────────── */
 
 function RecipeMode({ book, recipeId, onBackToBook, onAddBlock, onRemoveBlock, onMoveBlock, onUpdateBlock }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const recipe = book.recipes.find((r) => r.id === recipeId);
   if (!recipe) {
     return (
@@ -360,6 +366,8 @@ function RecipeMode({ book, recipeId, onBackToBook, onAddBlock, onRemoveBlock, o
 }
 
 function BlockRow({ block, index, total, recipeId, onRemoveBlock, onMoveBlock, onUpdateBlock }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const meta = BLOCK_REGISTRY[block.type];
   return (
     <View style={styles.blockRow} testID={`block-row-${block.id}`}>
@@ -402,8 +410,10 @@ function BlockRow({ block, index, total, recipeId, onRemoveBlock, onMoveBlock, o
 }
 
 function BlockConfig({ block, recipeId, onUpdateBlock }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const emit = (patch) => onUpdateBlock?.(recipeId, block.id, patch);
-  const typeBody = renderTypeBody(block, emit);
+  const typeBody = renderTypeBody(block, emit, styles);
   const compactToggle = COMPACTABLE_TYPES.has(block.type) ? (
     <CompactToggle block={block} emit={emit} />
   ) : null;
@@ -417,7 +427,7 @@ function BlockConfig({ block, recipeId, onUpdateBlock }) {
   );
 }
 
-function renderTypeBody(block, emit) {
+function renderTypeBody(block, emit, styles) {
   switch (block.type) {
     case 'announcement':
     case 'text':
@@ -471,6 +481,8 @@ function renderTypeBody(block, emit) {
 }
 
 function CompactToggle({ block, emit }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const value = block.config?.compact === true;
   return (
     <View style={styles.compactRow} testID={`block-config-${block.id}-compact`}>
@@ -488,6 +500,8 @@ function CompactToggle({ block, emit }) {
 }
 
 function LimitField({ block, configKey, labelKeySuffix, emit }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.limitRow}>
       <Text style={styles.limitLabel}>{t(`circle.recipe.editor.${labelKeySuffix}`)}</Text>
@@ -523,7 +537,7 @@ function promptForName(title, defaultValue, onValue) {
   ]);
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   page:        { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:         { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
   back:        { fontSize: 13, color: theme.color.inkSoft },

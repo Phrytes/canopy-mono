@@ -22,11 +22,11 @@
  * Empty `blocks` array → top-level empty state ("admin hasn't set up
  * a screen yet").
  */
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
 import { featureActionLabelKey } from '@onderling-app/basis';
 import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '../../../../basis/src/v2/embedChips.js';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { t } from '../../core/localisation.js';
 
 // An embed `ref` may be a full URN (urn:dec:item:T2) while a rendered row
@@ -38,6 +38,8 @@ function matchesHighlight(rowId, highlightRef) {
 }
 
 export default function CircleScreenView({ blocks = null, refreshing = false, onAction, onEmbedOpen, highlightRef, highlightRowRef = null, onHighlightLayout = null }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   // null = still materializing (host hasn't resolved yet).  Distinguish
   // from `[]` so the user sees a "Loading…" hint instead of the
   // "admin hasn't set up a screen yet" empty state — which is
@@ -79,6 +81,8 @@ export default function CircleScreenView({ blocks = null, refreshing = false, on
 }
 
 function BlockSection({ block, onAction, onEmbedOpen, highlightRef, highlightRowRef = null, onHighlightLayout = null }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const baseStyle = [styles.block, styles[`block_${block.type}`] ?? null];
 
   if (block.status === 'error') {
@@ -100,14 +104,14 @@ function BlockSection({ block, onAction, onEmbedOpen, highlightRef, highlightRow
 
   let body = null;
   switch (block.type) {
-    case 'quickActions': body = renderQuickActions(block, onAction); break;
-    case 'announcement': body = renderAnnouncement(block); break;
-    case 'text':         body = renderText(block); break;
-    case 'photo':        body = renderPhoto(block); break;
-    case 'noticeboard':  body = renderNoticeboard(block); break;
-    case 'agenda':       body = renderAgenda(block, highlightRef, highlightRowRef, onHighlightLayout); break;
-    case 'tasks':        body = renderTasks(block, onEmbedOpen, highlightRef, highlightRowRef, onHighlightLayout); break;
-    case 'rules':        body = renderRules(block); break;
+    case 'quickActions': body = renderQuickActions(block, onAction, styles); break;
+    case 'announcement': body = renderAnnouncement(block, styles); break;
+    case 'text':         body = renderText(block, styles); break;
+    case 'photo':        body = renderPhoto(block, styles); break;
+    case 'noticeboard':  body = renderNoticeboard(block, styles); break;
+    case 'agenda':       body = renderAgenda(block, highlightRef, highlightRowRef, onHighlightLayout, styles); break;
+    case 'tasks':        body = renderTasks(block, onEmbedOpen, highlightRef, highlightRowRef, onHighlightLayout, styles); break;
+    case 'rules':        body = renderRules(block, styles); break;
     default:
       body = <Text style={styles.blockEmptyText}>{t('circle.screen.block_unknown', { type: block.type })}</Text>;
   }
@@ -118,7 +122,7 @@ function BlockSection({ block, onAction, onEmbedOpen, highlightRef, highlightRow
 
 // D1 (§5A) — "Veel-gebruikt" pill row.  Each action is a feature key;
 // a tap calls `onAction(key)` so the host can switch to that surface.
-function renderQuickActions(block, onAction) {
+function renderQuickActions(block, onAction, styles) {
   const actions = (block.content?.actions ?? []).filter((a) => a?.key);
   return (
     <View style={styles.quickActionsRow}>
@@ -137,7 +141,7 @@ function renderQuickActions(block, onAction) {
   );
 }
 
-function renderAnnouncement(block) {
+function renderAnnouncement(block, styles) {
   const isCompact = block.config?.compact === true;
   return (
     <Text style={isCompact ? styles.announcementCompact : styles.announcement}>
@@ -146,11 +150,11 @@ function renderAnnouncement(block) {
   );
 }
 
-function renderText(block) {
+function renderText(block, styles) {
   return <Text style={styles.text}>{block.content?.text ?? ''}</Text>;
 }
 
-function renderPhoto(block) {
+function renderPhoto(block, styles) {
   const src = block.content?.src ?? '';
   const caption = (block.content?.caption ?? '').trim();
   return (
@@ -166,7 +170,7 @@ function renderPhoto(block) {
   );
 }
 
-function renderNoticeboard(block) {
+function renderNoticeboard(block, styles) {
   const items = block.content?.items ?? [];
   const isCompact = block.config?.compact === true;
   const rowStyle    = isCompact ? styles.noticeRowCompact    : styles.noticeRow;
@@ -189,7 +193,7 @@ function renderNoticeboard(block) {
   );
 }
 
-function renderAgenda(block, highlightRef, highlightRowRef = null, onHighlightLayout = null) {
+function renderAgenda(block, highlightRef, highlightRowRef = null, onHighlightLayout = null, styles) {
   const items = block.content?.items ?? [];
   const isCompact = block.config?.compact === true;
   const rowStyle   = isCompact ? styles.agendaRowCompact   : styles.agendaRow;
@@ -217,7 +221,7 @@ function renderAgenda(block, highlightRef, highlightRowRef = null, onHighlightLa
   );
 }
 
-function renderTasks(block, onEmbedOpen, highlightRef, highlightRowRef = null, onHighlightLayout = null) {
+function renderTasks(block, onEmbedOpen, highlightRef, highlightRowRef = null, onHighlightLayout = null, styles) {
   const items = block.content?.items ?? [];
   const isCompact = block.config?.compact === true;
   const rowStyle    = isCompact ? styles.taskRowCompact    : styles.taskRow;
@@ -270,7 +274,7 @@ function renderTasks(block, onEmbedOpen, highlightRef, highlightRowRef = null, o
   );
 }
 
-function renderRules(block) {
+function renderRules(block, styles) {
   const doc = block.content?.doc ?? {};
   const fields = ['purpose', 'admins', 'agreements', 'conflict', 'admission', 'leaving', 'responsibility'];
   return (
@@ -309,7 +313,7 @@ function pickRowText(row) {
   return '';
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   empty:           { color: theme.color.inkSoft, fontStyle: 'italic', textAlign: 'center', paddingVertical: 24, paddingHorizontal: 12 },
   // δ.1 — refresh pip: muted, small, right-aligned above the block list.
   refreshing:      { color: theme.color.inkSoft, fontSize: 11, opacity: 0.6, textAlign: 'right', marginBottom: 4 },

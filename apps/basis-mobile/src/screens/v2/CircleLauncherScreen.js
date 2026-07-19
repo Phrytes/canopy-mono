@@ -14,7 +14,7 @@
  */
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput, StyleSheet, BackHandler, Modal, Alert, findNodeHandle } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   loadCircles, circleSourcesFromAgent, makeResolvingCallSkill,
@@ -337,6 +337,8 @@ export default function CircleLauncherScreen({
   // γ-next trio (recipe / rules / policy).
   kringPolicyPendingStore = null,
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [circles, setCircles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -1586,7 +1588,7 @@ export default function CircleLauncherScreen({
                 previews, proposalCounts, openCircle,
                 // β.5 — pin partition + long-press menu wiring.
                 pinnedMap, mutedMap, onOpenMenu: openTileMenu,
-              })
+              }, styles)
             )}
 
             {creating ? (
@@ -1746,7 +1748,7 @@ const KIND_ORDER = ['household', 'buurt', 'vriendenkring'];
 function renderLauncherGroups(circles, {
   previews, proposalCounts, openCircle,
   pinnedMap = {}, mutedMap = {}, onOpenMenu,
-}) {
+}, styles) {
   const sorted = [...circles].sort((a, b) => {
     const ta = previews?.[a.id]?.ts ?? 0;
     const tb = previews?.[b.id]?.ts ?? 0;
@@ -1802,6 +1804,8 @@ function renderLauncherGroups(circles, {
 
 /** Single kring tile (extracted in β.3 so grouped + flat paths share it). */
 function LauncherTile({ circle: c, preview, pending, isPinned = false, isMuted = false, onOpen, onLongPress }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const subtitle = (preview && preview.subtitle)
     ? preview.subtitle
     : (c.memberCount != null ? t('circle.members', { count: c.memberCount }) : null);
@@ -1869,6 +1873,8 @@ function CircleDetail({
   onboardingFlags = null, onCreateCircle = null,
   onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules, onRecipes, onAdmin, onLists, onShare, onInvite,
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   // Part D — scope the bot/suggest catalog to the circle's apps: drops basis's infra ops (/me etc.)
   // that the circle bot can't run (they threw `circle.bot.failed`) and keeps them out of the suggest list.
   const catalog = useMemo(
@@ -3116,7 +3122,7 @@ function CircleDetail({
             // Entrust (mandate) — owner-visibility signals + the row-action dispatcher (opens the picker).
             mandateViewer: { ...mandateViewer, localActor: 'me' },
             onRowAction,
-          })
+          }, styles)
         )}
       </ScrollView>
 
@@ -3306,7 +3312,7 @@ function CircleDetail({
 // the web circleKring renderer.  Keeps the mobile parity tight.
 // δ.2 — `deliveryOpts` carries the per-message delivery-state hooks
 // for locally-sent bubbles (clock / warning + tap-to-retry).
-function renderBubblesWithDayDividers(rows, t, deliveryOpts = null) {
+function renderBubblesWithDayDividers(rows, t, deliveryOpts = null, styles) {
   const chronological = [...rows].reverse();
   const nodes = [];
   let lastKey = null;
@@ -3320,12 +3326,12 @@ function renderBubblesWithDayDividers(rows, t, deliveryOpts = null) {
       );
       lastKey = key;
     }
-    nodes.push(renderBubble(row, t, deliveryOpts));
+    nodes.push(renderBubble(row, t, deliveryOpts, styles));
   }
   return nodes;
 }
 
-function renderBubble(row, t, deliveryOpts = null) {
+function renderBubble(row, t, deliveryOpts = null, styles) {
   const payload = row.event?.payload ?? {};
   // Rich feedback: a Stage-1 review renders as editable CARDS (shared component), NOT a flattened text bubble
   // — parity with the web invite-circle kring. Card actions route through the same `onBubbleButton` as other
@@ -3557,6 +3563,8 @@ function formatDayLabel(ts, t) {
 // peer rows with shared-skills + proximity, header line, and an own-profile
 // footer.  Self-contained so vitest can target it without RN test renderer.
 function NearbyScreen({ model, onBack }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const rows       = Array.isArray(model?.rows) ? model.rows : [];
   const own        = model?.ownProfile ?? {};
   const headerText = model?.headerLabel ?? '';
@@ -3604,6 +3612,8 @@ function NearbyScreen({ model, onBack }) {
 // scoped to the private kring.  Empty state by default; rows fill in
 // when callSkill('listFiles') returns mine-and-circle-less items.
 function MyThingsScreen({ files = [], onBack }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.page} testID="circle-mythings">
       <View style={styles.bar}>
@@ -3627,7 +3637,7 @@ function MyThingsScreen({ files = [], onBack }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   // S6.B — chat-triggered screen panel.
   panelBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   panelCard:  { backgroundColor: theme.color.paper, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '85%', minHeight: '50%', padding: 16 },
