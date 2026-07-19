@@ -9,11 +9,17 @@
  * dispatch; mobile: hostOps) so the same adapter drives both launchers.
  */
 
-export function circleSourcesFromAgent({ callSkill, circlesStore } = {}) {
+import { HELP_CIRCLE_ID } from './helpCircle.js';
+
+export function circleSourcesFromAgent({ callSkill, circlesStore, helpCircleName } = {}) {
   const call = async (opId, args) => {
     if (typeof callSkill !== 'function') return null;
     return callSkill(opId, args ?? {});
   };
+  // `helpCircleName` may be a string or a `() => string` getter (live-language). listMyBuurts
+  // returns bare ids, so without this the help circle's tile/header falls back to the raw id.
+  const resolveHelpName = () =>
+    (typeof helpCircleName === 'function' ? helpCircleName() : helpCircleName) || null;
 
   return {
     fetchTasksCircles: async () => {
@@ -26,7 +32,14 @@ export function circleSourcesFromAgent({ callSkill, circlesStore } = {}) {
       // returned the single active buurt, so new circles never surfaced.
       const res = await call('listMyBuurts');
       const buurts = Array.isArray(res?.buurts) ? res.buurts : [];
-      return buurts.map((b) => (typeof b === 'string' ? { id: b, name: b } : b));
+      const helpName = resolveHelpName();
+      return buurts.map((b) => {
+        const raw = (typeof b === 'string') ? { id: b, name: b } : { ...b };
+        // The help circle is a system circle whose title is localised chrome; listMyBuurts
+        // only carries ids, so relabel it here — otherwise its tile/header shows the raw id.
+        if (helpName && raw.id === HELP_CIRCLE_ID) raw.name = helpName;
+        return raw;
+      });
     },
     fetchCircles: circlesStore
       ? async () => (await circlesStore.list()) ?? []

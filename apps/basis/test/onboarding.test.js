@@ -136,9 +136,14 @@ describe('help circle roster + 1:1-bot gate', () => {
     expect(bot.isBot).toBe(true);
   });
 
-  it('the spec pins the stable help-circle id + localised name', () => {
+  it('the spec pins the stable help-circle id + a localised DISPLAY name (its own, not the bot)', () => {
     expect(helpCircleSpec().id).toBe(HELP_CIRCLE_ID);
-    expect(helpCircleSpec((k) => (k === 'circle.onboarding.help_name' ? 'Onderling' : k)).name).toBe('Onderling');
+    // The circle's title comes from circle.help.circle_name — deliberately NOT the bot's name
+    // ('Onderling', circle.onboarding.help_name), so the tile/header never falls back to the raw id.
+    expect(helpCircleSpec((k) => (k === 'circle.help.circle_name' ? 'Uitleg' : k)).name).toBe('Uitleg');
+    // Default (no translator wired) is a friendly name, never the raw id or the bot name.
+    expect(helpCircleSpec().name).not.toBe(HELP_CIRCLE_ID);
+    expect(helpCircleSpec().name).not.toBe('Onderling');
   });
 });
 
@@ -167,6 +172,22 @@ describe('help circle provisioning (idempotent)', () => {
     expect(second.reason).toBe('marker');
     // No second create/add — never double-provisions.
     expect(calls).toEqual({ create: 1, addBot: 1, mark: 1 });
+  });
+
+  it('creates the circle with its DISPLAY name (not the raw id) so the tile/header reads friendly', async () => {
+    const spec = helpCircleSpec((k) => (k === 'circle.help.circle_name' ? 'Uitleg' : k));
+    let createdSpec = null;
+    await provisionHelpCircle({
+      isProvisioned: () => false,
+      listCircleIds: () => [],
+      createHelpCircle: (s) => { createdSpec = s; },
+      addBotMember: () => {},
+      markProvisioned: () => {},
+      spec,
+    });
+    expect(createdSpec.id).toBe(HELP_CIRCLE_ID);
+    expect(createdSpec.name).toBe('Uitleg');
+    expect(createdSpec.name).not.toBe(HELP_CIRCLE_ID);
   });
 
   it('does not re-create when the help circle already exists (marks the marker instead)', async () => {

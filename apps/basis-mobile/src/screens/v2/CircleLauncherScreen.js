@@ -816,7 +816,7 @@ export default function CircleLauncherScreen({
     setLoading(true);
     try {
       const sources = callSkill
-        ? circleSourcesFromAgent({ callSkill, circlesStore: bundle?.agent?.circlesStore })
+        ? circleSourcesFromAgent({ callSkill, circlesStore: bundle?.agent?.circlesStore, helpCircleName: () => helpCircleSpec(t).name })
         : {};
       const _l = await loadCircles(sources);
       setCircles(_l);
@@ -856,7 +856,9 @@ export default function CircleLauncherScreen({
           addBotMember: () => {},
           markProvisioned: () => onboardingFlags.markHelpCircleProvisioned(),
           spec,
-          bot: onderlingBotMember(spec.name),
+          // The circle's name (spec.name) is now its own title ('Uitleg'/'Help'); the bot keeps its own
+          // name ('Onderling', circle.onboarding.help_name) so the roster/1:1-header still reads 'Onderling'.
+          bot: onderlingBotMember(t('circle.onboarding.help_name')),
         });
         if (r.provisioned) load();
       } catch (err) {

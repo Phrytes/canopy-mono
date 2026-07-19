@@ -3788,7 +3788,9 @@ async function maybeProvisionHelpCircle() {
       addBotMember: () => {},
       markProvisioned: () => onboardingFlags.markHelpCircleProvisioned(),
       spec,
-      bot: onderlingBotMember(spec.name),
+      // The circle's name (spec.name) is now its own title ('Uitleg'/'Help'); the bot keeps its own
+      // name ('Onderling', circle.onboarding.help_name) so the roster/1:1-header still reads 'Onderling'.
+      bot: onderlingBotMember(t('circle.onboarding.help_name')),
     });
     if (r.provisioned) {
       try { circlesCache = await loadCircles(sources); } catch { /* keep current cache */ }
@@ -5463,7 +5465,7 @@ async function boot() {
       // `circleCatalog` (null until buildCircleBot sets it; makeResolvingCallSkill tolerates
       // a null catalog by trying all origins).
       resolveCallSkill = makeResolvingCallSkill(rawCallSkill, DEFAULT_CIRCLE_ORIGINS, () => circleCatalog);
-      sources = circleSourcesFromAgent({ callSkill: resolveCallSkill, circlesStore: agent.circlesStore });
+      sources = circleSourcesFromAgent({ callSkill: resolveCallSkill, circlesStore: agent.circlesStore, helpCircleName: () => helpCircleSpec(t).name });
       // Phase 5 — build the kring composer's bot + feedback now that the agent (and its manifest) is up.
       try { buildCircleBot(agent); } catch (err) { console.warn('[circleApp] circle bot setup failed:', err?.message ?? err); }
       // register a peer-router with the kring-chat-message

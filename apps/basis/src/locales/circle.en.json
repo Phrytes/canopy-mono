@@ -500,6 +500,10 @@
     }
   },
   "help": {
+    "circle_name": {
+      "text": "Help",
+      "doc": "Display name of the first-run help circle (the standing 1:1 with the Onderling-bot) — the tile + kring header title. Distinct from the BOT's name (circle.onboarding.help_name = 'Onderling'); named after the circle's purpose so the header never falls back to the raw id 'cc-help'."
+    },
     "consent_prompt": {
       "text": "I don't have a set answer for that. Shall I ask the confidential assistant? Your question would then be forwarded.",
       "doc": "Task #13 — the LLM-forward consent card, CONFIDENTIAL route (Privatemode/TEE): shown on a deterministic MISS when an assistant is connected. Renders as the dashed-rust consent card (payload.consent). Chosen by helpLlmLabelKeys({confidential:true})."

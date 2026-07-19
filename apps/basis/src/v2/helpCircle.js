@@ -46,14 +46,18 @@ export function onderlingBotMember(name = 'Onderling') {
 }
 
 /**
- * The help circle spec (id + name). Name goes through the host's `t()` (localised
- * chrome), falling back to 'Onderling' when no translator is wired.
+ * The help circle spec (id + DISPLAY name). The name is the circle's own title (the
+ * launcher tile + kring header) and goes through the host's `t()` (localised chrome),
+ * falling back to 'Uitleg' when no translator is wired. This is DELIBERATELY not the
+ * bot's name ('Onderling', `circle.onboarding.help_name`): the circle is named after its
+ * purpose so the header never falls back to the raw id ('cc-help'), and so the app, the
+ * bot, and the circle don't all read 'Onderling'.
  * @param {Function} [t]
  */
 export function helpCircleSpec(t) {
   const tr = typeof t === 'function' ? t : null;
-  const name = tr ? tr('circle.onboarding.help_name') : 'Onderling';
-  return { id: HELP_CIRCLE_ID, name: name || 'Onderling' };
+  const name = tr ? tr('circle.help.circle_name') : 'Uitleg';
+  return { id: HELP_CIRCLE_ID, name: name || 'Uitleg' };
 }
 
 /**
