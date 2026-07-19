@@ -339,8 +339,6 @@ The target pod does not support a sharing primitive the caller asked for.
 Typically thrown by `client.sharing.{grant,revoke,list}` when neither
 ACP nor WAC is available on the target resource.
 
-Phase 52.16 (2026-05-14).
-
 ### `mapSourceCode`
 
 **Kind:** function · **Import:** `mapSourceCode` from `'@onderling/pod-client'`
@@ -642,10 +640,10 @@ Group-key strategy: seal/open under the household shared pod's group key. Two co
 returning the same `{ seal, open }` shape:
 
   • SINGLE-KEY (back-compat): `groupKeyStrategy({ groupKey })`. `seal` and `open` both use that one
-    symmetric key — byte-for-byte the pre-Phase-3 behaviour. Content that has never rotated round-trips
+    symmetric key — byte-for-byte the original single-key behaviour. Content that has never rotated round-trips
     exactly as before (the single-version fast path).
 
-  • CROSS-VERSION reader (Phase 3): `groupKeyStrategy({ resource, privateKey })`, where `resource` is the
+  • CROSS-VERSION reader: `groupKeyStrategy({ resource, privateKey })`, where `resource` is the
     retained group-key resource (the CURRENT version + its `history[]` of prior versions) and `privateKey`
     is the reader's sealing key. `open` resolves the version the content was sealed under by AUTHENTICATED
     TRIAL across EVERY version this reader can unwrap (`openSealedAcrossVersions` → `readableGroupKeys`), so
@@ -1074,7 +1072,7 @@ resourceScope(resourceId)
 ```
 
 Build the capability `skill` string naming per-resource read access: `res.read:<resourceId>`.
-`skillMatches` enforces exact-match isolation — a token for resource B never covers resource A
+`offeringMatches` enforces exact-match isolation — a token for resource B never covers resource A
 (only a full `'*'` token also matches, as an intentional super-grant).
 
 **Parameters**

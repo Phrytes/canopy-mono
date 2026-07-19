@@ -24,7 +24,7 @@ item-types registry, causal inbound merge (`put` with `origin: true`), and an op
 publish-on-write sync hook (`setSyncHook`). Type-specific lifecycle lives in functions over this
 store, not in the class. See the module doc for the design rationale.
 
-**Methods:** `setSyncHook()` · `put()` · `get()` · `delete()` · `list()` · `listByType()`
+**Methods:** `setSyncHook()` · `put()` · `putIfMatch()` · `get()` · `delete()` · `list()` · `listByType()`
 
 ## `src/ItemStore.js`
 
@@ -47,38 +47,6 @@ merge contracts.
 
 **Methods:** `addItems()` · `listOpen()` · `listClosed()` · `getById()` · `markComplete()` · `applySync()` · `removeSync()` · `removeItems()` · `claim()` · `reassign()` · `update()` · `auditLog()` · `submit()` · `approve()` · `reject()` · `revoke()` · `setApprovalMode()` · `_assertDepsClosed()`
 
-### `computeStatus`
-
-**Kind:** function · **Import:** `computeStatus` from `'@onderling/item-store'`
-
-```js
-computeStatus(item)
-```
-
-Compute the lifecycle status of an item from its persisted state.
-
-Returns one of: `'open' | 'claimed' | 'submitted' | 'rejected' | 'complete'`.
-
-This is the substrate-level status — it considers only the item's
-own fields (no DAG dependency walk; apps layer that on top, e.g.
-`apps/tasks-v0/src/dag.js#computeStatus(task, openItems, closedItems)`
-which returns `'ready' | 'waiting' | 'blocked'`).
-
-Rules (in order):
-  1. `completedAt` set        → `'complete'`
-  2. last reviewLog == submit → `'submitted'`
-  3. last reviewLog == reject → `'rejected'`
-  4. `assignee` set           → `'claimed'`
-  5. otherwise                → `'open'`
-
-Pure function; no I/O.
-
-**Parameters**
-
-- `item` `import('./types.js').Item`
-
-**Returns:** `'open' | 'claimed' | 'submitted' | 'rejected' | 'complete'`
-
 ## `src/audience.js`
 
 ### `audienceFromItem`
@@ -89,7 +57,7 @@ Pure function; no I/O.
 audienceFromItem(item)
 ```
 
-V0a (2026-05-21)`audienceFromItem(item)` bridge helper.
+V0a (2026-05-21) — `audienceFromItem(item)` bridge helper.
 
 Resolves an item's effective audience by checking, in order:
   1. `item.audience` (the new richer field — added V0a).
@@ -126,7 +94,7 @@ normalise — leave that to `@onderling/circles`.
 audienceMatches(itemAudience, filterAudience)
 ```
 
-does an item's effective audience satisfy a`ListFilter.audience`
+does an item's effective audience satisfy a `ListFilter.audience`
 query?
 
 `itemAudience` is the item's effective audience (as produced by
@@ -471,6 +439,27 @@ async listLoose(store, ownerId, opts = {})
 `opts.orphansOnly` narrows to TRUE orphans (items that once had a parent — `wasContained` — and lost it),
 excluding intentionally top-level items (a standalone offer/list). Matches Frits's "list orphans on request".
 
+## `src/createTaskStore.js`
+
+### `createTaskStore`
+
+**Kind:** function · **Import:** `createTaskStore` from `'@onderling/item-store'`
+
+```js
+createTaskStore(circleStore, { rolePolicy, enforceDependencies } = {})
+```
+
+Build the ItemStore-compatible task surface over a `CircleItemStore`.
+
+**Parameters**
+
+- `circleStore` `import('./CircleItemStore.js').CircleItemStore` — the converged per-circle store.
+- `[opts]` `object`
+- `[opts.rolePolicy]` `object` — the `RolePolicy` gate (threaded into every verb's ctx).
+- `[opts.enforceDependencies]` `boolean` — DAG close-gate (threaded into add/complete ctx).
+
+**Returns:** `object` — an `Emitter`-backed bundle with ItemStore's method surface.
+
 ## `src/dag.js`
 
 ### `computeDagStatus`
@@ -572,7 +561,7 @@ Walk the dependencies + embeds graph rooted at `rootId`.
 createCrossPodRefResolver({ getItem, pseudoPodRead, podFetch } = {})
 ```
 
-createCrossPodRefResolver — Phase 3.3c. A ready-made
+createCrossPodRefResolver — a ready-made
 `resolveExternalRef` for {@link treeOf}, dispatching the three
 canonical `embeds` ref shapes (`conventions/cross-pod-refs.md`):
 
@@ -668,7 +657,7 @@ class DependenciesOpenError extends Error
 new DependenciesOpenError({ itemId, openDeps })
 ```
 
-thrown by`markComplete` and `approve` when the substrate's
+thrown by `markComplete` and `approve` when the substrate's
 `enforceDependencies` flag is on and the item being closed has at
 least one open dependency. Carries the open-dep ids so callers can
 render a useful error message ("Can't close — 2 open sub-tasks: …").
@@ -688,7 +677,7 @@ createGenericAtomHandlers(store)
 ```
 
 createGenericAtomHandlers — the store-backed generic CRUD handlers that make "declare a noun → get CRUD
-for free" real (PLAN-capability-arc §1b). Keyed by CANONICAL atom; each takes `(noun, args, ctx)` and
+for free" real. Keyed by CANONICAL atom; each takes `(noun, args, ctx)` and
 operates on ANY item type via a CircleItemStore-shaped store (`put` / `get` / `delete` / `listByType`).
 The noun IS the item type — no per-noun code.
 
@@ -705,6 +694,40 @@ returns a plain `{ ok, ... }` result; a caller maps it to whatever reply/envelop
 - `store` `{ put:Function, get:Function, delete:Function, listByType:Function }` — a CircleItemStore (or same shape)
 
 **Returns:** `{ add:Function, list:Function, get:Function, update:Function, remove:Function }` — handlers keyed by canonical atom
+
+## `src/lifecycleStatus.js`
+
+### `computeStatus`
+
+**Kind:** function · **Import:** `computeStatus` from `'@onderling/item-store'`
+
+```js
+computeStatus(item)
+```
+
+Compute the lifecycle status of an item from its persisted state.
+
+Returns one of: `'open' | 'claimed' | 'submitted' | 'rejected' | 'complete'`.
+
+This is the substrate-level status — it considers only the item's
+own fields (no DAG dependency walk; apps layer that on top, e.g.
+`apps/tasks-v0/src/dag.js#computeStatus(task, openItems, closedItems)`
+which returns `'ready' | 'waiting' | 'blocked'`).
+
+Rules (in order):
+  1. `completedAt` set        → `'complete'`
+  2. last reviewLog == submit → `'submitted'`
+  3. last reviewLog == reject → `'rejected'`
+  4. `assignee` set           → `'claimed'`
+  5. otherwise                → `'open'`
+
+Pure function; no I/O.
+
+**Parameters**
+
+- `item` `import('./types.js').Item`
+
+**Returns:** `'open' | 'claimed' | 'submitted' | 'rejected' | 'complete'`
 
 ## `src/memoryDataSource.js`
 
@@ -809,6 +832,132 @@ projection — cycles are broken with a seen-set, refs to missing/deleted items 
 recursion is bounded by `opts.maxDepth` (default 6). `renderFor` defaults to
 `{ label: text ?? title ?? id }`. Resolves to `null` when the container itself is absent.
 
+## `src/requestableBridge.js`
+
+### `REQUEST_TASK_KIND`
+
+**Kind:** constant · **Import:** `REQUEST_TASK_KIND` from `'@onderling/item-store'`
+
+The task `kind` a requestable invocation mints.
+
+### `REQUEST_SOURCE_KIND`
+
+**Kind:** constant · **Import:** `REQUEST_SOURCE_KIND` from `'@onderling/item-store'`
+
+The `source.kind` marker stamped on a request-task (provenance).
+
+### `requestableSkillHandler`
+
+**Kind:** function · **Import:** `requestableSkillHandler` from `'@onderling/item-store'`
+
+```js
+requestableSkillHandler({ taskStore, offering, recipient, from: boundFrom, contextId, humanInTheLoop = 'required', requestText: boundRequestText, renderRequest, } = {})
+```
+
+Build a REQUESTABLE skill handler.
+
+The returned handler, when invoked (A → B), CREATES A TASK on B's task store
+carrying the request + the requester, and returns a PENDING task reference. It
+executes NOTHING — the offering is not run; B decides via the task lifecycle.
+
+**Parameters**
+
+- `args` `object`
+- `args.taskStore` `object` — the RECIPIENT's task surface — `createTaskStore` over a `CircleItemStore` (needs `addItems`).
+- `args.offering` `object` — the offering descriptor being made requestable — a skill-kind driver `{ key, text, tags[] }`.
+- `args.recipient` `string` — webid of the member who holds the offering (B).
+- `[args.from]` `string` — DEFAULT requester webid (A). Usually supplied per invocation instead (the A2A caller identity); an invocation-time `from` overrides this.
+- `[args.contextId]` `string` — the circle/context this offering is requestable in (stamped on the task for legibility).
+- `[args.humanInTheLoop='required']` `'required'` — the contract this handler honours. Only `required` is meaningful here — an `immediate` offering would not be projected through this factory, and `standing` is the documented bypass seam (not built).
+- `[args.requestText]` `string` — a fixed request phrase (else derived per invocation).
+- `[args.renderRequest]` `(offering:object, from:string)=>string` — custom phrase fn.
+
+**Returns:** `(invocation?:object)=>Promise<{created:true, taskId:string, status:'pending', task:object}>` — an async skill handler. `invocation` may carry `{ from, requestText, actorDisplayName }`.
+
+### `offeringsToSkillDefinitions`
+
+**Kind:** function · **Import:** `offeringsToSkillDefinitions` from `'@onderling/item-store'`
+
+```js
+offeringsToSkillDefinitions({ offerings, policy, contextId, isRequestable, taskStore, recipient, from, humanInTheLoop = 'required', idPrefix = 'requestable', } = {})
+```
+
+Project a persona's REQUESTABLE offerings into skill DEFINITIONS.
+
+For each offering the member has marked `requestable` in `contextId` (checked via
+the INJECTED `isRequestable` predicate — the host wires `agent-registry`'s real
+one), emit a definition `{ id, humanInTheLoop:'required', posture, offering, handler }`
+whose `handler` is `requestableSkillHandler(...)`. A NON-requestable offering
+produces NO definition (the guard) — its handler is never minted, so it can never
+be invoked as a request.
+
+The host REGISTERS these on the live agent (`agent.register(id, handler, {humanInTheLoop})`)
+and routes peer `callSkill`s to them — see the HOST-WIRING TODO seam in the module doc.
+
+**Parameters**
+
+- `args` `object`
+- `args.offerings` `Array<{key:string, text?:string, tags?:string[]}>` — the persona's skill-kind offerings (e.g. `driversFromProperties` filtered to kind `skill`).
+- `args.policy` `object` — the member's disclosure policy (opaque to us).
+- `args.contextId` `string` — the circle/context to evaluate `requestable` in.
+- `args.isRequestable` `(policy:object, contextId:string, key:string)=>boolean` — the requestable-axis predicate (inject `agent-registry`'s `isRequestable`).
+- `args.taskStore` `object` — the recipient's task surface (see the handler factory).
+- `args.recipient` `string` — the member who holds the offerings (B).
+- `[args.from]` `string` — optional default requester (usually per-invocation).
+- `[args.humanInTheLoop='required']` `'required'`
+- `[args.idPrefix='requestable']` `string` — skill-id namespace.
+
+**Returns:** `Array<{id:string, humanInTheLoop:'required', posture:'negotiable', offering:object, handler:Function}>`
+
+## `src/shareContainerTree.js`
+
+### `collectSubtree`
+
+**Kind:** function · **Import:** `collectSubtree` from `'@onderling/item-store'`
+
+```js
+async collectSubtree(store, rootId, { maxDepth = 8 } = {})
+```
+
+Enumerate a container subtree over one circle's store, in pre-order (root first, then each child's subtree in
+`childIdsOf` declaration order). De-duped (a shared child appears once) and depth-bounded.
+
+**Parameters**
+
+- `store` `object` — a CircleItemStore (needs `get(id)`)
+- `rootId` `string` — the container id
+- `[opts]` `object`
+- `[opts.maxDepth=8]` `number` — cycle/depth guard (mirrors treeOf)
+
+**Returns:** `Promise<string[]>` — subtree item ids in pre-order (empty when the root is missing)
+
+### `shareContainerTree`
+
+**Kind:** function · **Import:** `shareContainerTree` from `'@onderling/item-store'`
+
+```js
+async shareContainerTree(stores, { containerId, fromCircleId, toCircleId, maxDepth = 8, shareNode, ...rest } = {})
+```
+
+Share a WHOLE container subtree into a target circle by fanning the single-item share over every node.
+
+The fan uses `shareIntoAudience` by default (the memory/plain `shared-ref` path). An app-level op that needs
+posture gating / re-seal / pod grants injects `shareNode(itemId) => Promise<{ok, ref?}>` — the SAME per-item
+write path it uses for a single share — so the list rides EXACTLY the single-item mechanics, once per node.
+
+**Parameters**
+
+- `stores` `{getStore:(id:string)=>object}` — a createCircleStores-shaped registry
+- `args` `object`
+- `args.containerId` `string` — the list (container) whose subtree is sent
+- `args.fromCircleId` `string` — the circle the container lives in
+- `args.toCircleId` `string` — the audience to send the list into
+- `[args.maxDepth=8]` `number` — subtree cycle/depth guard
+- `[args.shareNode]` `(itemId:string)=>Promise<{ok:boolean, ref?:object, error?:string, cause?:any}>` — INJECTED per-node share (the app fans its own posture-gated write path). Default: fan `shareIntoAudience` over `stores` with the remaining `args` (by/posture/postureOf/recipient(s)/onShare/…) forwarded.
+- `[args.rest]` `...*` — forwarded to the default `shareIntoAudience` fan (by, posture, postureOf, onShare, …)
+
+**Returns:** `Promise<{ok:boolean, container?:string, order?:string[], shared?:Array<{itemId:string, ref:object}>, failed?:Array<{itemId:string, error:string, cause?:any}>, error?:string}>` — `ok` is true only when EVERY node shared. `order` is the pre-order the fan ran in (nesting/order proof).
+
 ## `src/shareIntoAudience.js`
 
 ### `shareIntoAudience`
@@ -838,10 +987,10 @@ confidential circle would downgrade it, so that's refused (: never downgrade bel
 - `[args.by]` `string` — who is sharing
 - `[args.posture]` `number` — the item's required confidentiality (default: the item's own `posture`, else 0)
 - `[args.postureOf]` `(circleId:string)=>number` — the target circle's confidentiality (for the floor check; omit to skip the floor). Refuses when `postureOf(toCircleId) < posture`.
-- `[args.onShare]` `(ctx:{ref:object,item:object,recipient?:string,recipients?:string[],stores:object})=>Promise<void>` — INJECTED WRITE-SIDE pod hook (additive pod-tier). When the store is pod-backed the composition injects`makeShareGrantHook(...)` here: after the `shared-ref` is written, the hook creates the ACP read-grant for the recipient on the source item's resource (and optionally re-seals). The memory path leaves it undefined ⇒ behaviour is EXACTLY as before. A throw from the hook fails the share (`{ok:false, error:'share-grant-failed'}`) so a share never silently lands without its grant.
+- `[args.onShare]` `(ctx:{ref:object,item:object,recipient?:string,recipients?:string[],stores:object})=>Promise<void>` — INJECTED WRITE-SIDE pod hook (additive pod-tier). When the store is pod-backed the composition injects `makeShareGrantHook(...)` here: after the `shared-ref` is written, the hook creates the ACP read-grant for the recipient on the source item's resource (and optionally re-seals). The memory path leaves it undefined ⇒ behaviour is EXACTLY as before. A throw from the hook fails the share (`{ok:false, error:'share-grant-failed'}`) so a share never silently lands without its grant.
 - `[args.recipient]` `string` — the recipient WebID to grant to (pod-backed shares); passed to `onShare`.
 - `[args.recipients]` `string[]` — multiple recipient WebIDs (a circle share resolves members here).
-- `[args.recipientKeys]` `string[]` — the recipients' SEALING PUBLIC KEYS (share-policy — resolved against the TARGET circle's roster). Passed through to`onShare` so the injected `seal` re-wraps the content to keys (not WebIDs). Omit for the group-key posture (recipient already holds the key).
+- `[args.recipientKeys]` `string[]` — the recipients' SEALING PUBLIC KEYS (share-policy — resolved against the TARGET circle's roster). Passed through to `onShare` so the injected `seal` re-wraps the content to keys (not WebIDs). Omit for the group-key posture (recipient already holds the key).
 
 **Returns:** `Promise<{ok:true, ref:object}|{ok:false, error:string, required?:number, target?:number, cause?:any}>`
 
@@ -856,7 +1005,7 @@ async resolveSharedRef(stores, ref, opts = {})
 Resolve a `shared-ref` to its source item — the read that CROSSES circles (🔒-gated on real pods).
 Null if absent/invalid.
 
-ENFORCEMENT (additive, backward-compatible). Pass an injected`policy` (see
+ENFORCEMENT (additive, backward-compatible). Pass an injected `policy` (see
 `sharedRefPolicy.js`) to gate + unseal the cross-circle read:
   1. `policy.checkGrant({ ref, recipient, stores })` — DENY-BY-DEFAULT: if it returns falsy or throws,
      resolve to `null` (the recipient was NOT granted this item). On a real pod this checks a live
@@ -979,7 +1128,7 @@ Pod-backed enforcement policy. Adapts the injected pod-layer surfaces to the pol
 **Parameters**
 
 - `opts` `object`
-- `opts.sharing` `{ list:(o:object)=>Promise<Array<{subject:string,agent?:string,modes:string[]}>> }` — the `client.sharing` surface (Phase 52.16). We call `sharing.list({ resourceUri, agentsToQuery })` and require a `read` grant for the recipient (or a public read grant).
+- `opts.sharing` `{ list:(o:object)=>Promise<Array<{subject:string,agent?:string,modes:string[]}>> }` — the `client.sharing` surface. We call `sharing.list({ resourceUri, agentsToQuery })` and require a `read` grant for the recipient (or a public read grant).
 - `[opts.open]` `(text:string)=>string|Promise<string>` — the sealing/`open` shape — opens a sealed envelope with the reader's key; passes plaintext through. Omit to skip unsealing.
 - `[opts.recipient]` `string` — the WebID/agent asking to read (default recipient for checkGrant).
 - `[opts.resourceUriFor]` `(ref:object, ctx:{stores:object})=>(string|null)` — maps a `shared-ref` to the source item's pod resource URI (the ACP-controlled target). Defaults to a logical `sourceCircle/sourceId` — a real pod MUST inject the true storage-layout URI (that derivation is the pod-storage-tier's job; see the boundary note in the K report).
@@ -1012,7 +1161,7 @@ read grant on `resourceUriFor(ref)`?"; this hook is what PUTS that grant there. 
 - `opts.sharing` `{ grant:(o:object)=>Promise<any> }` — the `client.sharing` surface — we call `sharing.grant({ resourceUri, agent, modes })` once per recipient.
 - `[opts.resourceUriFor]` `(ref:object)=>(string|null)` — maps a `shared-ref` → the source item's pod resource URI (the ACP target). Defaults to the logical `sourceCircle/sourceId` (a real pod injects the storage-layout URI from `@onderling/pod-onboarding`'s `sharedRefResourceUri`).
 - `[opts.mode='read']` `string` — the access mode to grant.
-- `[opts.seal]` `(item:object, ctx:{recipient:string, recipients:string[], recipientKeys:string[], ref:object})=>object|Promise<object>` — optional re-seal step. In the group-key posture the recipient already holds the key so no re-seal is needed (omit); in the recipient-wrap posture, inject a `seal` (e.g. built from `recipientStrategy({recipients}).seal` via `sealItem`) that returns the item re-sealed to the recipient(s), and it is written back to the source store so the recipient can open it at rest. The recipients' SEALING PUBLIC KEYS arrive as `recipientKeys` (resolved by the share op against the TARGET circle's roster), so the seal wraps to keys, not WebIDs. Deny-by-default: a seal that needs keys but gets none should throw ⇒ the share fails.
+- `[opts.seal]` `(item:object, ctx:{recipient:string, recipients:string[], recipientKeys:string[], ref:object})=>object|Promise<object>` — optional re-seal step. In the group-key posture the recipient already holds the key so no re-seal is needed (omit); in the recipient-wrap posture, inject a `seal` (e.g. built from `recipientStrategy({recipients}).seal` via `sealItem`) that returns the item re-sealed to the recipient(s), and it is written back to the source store so the recipient can open it at rest. The recipients' SEALING PUBLIC KEYS arrive as `recipientKeys` (resolved by the share op against the TARGET circle's roster —), so the seal wraps to keys, not WebIDs. Deny-by-default: a seal that needs keys but gets none should throw ⇒ the share fails.
 
 **Returns:** `(ctx:{ref:object, item:object, recipient?:string, recipients?:string[], recipientKeys?:string[], stores:object})=>Promise<void>`
 
@@ -1102,6 +1251,283 @@ downgrade, now enforced on the READ. Deny-by-default when the floor can't be met
 - `[opts.open]` `(text:string)=>string|Promise<string>` — optional group opener for sealed content.
 
 **Returns:** `{ checkGrant: Function, open?: Function }`
+
+## `src/taskCrud.js`
+
+### `addTasks`
+
+**Kind:** function · **Import:** `addTasks` from `'@onderling/item-store'`
+
+```js
+async addTasks(store, partials, ctx = {})
+```
+
+Add one or more tasks — parity with `ItemStore.addItems`.
+
+For each partial: validate shape → materialise (assign id + defaults) → run
+the DAG **cycle check** on `dependencies[]` → gate `canAdd` → `store.put`
+(which stamps `createdAt`/`createdBy`/`updatedAt`). Returns the created items.
+
+DAG cycle check — this is the guard that in the class-`ItemStore` world lived
+in the tasks-v0 add-skill (`detectCycle({id:'__new__', dependencies}, listOpen)`
+→ throw `{code:'DEPENDENCY_CYCLE', cycle}`). It is ABSORBED here so the ported
+surface is self-guarding and consumers can drop their copy. Same `detectCycle`
+(from `dag.js`), same `DEPENDENCY_CYCLE` code, same cycle path.
+
+**Parameters**
+
+- `store` `import('./CircleItemStore.js').CircleItemStore`
+- `partials` `Array<object>` — task partials ({ text, type?, dependencies?, … })
+- `ctx` `object` — `actor` required; `rolePolicy`, `actorDisplayName`, `emit` optional.
+
+**Returns:** `Promise<object[]>` — the created items (with base metadata stamped by put).
+
+### `listOpen`
+
+**Kind:** function · **Import:** `listOpen` from `'@onderling/item-store'`
+
+```js
+async listOpen(store, filter)
+```
+
+List OPEN items matching `filter`. "Open" = `completedAt` absent — parity with
+`ItemStore.listOpen`, which scans ALL items (every type) then partitions +
+filters. The single per-circle store holds mixed types (a task lives beside a
+`chat-message` / `subtask-request` / `subtask-proposal` / `inbox-item`), and
+LIVE consumers query them THROUGH this surface with `filter.type`; a bare
+`listOpen()` returns every open item, exactly as `ItemStore` did. (Restricting
+to `listByType('task')` would silently drop those other-typed queries.)
+
+### `listClosed`
+
+**Kind:** function · **Import:** `listClosed` from `'@onderling/item-store'`
+
+```js
+async listClosed(store, filter)
+```
+
+List CLOSED items matching `filter`. "Closed" = `completedAt` present — parity
+with `ItemStore.listClosed` (scans ALL items; see `listOpen`).
+
+### `getById`
+
+**Kind:** function · **Import:** `getById` from `'@onderling/item-store'`
+
+```js
+async getById(store, id)
+```
+
+Read one task by id — parity with `ItemStore.getById` (thin over `store.get`).
+
+### `update`
+
+**Kind:** function · **Import:** `update` from `'@onderling/item-store'`
+
+```js
+async update(store, id, patch, ctx = {})
+```
+
+Edit body fields (LWW) — parity with `ItemStore.update`. Rejects a patch that
+touches any forbidden / dedicated-transition field (`FORBIDDEN_UPDATE_FIELDS`);
+gates `canEditBody`; merges the patch and `store.put`s it. Emits `item-updated`.
+
+**Returns:** `Promise<object>` — the merged, stored item.
+
+### `removeItems`
+
+**Kind:** function · **Import:** `removeItems` from `'@onderling/item-store'`
+
+```js
+async removeItems(store, refs, ctx = {})
+```
+
+Hard-delete tasks — parity with `ItemStore.removeItems`. Resolves each ref to
+an item (via the shared `resolveById`), gates `canRemove`, then `store.delete`s
+it. Missing refs are skipped. Emits `item-removed` `{id, item}`. Returns the
+removed ids (parity with ItemStore's `string[]` return).
+
+**Returns:** `Promise<string[]>` — the ids that were removed.
+
+## `src/taskLifecycle.js`
+
+### `assigneesOf`
+
+**Kind:** function · **Import:** `assigneesOf` from `'@onderling/item-store'`
+
+```js
+assigneesOf(item)
+```
+
+The co-owner set for a task. Source of truth is `assignees[]`; falls back to
+`[assignee]` for legacy / single-owner items written before this field existed
+(so membership queries keep working by construction). Empty ⇒ unclaimed.
+
+**Returns:** `string[]`
+
+### `maxAssigneesOf`
+
+**Kind:** function · **Import:** `maxAssigneesOf` from `'@onderling/item-store'`
+
+```js
+maxAssigneesOf(item)
+```
+
+The claim ceiling. `undefined` ⇒ 1 (today's EXCLUSIVE first-come default —
+a 2nd claimer gets `already-claimed`, so J1 stays green); `null` ⇒ unlimited
+(`Infinity`); a positive number ⇒ that cap (CO-OWNABLE).
+
+**Returns:** `number`
+
+### `isAssigneesFull`
+
+**Kind:** function · **Import:** `isAssigneesFull` from `'@onderling/item-store'`
+
+```js
+isAssigneesFull(item)
+```
+
+True iff the co-owner set has no room for another claimer (default-full-at-1).
+
+### `isAssignee`
+
+**Kind:** function · **Import:** `isAssignee` from `'@onderling/item-store'`
+
+```js
+isAssignee(item, actor)
+```
+
+True iff `actor` is one of the task's co-owners (membership, not equality).
+
+### `claim`
+
+**Kind:** function · **Import:** `claim` from `'@onderling/item-store'`
+
+```js
+async claim(store, id, ctx = {})
+```
+
+Claim a task — AUTHORITATIVE, race-safe (the whole point of Option A), now
+CO-OWNERSHIP-aware. CAS-ADDS the actor to `assignees[]` (via `store.putIfMatch`,
+so a racing second writer that read the same base loses) IF the actor is not
+already a co-owner AND the set has room (`assignees.length < maxAssignees`).
+Otherwise — already a co-owner, OR the set is FULL — returns the ItemStore-parity
+`{error:'already-claimed', current}`. With the DEFAULT `maxAssignees:1` the set
+is full after the first claim, so a 2nd claimer gets `already-claimed`: EXACTLY
+today's exclusive first-come behaviour (J1 stays green). `putIfMatch`'s
+`{error:'conflict', current}` is re-mapped to the same `already-claimed` shape.
+Maintains the `assignee = assignees[0]` mirror + `claimedAt`.
+
+**Parameters**
+
+- `store` `import('./CircleItemStore.js').CircleItemStore`
+- `id` `string`
+- `ctx` `object` — see module doc (`actor` required; `rolePolicy`, `expectedEtag`, `emit` optional).
+
+**Returns:** `Promise<object | {error:'already-claimed', current: object|null}>`
+
+### `reassign`
+
+**Kind:** function · **Import:** `reassign` from `'@onderling/item-store'`
+
+```js
+async reassign(store, id, newAssignee, ctx = {})
+```
+
+Reassign a task — AUTHORITATIVE (CAS). Parity with `ItemStore.reassign`:
+forbids reassigning a completed item; gates `canReassign`; sets
+`assignee`+`claimedAt` (or clears both when `newAssignee` is falsy — release);
+records `claimBase` (the superseded assignee) for the substrate mirror's
+causal-vs-concurrent disambiguation. Emits `item-claimed` on assign,
+`item-updated` on release. A CAS conflict is surfaced as
+`{error:'conflict', current}` (authoritative op — the caller retries against
+the fresh state rather than silently clobbering).
+
+**Returns:** `Promise<object | {error:'conflict', current: object|null}>`
+
+### `markComplete`
+
+**Kind:** function · **Import:** `markComplete` from `'@onderling/item-store'`
+
+```js
+async markComplete(store, refs, ctx = {})
+```
+
+Mark items complete — CONTENT op (causal `put`, LWW completion, parity with
+`ItemStore.markComplete`). For each ref: not-found + explicit → throw
+`ItemNotFoundError`; already-completed + explicit → `InvalidLifecycleError`;
+gate `canComplete`; DAG gate (`assertDepsClosed`) unless
+`ctx.actionOverride`; stamp `completedAt`/`completedBy`; write; emit
+`item-completed`.
+
+**Parameters**
+
+- `store` `import('./CircleItemStore.js').CircleItemStore`
+- `refs` `Array<{id?:string}|string>` — explicit id refs (see `resolveById`)
+- `ctx` `object`
+
+**Returns:** `Promise<object[]>` — the completed items
+
+### `submit`
+
+**Kind:** function · **Import:** `submit` from `'@onderling/item-store'`
+
+```js
+async submit(store, id, args, ctx = {})
+```
+
+Submit a claimed item for approval — CONTENT op. Parity with
+`ItemStore.submit`: allowed from `claimed` / `submitted` (re-submit) /
+`rejected` (re-work); gate `canSubmit`; append a `submit` reviewLog entry;
+carry the optional deliverable (stamped `submittedAt`). Emits `item-submitted`.
+
+### `approve`
+
+**Kind:** function · **Import:** `approve` from `'@onderling/item-store'`
+
+```js
+async approve(store, id, args, ctx = {})
+```
+
+Approve a submitted item — AUTHORITATIVE (CAS; the sign-off is winner-take-all).
+Parity with `ItemStore.approve`: requires `submitted`; gate `canApprove`;
+DAG gate unless `ctx.actionOverride`; append an `approve` reviewLog entry;
+stamp `completedAt`/`completedBy`. Emits `item-completed`. A CAS conflict is
+surfaced as `{error:'conflict', current}`.
+
+**Returns:** `Promise<object | {error:'conflict', current: object|null}>`
+
+### `reject`
+
+**Kind:** function · **Import:** `reject` from `'@onderling/item-store'`
+
+```js
+async reject(store, id, args, ctx = {})
+```
+
+Reject a submitted item — CONTENT op. Parity with `ItemStore.reject`:
+mandatory `args.note` (`MissingArgumentError`); requires `submitted`; gate
+`canReject`; append a `reject` reviewLog entry (→ `computeStatus` reports
+`rejected`, distinct from `claimed`). Emits `item-rejected`.
+
+### `revoke`
+
+**Kind:** function · **Import:** `revoke` from `'@onderling/item-store'`
+
+```js
+async revoke(store, id, args, ctx = {})
+```
+
+Revoke an assignment — CONTENT op. Parity with `ItemStore.revoke`: mandatory
+`args.reason` (`MissingArgumentError`); forbids on completed / unassigned
+(`InvalidLifecycleError` — the mirror empty ⇒ unassigned); gate `canRevoke`;
+append a `revoke` reviewLog entry; `master` preserved. Emits `item-revoked`
+with `{item, previousAssignee, reason}`.
+
+CO-OWNERSHIP: `args.assignee` (or `args.target`) optionally names WHICH co-owner
+to yank — when it names a member of a multi-owner set, only that one is removed
+(the mirror re-points to the new `assignees[0]`). With no target — or a
+single-owner set — the whole set clears (→ `computeStatus` returns `open`),
+EXACTLY today's single-owner revoke (parity preserved).
 
 ## `src/ulid.js`
 

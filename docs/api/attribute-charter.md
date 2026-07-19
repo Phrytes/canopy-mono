@@ -191,8 +191,25 @@ a project lead literally cannot request "exact age" or an address, because the
 value space is fixed to a handful of buckets here. New attributes are added
 centrally (with a coarsening), never invented per-project.
 
-See plans/NOTE-requested-attributes-charter.md §2. Sits inside the general
-personal-properties / disclosure model (NOTE-personal-personal-and-disclosure).
+Sits inside the general personal-properties / disclosure model.
+
+### `CHARTER_ROLE_KEY`
+
+**Kind:** constant · **Import:** `CHARTER_ROLE_KEY` from `'@onderling/attribute-charter'`
+
+The disambiguated key for the charter `role` attribute — i.e. `charter:role`.
+
+Two unrelated concepts share the bare word "role" in this codebase:
+ - **charter role** (THIS): a disclosed personal property describing who you
+   are in a neighbourhood (resident / works-here / visitor / business-owner).
+   It is a plain coarse-enum attribute; it grants NO rank and NO authority.
+ - **governance role** (`packages/core/src/permissions/Roles.js`): a
+   rank-bearing standing (admin / coordinator / member …) that grants
+   authority and satisfies policy gates.
+
+Reference the charter attribute through this constant (never a bare `'role'`
+literal) so a build path can never conflate the two. Convention: write
+`charter:role` vs `governance:role` in docs/comments when they must coexist.
 
 ### `attributeKeys`
 

@@ -651,7 +651,7 @@ new MemoryAdapter()
 MemoryAdapter — in-memory `CloudAdapter` for tests and local development.
 
 Not for production: no persistence, no concurrency control, no quota.
-Useful as a stand-in while concrete adapters are deferred (Q-C.5) and as
+Useful as a stand-in while concrete adapters are deferred and as
 the substrate for `CloudBackup.test.js`.
 
 **Methods:** `put()` · `get()` · `delete()` · `list()`
@@ -843,12 +843,12 @@ permission to call `skill` (exact id, '<prefix>.*', or '*') on `agentId` until
 
 **Methods:** `toJSON()` · `toString()`
 
-### `skillMatches`
+### `offeringMatches`
 
-**Kind:** function · **Import:** `skillMatches` from `'@onderling/core'`
+**Kind:** function · **Import:** `offeringMatches` from `'@onderling/core'`
 
 ```js
-skillMatches(pattern, skillId)
+offeringMatches(pattern, skillId)
 ```
 
 Match a token's `skill` field against a concrete skill id.
@@ -857,7 +857,7 @@ Three pattern shapes are supported:
   - `'*'`           — wildcard, matches every skill
   - `'<exact-id>'`  — must equal the skill id
   - `'<prefix>.*'`  — matches any skill id that starts with `<prefix>.`
-                     (follow-up A — added to scope cap-token-bound
+                     (added to scope cap-token-bound
                       bot agents to the `bot.*` surface only).
 
 Returns `false` for any other shape; callers should treat unknown
@@ -973,6 +973,160 @@ returns { tier, allowed: true } otherwise.
 
 **Methods:** `resolveActor()` · `setRevocationCheck()` · `checkInbound()` · `checkOutbound()`
 
+## `src/permissions/RoleBundle.js`
+
+### `defineRoleBundle`
+
+**Kind:** function · **Import:** `defineRoleBundle` from `'@onderling/core'`
+
+```js
+defineRoleBundle({ id, rank, grants = [] } = {})
+```
+
+Build (and validate) a normalised, frozen RoleBundle WITHOUT registering it.
+
+The `id` must resolve to a known `Roles.js` role. If it does not AND a
+numeric `rank` is supplied, the custom role is registered first
+(`registerCustomRole`) so the bundle always references a known role id — this
+lets `defineRoleBundle({ id:'warden', rank:70, grants:[…] })` introduce a new
+custom role and its capability surface in one step. When the id is already
+known, a supplied `rank` must match its registered rank.
+
+**Parameters**
+
+- `bundle` `object`
+- `bundle.id` `string`
+- `[bundle.rank]` `number`
+- `[bundle.grants]` `GrantTemplate[]`
+
+**Returns:** `{ id: string, rank: number, grants: object[] }`
+
+### `registerRoleBundle`
+
+**Kind:** function · **Import:** `registerRoleBundle` from `'@onderling/core'`
+
+```js
+registerRoleBundle(bundle)
+```
+
+Register a role bundle by its role id (last registration wins). Accepts a
+raw `{ id, rank?, grants }` or an already-built bundle from `defineRoleBundle`.
+
+**Parameters**
+
+- `bundle` `object`
+
+**Returns:** `{ id: string, rank: number, grants: object[] }` — the registered bundle
+
+### `getRoleBundle`
+
+**Kind:** function · **Import:** `getRoleBundle` from `'@onderling/core'`
+
+```js
+getRoleBundle(roleId)
+```
+
+@returns {object|null} the bundle registered for `roleId`, or null.
+
+### `hasRoleBundle`
+
+**Kind:** function · **Import:** `hasRoleBundle` from `'@onderling/core'`
+
+```js
+hasRoleBundle(roleId)
+```
+
+@returns {boolean} whether a bundle is registered for `roleId`.
+
+### `listRoleBundles`
+
+**Kind:** function · **Import:** `listRoleBundles` from `'@onderling/core'`
+
+```js
+listRoleBundles()
+```
+
+@returns {object[]} all registered bundles, sorted by rank descending.
+
+### `unregisterRoleBundle`
+
+**Kind:** function · **Import:** `unregisterRoleBundle` from `'@onderling/core'`
+
+```js
+unregisterRoleBundle(roleId)
+```
+
+Remove a registered bundle. The built-in `admin` bundle is re-seeded by
+`resetRoleBundles()` — use that in tests to restore a clean slate.
+
+**Parameters**
+
+- `roleId` `string`
+
+**Returns:** `boolean` — true if a bundle was removed.
+
+### `ADMIN_ROLE_BUNDLE`
+
+**Kind:** constant · **Import:** `ADMIN_ROLE_BUNDLE` from `'@onderling/core'`
+
+The BUILT-IN governance-admin bundle: "can manage this circle." Admin's
+capability surface is the circle-management skill namespace (`circle.*` —
+role changes, invites, and the other governance ops). Folding governance in
+here means admin / warden / any custom role all run through the ONE
+bundle+materialize mechanism.
+
+### `resetRoleBundles`
+
+**Kind:** function · **Import:** `resetRoleBundles` from `'@onderling/core'`
+
+```js
+resetRoleBundles()
+```
+
+Reset the registry to just the built-in bundles (the admin bundle). Intended
+for test isolation, mirroring the `Roles.js` custom-role teardown pattern.
+
+## `src/permissions/RoleGrant.js`
+
+### `materializeBundle`
+
+**Kind:** function · **Import:** `materializeBundle` from `'@onderling/core'`
+
+```js
+async materializeBundle({ identity, agentId, memberPubKey, groupId, bundle, expiresIn = DEFAULT_TTL_MS })
+```
+
+Materialize a RoleBundle for a member: issue one signed CapabilityToken per
+grant template. Standalone (used by `RoleGrantManager.grant`, but callable on
+its own for a token-only materialization without touching governance).
+
+**Parameters**
+
+- `args` `object`
+- `args.identity` `import('../identity/AgentIdentity.js').AgentIdentity` — the granting agent (token issuer)
+- `args.agentId` `string` — this agent's id / pubKey (the token's `agentId` binding)
+- `args.memberPubKey` `string` — the grantee (token subject)
+- `args.groupId` `string` — recorded in each token's constraints for provenance
+- `args.bundle` `object` — a RoleBundle (`{ id, rank, grants }`)
+- `[args.expiresIn=DEFAULT_TTL_MS]` `number` — default TTL (ms); a template's own `expiresIn` overrides
+
+**Returns:** `Promise<CapabilityToken[]>`
+
+### `RoleGrantManager`
+
+**Kind:** class · **Import:** `RoleGrantManager` from `'@onderling/core'`
+
+```js
+class RoleGrantManager
+new RoleGrantManager({ identity, groupManager, agentId } = {})
+```
+
+Grants a role to a member and materializes its bundle's capability tokens,
+tracking the issued token ids so revoking the role invalidates them through
+the PolicyEngine revocation hook.
+
+**Methods:** `installRevocationCheck()` · `isRevoked()` · `materializedTokenIds()` · `grant()` · `revoke()`
+
 ## `src/permissions/Roles.js`
 
 ### `ROLES`
@@ -981,7 +1135,7 @@ returns { tier, allowed: true } otherwise.
 
 Roles — standard role taxonomy + custom-role registration API.
 
-Locked Q-D.1 (2026-04-28): five standard roles plus an
+Five standard roles plus an
 app-defined-extension API. Apps can register custom role IDs with an
 explicit numeric rank that slots them into the hierarchy.
 
@@ -996,6 +1150,14 @@ Hierarchy (numeric rank, higher = more privileged):
 Custom role IDs may be registered with any positive numeric rank that
 does not collide with another registered (standard or custom) role id
 or rank.
+
+### `STANDARD_RANKS`
+
+**Kind:** constant · **Import:** `STANDARD_RANKS` from `'@onderling/core'`
+
+The canonical role→rank table — the SINGLE source of truth. Any consumer
+ that needs the standard ranks (e.g. the relay's group-auth verifier) imports
+ this instead of hand-copying the numbers.
 
 ### `isStandardRole`
 
@@ -1119,6 +1281,25 @@ listKnownRoles()
 All known role ids (standard + registered custom), sorted by rank descending.
 
 **Returns:** `string[]` — all known role ids (standard + custom), sorted by rank descending.
+
+## `src/permissions/TaskGrant.js`
+
+### `TaskGrantManager`
+
+**Kind:** class · **Import:** `TaskGrantManager` from `'@onderling/core'`
+
+```js
+class TaskGrantManager
+new TaskGrantManager({ identity, agentId, parentToken } = {})
+```
+
+Materialize task-scoped capability tokens for a member, attenuated from the
+granter's OWN authority and revocable with the task.
+
+OFF BY DEFAULT: a freshly-constructed manager has granted nothing. Authority
+exists on a task ONLY after an explicit `attachGrant`.
+
+**Methods:** `installRevocationCheck()` · `attachGrant()` · `revokeTaskGrants()` · `tokensForTask()` · `isRevoked()`
 
 ## `src/permissions/TokenRegistry.js`
 
@@ -1650,12 +1831,12 @@ Native-only — A2A peers receive a 'requires-native-transport' error.
 
 ## `src/protocol/taskExchange.js`
 
-### `callSkill`
+### `invokeAgentSkill`
 
-**Kind:** function · **Import:** `callSkill` from `'@onderling/core'`
+**Kind:** function · **Import:** `invokeAgentSkill` from `'@onderling/core'`
 
 ```js
-callSkill(agent, peerId, skillId, parts, opts = {})
+invokeAgentSkill(agent, peerId, skillId, parts, opts = {})
 ```
 
 Call a skill on a remote peer. Returns a Task immediately.
@@ -2299,8 +2480,8 @@ throws coded errors (INVALID_ARGUMENT, FORBIDDEN, NOT_READABLE, NOT_FOUND).
 
 - `opts` `object`
 - `opts.read` `(uri: string) => Promise<*|null>` — Storage-backed reader. Returns the resource value (any shape) on hit, `null`/`undefined` on miss. Errors propagate as a `NOT_READABLE` skill error.
-- `[opts.groupCheck]` `(uri: string, ctx: FetchResourceGateCtx) => boolean|Promise<boolean>` — Phase 52.2.x peer-fetch gate (Q#2 2026-05-14). When supplied, invoked per request — if truthy, the fetch is allowed. Used by apps that track group-membership rosters (Stoop, etc.) to deny ex-members.
-- `[opts.capCheck]` `(uri: string, ctx: FetchResourceGateCtx) => boolean|Promise<boolean>` — Phase 52.2.x peer-fetch gate (Q#2 2026-05-14). Orthogonal cap-token verification. When supplied, invoked per request with `ctx.capToken` populated from the request parts. If truthy, the fetch is allowed.
+- `[opts.groupCheck]` `(uri: string, ctx: FetchResourceGateCtx) => boolean|Promise<boolean>` — Peer-fetch gate. When supplied, invoked per request — if truthy, the fetch is allowed. Used by apps that track group-membership rosters (Stoop, etc.) to deny ex-members.
+- `[opts.capCheck]` `(uri: string, ctx: FetchResourceGateCtx) => boolean|Promise<boolean>` — Peer-fetch gate. Orthogonal cap-token verification. When supplied, invoked per request with `ctx.capToken` populated from the request parts. If truthy, the fetch is allowed.
 - `[opts.id='fetch-resource']` `string`
 - `[opts.visibility='authenticated']` `'public'|'authenticated'|'trusted'|'private'`
 - `[opts.description]` `string`

@@ -20,18 +20,18 @@ Recorded gaps are allowlisted in `scripts/api-doc-gaps.json`; new undocumented e
 
 | Package | Reference | Public exports | Documented | Coverage | Recorded gaps |
 | --- | --- | ---: | ---: | ---: | --- |
-| `@onderling/sdk` | [sdk.md](sdk.md) | 257 | 257 | 100% | — |
-| `@onderling/core` | [core.md](core.md) | 156 | 156 | 100% | — |
+| `@onderling/sdk` | [sdk.md](sdk.md) | 269 | 269 | 100% | — |
+| `@onderling/core` | [core.md](core.md) | 168 | 168 | 100% | — |
 | `@onderling/transports` | [transports.md](transports.md) | 9 | 9 | 100% | — |
 | `@onderling/vault` | [vault.md](vault.md) | 7 | 7 | 100% | — |
 | `@onderling/pod-client` | [pod-client.md](pod-client.md) | 91 | 91 | 100% | — |
 | `@onderling/redaction` | [redaction.md](redaction.md) | 8 | 8 | 100% | — |
 | `@onderling/pseudo-pod` | [pseudo-pod.md](pseudo-pod.md) | 7 | 7 | 100% | — |
 | `@onderling/item-types` | [item-types.md](item-types.md) | 13 | 13 | 100% | — |
-| `@onderling/item-store` | [item-store.md](item-store.md) | 53 | 53 | 100% | — |
-| `@onderling/app-manifest` | [app-manifest.md](app-manifest.md) | 48 | 48 | 100% | — |
+| `@onderling/item-store` | [item-store.md](item-store.md) | 77 | 77 | 100% | — |
+| `@onderling/app-manifest` | [app-manifest.md](app-manifest.md) | 52 | 52 | 100% | — |
 | `@onderling/app-scaffold` | [app-scaffold.md](app-scaffold.md) | 4 | 4 | 100% | — |
-| `@onderling/attribute-charter` | [attribute-charter.md](attribute-charter.md) | 19 | 19 | 100% | — |
+| `@onderling/attribute-charter` | [attribute-charter.md](attribute-charter.md) | 20 | 20 | 100% | — |
 | `@onderling/logger` | [logger.md](logger.md) | 7 | 7 | 100% | — |
 | `@onderling/oidc-session` | [oidc-session.md](oidc-session.md) | 10 | 10 | 100% | — |
-| `@onderling/agent-registry` | [agent-registry.md](agent-registry.md) | 81 | 81 | 100% | — |
+| `@onderling/agent-registry` | [agent-registry.md](agent-registry.md) | 105 | 105 | 100% | — |
