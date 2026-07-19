@@ -19,11 +19,11 @@
  * Rename / delete use the same Alert.prompt-with-Android-fallback
  * pattern as the recipe editor (promptForName helper copied verbatim).
  */
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View, Text, Pressable, ScrollView, TextInput, StyleSheet, Alert, Platform,
 } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { t } from '../../core/localisation.js';
 import { isAllKringen } from '@onderling-app/basis';
 
@@ -35,6 +35,8 @@ export default function CircleScreensPickerScreen({
   onRemoveScreen,
   onSetActive,
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [newName, setNewName] = useState('');
   const handleAdd = () => {
     const trimmed = newName.trim();
@@ -91,6 +93,8 @@ export default function CircleScreensPickerScreen({
 /* ─────────────────────────────────────────────────────────────────────── */
 
 function ScreenRow({ screen, isActive, onOpenScreen, onRenameScreen, onRemoveScreen, onSetActive }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const handleRename = () => {
     promptForName(
       t('circle.screens.rename_prompt'), screen.name,
@@ -168,7 +172,7 @@ function promptForName(title, defaultValue, onValue) {
   ]);
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   page:         { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   title:        { fontSize: 24, fontWeight: '600', fontFamily: theme.font.serif, color: theme.color.ink, marginVertical: 10 },
   body:         { paddingBottom: 24, gap: 6 },

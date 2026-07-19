@@ -10,11 +10,13 @@
  */
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { viewAsDirectory } from '@onderling-app/basis';
 import { t } from '../../core/localisation.js';
 
 export default function CircleViewAsScreen({ members = [], policy = 'pairwise', onBack }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [viewer, setViewer] = useState({ kind: 'stranger' });
 
   const chips = useMemo(() => ([
@@ -70,7 +72,7 @@ export default function CircleViewAsScreen({ members = [], policy = 'pairwise', 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   page:        { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:         { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
   back:        { fontSize: 13, color: theme.color.inkSoft },

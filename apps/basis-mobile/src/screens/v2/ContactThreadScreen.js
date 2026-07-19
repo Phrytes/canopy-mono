@@ -7,13 +7,15 @@
  * `contactReplyInbox` (ChatScreen's peer router pushes into it). Message state is
  * platform glue (React state); the channel contract is shared web≡mobile.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from 'react-native';
 import { t } from '../../core/localisation.js';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { subscribeContactReplies } from '../../core/contactReplyInbox.js';
 
 export default function ContactThreadScreen({ bundle, contact, onBack }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const channel = bundle?.contactChannel ?? null;
   const registry = bundle?.contactSkills ?? null;
   const contactId = contact?.contactId;
@@ -158,7 +160,7 @@ function replyTextFromResult(res) {
   try { return JSON.stringify(res); } catch { return ''; }
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   wrap: { flex: 1, padding: 16, backgroundColor: theme.color.paper },
   header: { flexDirection: 'row', alignItems: 'baseline', gap: 12, marginBottom: 8 },
   back: { fontSize: 13, color: theme.color.inkSoft },

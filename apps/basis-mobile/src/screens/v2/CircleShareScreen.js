@@ -14,10 +14,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { t } from '../../core/localisation.js';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { loadShareableItems, loadSharedRows, shareOut, shareToRecipient, stopSharing, pickableCircles, pickableRecipients } from '../../core/circleShareScreen.js';
 
 export default function CircleShareScreen({ circleId, policy, by, recipient, circles, contacts, onBack }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [items, setItems] = useState([]);       // this circle's own shareable items
   const [rows, setRows] = useState([]);          // shared INTO this circle (resolved rows)
   const [pendingShare, setPendingShare] = useState(null);   // itemId whose target-picker is open
@@ -159,6 +161,8 @@ export default function CircleShareScreen({ circleId, policy, by, recipient, cir
 }
 
 function Section({ title, children }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -167,7 +171,7 @@ function Section({ title, children }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   wrap: { flex: 1, backgroundColor: theme.color.paper },
   content: { padding: 16, gap: 16, paddingBottom: 80 },
   header: { flexDirection: 'row', alignItems: 'baseline', gap: 12 },

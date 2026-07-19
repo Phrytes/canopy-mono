@@ -18,7 +18,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Switch, TextInput, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import {
   CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS, mergeCirclePolicy, makeProposal, DEFAULT_CIRCLE_ORIGINS,
   detectPolicyConflicts, applyPolicyResolution,
@@ -86,6 +86,8 @@ export default function CircleSettingsScreen({
   onAddHouseholdPeer,
   onRemoveHouseholdPeer,
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [working, setWorking] = useState(null);
   const [expanded, setExpanded] = useState({});
   const [guidedOpen, setGuidedOpen] = useState(false);   // Theme B — guided-setup chatbot modal
@@ -584,7 +586,7 @@ function verbLabel(atom) {
   return v && v !== k ? v : atom;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   page:        { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:         { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
   back:        { fontSize: 13, color: theme.color.inkSoft },

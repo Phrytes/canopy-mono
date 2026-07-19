@@ -14,9 +14,9 @@
  * overlays the SAME modal (CircleRecipeConflictScreen) used by the
  * recipe editor with a rules-namespaced heading via its `title` prop.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import {
   RULES_QUESTIONS, normalizeRulesDoc, isRulesComplete,
   detectRulesConflicts, applyRulesResolution,
@@ -35,6 +35,8 @@ export default function CircleRulesScreen({
   onIncomingApplied,
   onIncomingDiscarded,
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [working, setWorking] = useState(() => normalizeRulesDoc(doc));
   const setField = useCallback((k, v) => setWorking((w) => ({ ...w, [k]: v })), []);
   const complete = isRulesComplete(working);
@@ -146,7 +148,7 @@ export default function CircleRulesScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   page:        { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:         { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
   back:        { fontSize: 13, color: theme.color.inkSoft },

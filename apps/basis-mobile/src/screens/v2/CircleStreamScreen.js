@@ -9,11 +9,13 @@
  */
 import React, { useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { buildCircleStream } from '@onderling-app/basis';
 import { t } from '../../core/localisation.js';
 
 export default function CircleStreamScreen({ eventLog, circles = [], onBack, onOpenCircle }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const rows = useMemo(() => {
     const events = eventLog?.query ? eventLog.query({ excludeMuted: true }) : [];
     return buildCircleStream({ events, circles });
@@ -68,7 +70,7 @@ function formatTs(ts) {
   try { return new Date(ts).toLocaleString(); } catch { return ''; }
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   page:   { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:    { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
   back:   { fontSize: 13, color: theme.color.inkSoft },

@@ -7,10 +7,10 @@
  * The roster + the conversation logic are shared web≡mobile; only this RN shell
  * (and the thread screen) is platform code.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from 'react-native';
 import { t } from '../../core/localisation.js';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { listContacts, mergeContacts, stoopContactToRow } from '../../../../basis/src/v2/contactsSource.js';
 import { addBotToGraph } from '../../../../basis/src/v2/addBot.js';
 import { feedbackBotFromInput } from '../../../../basis/src/v2/feedbackBots.js';
@@ -26,6 +26,8 @@ function feedbackBotToRow(bot) {
 }
 
 export default function ContactsScreen({ bundle, onOpen, feedbackStore = null }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const peerGraph = bundle?.peerGraph ?? null;
   const callSkill = bundle?.callSkill ?? null;
   const [contacts, setContacts] = useState([]);
@@ -142,7 +144,7 @@ function rosterMeta(c) {
   return bits.join(' · ');
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   wrap: { flex: 1, padding: 16, backgroundColor: theme.color.paper },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   title: { fontFamily: theme.font.serif, fontSize: 22, fontWeight: '600', color: theme.color.ink },
