@@ -14,12 +14,12 @@
  * (Stage 2) reaches central. All curation logic is shared web≡mobile — this is the
  * RN shell.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { t, lang } from '../../core/localisation.js';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { createFeedbackSurface, signerForIdentity, chunkBubble } from '../../../../basis/src/feedback/feedbackSurface.js';
 import { createBugReportSink } from '../../../../basis/src/feedback/bugReportSink.js';
 import { FeedbackReviewCards, FeedbackReportPanel } from '../../rn/FeedbackBubbles.js';
@@ -55,7 +55,7 @@ const APP_VERSION = process.env.EXPO_PUBLIC_APP_VERSION || undefined;   // non-i
 // EARNED (level==='risk'); the calm states are neutral, never "green = safe".
 // Colour AMPLIFIES the shape (never colour-alone): quiet → neutral slate outline (NOT green), sharing →
 // soft-blue fill, risk → amber→red. Maps to the shared Onderling status tokens (theme.color.*).
-function privacyChip(level) {
+function privacyChip(level, theme) {
   switch (level) {
     case 'risk':    return { bg: theme.color.amberBg, border: theme.color.danger, fg: theme.color.danger };
     case 'sharing': return { bg: theme.color.blueBg,  border: theme.color.blue,   fg: theme.color.blue };
@@ -64,6 +64,8 @@ function privacyChip(level) {
 }
 
 export default function FeedbackThreadScreen({ session, bot, store, onBack, identity = null, sendPeer = null, callSkill = null }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const insets = useSafeAreaInsets();   // clear the status bar so the header (back + language toggle) is tappable
   const threadId = bot?.id;
   const name = bot?.name ?? bot?.label ?? threadId ?? 'Feedback';
@@ -334,7 +336,7 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
           charter applies; icon-first + colour AMPLIFIES (never colour-alone); tap → the surface's why/change
           affordance. The ⚠ is EARNED (risk only); a subtle one-time emphasis when the state flips into risk. */}
       {privacy && (() => {
-        const c = privacyChip(privacy.level);
+        const c = privacyChip(privacy.level, theme);
         const badge = privacyBadge(privacy.level, botLang);   // shared icon+label (one source)
         return (
           <Pressable
@@ -453,7 +455,7 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
 let _id = Date.now();
 function mkId() { _id += 1; return `fbt-${_id}`; }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   wrap: { flex: 1, padding: 16, backgroundColor: theme.color.paper },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
   back: { fontSize: 13, color: theme.color.inkSoft },

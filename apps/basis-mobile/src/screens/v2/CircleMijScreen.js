@@ -20,10 +20,10 @@
  * portable host module src/core/mijHost.js (tested in test/mijHost.test.js).
  * This file renders + re-loads after each edit (persisted state, not the tap).
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { t, lang } from '../../core/localisation.js';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import {
   loadMijModel, setGeneralProperty, addGeneralOffering, createPersona,
   toggleDisclosure, shareDisclosureToCircle,
@@ -46,6 +46,8 @@ const ladderHint = (ladder) => (Array.isArray(ladder) && ladder.length
 
 /** Bulletin section chrome: rust mono eyebrow + italic tagline over a 3px ink top-rule. */
 function Section({ eyebrowKey, taglineKey, children }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <View style={styles.section}>
       <View style={styles.sectionHead}>
@@ -58,6 +60,8 @@ function Section({ eyebrowKey, taglineKey, children }) {
 }
 
 export default function CircleMijScreen({ callSkill, sendPersonaUpdate, personaId, circles = [] }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [model, setModel] = useState(null);
   const [openEditor, setOpenEditor] = useState(null);     // property key whose inline editor is open
   const [propDrafts, setPropDrafts] = useState({});       // free-text property edits before save
@@ -417,8 +421,9 @@ export default function CircleMijScreen({ callSkill, sendPersonaUpdate, personaI
   );
 }
 
-const c = theme.color;
-const styles = StyleSheet.create({
+const makeStyles = (theme) => {
+  const c = theme.color;
+  return StyleSheet.create({
   root: { gap: theme.space.xl, paddingBottom: theme.space.xl * 2, paddingHorizontal: 2 },
   empty: { fontSize: 13, color: c.inkSoft, fontStyle: 'italic' },
 
@@ -489,4 +494,5 @@ const styles = StyleSheet.create({
   removeBtn: { marginLeft: 'auto', paddingHorizontal: 4 },
   removeText: { fontSize: 13, color: c.inkSoft },
   shareStatus: { fontSize: 11, color: c.inkSoft, flexShrink: 1 },
-});
+  });
+};

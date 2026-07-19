@@ -11,10 +11,10 @@
  * setProfileDisclosure through the injected 3-arg `callSkill(origin, op, args)`.
  * Re-reads after each edit so the surface reflects the persisted state.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, TextInput, Switch } from 'react-native';
 import { t } from '../../core/localisation.js';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { buildPersonaViewModel } from '../../../../basis/src/v2/personaView.js';
 import { shareDisclosureToCircle } from '../../../../basis/src/core/handlers/personaPropsUpdate.js';
 import { DRIVER_KINDS } from '@onderling/agent-registry';
@@ -23,6 +23,8 @@ const keyLabel = (key) => t(`circle.aboutme.key.${key}`, { defaultValue: key });
 const kindLabel = (k) => t(`circle.aboutme.driverkind.${k}`, { defaultValue: k });
 
 export default function CircleAboutMeScreen({ callSkill, sendPersonaUpdate, personaId, circles = [], onBack }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [model, setModel] = useState(null);
   const [placeDrafts, setPlaceDrafts] = useState({});   // free-text edits before save, keyed by property key
   const [shareState, setShareState] = useState({});     // circleId → 'sharing' | 'ok' | reason string
@@ -232,8 +234,9 @@ export default function CircleAboutMeScreen({ callSkill, sendPersonaUpdate, pers
   );
 }
 
-const c = theme.color;
-const styles = StyleSheet.create({
+const makeStyles = (theme) => {
+  const c = theme.color;
+  return StyleSheet.create({
   root: { flex: 1, gap: 14 },
   header: { flexDirection: 'row', alignItems: 'baseline', gap: 12 },
   back: { fontSize: 12, color: c.inkSoft },
@@ -268,4 +271,5 @@ const styles = StyleSheet.create({
   shareBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: theme.radius?.sm ?? 6, borderWidth: 1, borderColor: c.accent },
   shareBtnText: { fontSize: 12, fontWeight: '600', color: c.accentInk },
   shareStatus: { fontSize: 12, color: c.inkSoft, flexShrink: 1 },
-});
+  });
+};

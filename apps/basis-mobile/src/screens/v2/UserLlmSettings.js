@@ -5,14 +5,16 @@
  * API key (+ an attestation checkbox for the confidential preset). The confidential-route guard
  * (`validate`) runs before save, so a "confidential" preset can't reach a host that could read raw text.
  */
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { t } from '../../core/localisation.js';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 
 const PRESETS = ['off', 'local-ollama', 'confidential-proxy', 'openai-compatible'];
 
 export default function UserLlmSettings({ current = {}, onSave, validate }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [cfg, setCfg] = useState({
     preset: PRESETS.includes(current.preset) ? current.preset : 'off',
     llmBaseUrl: current.llmBaseUrl || '', llmModel: current.llmModel || '',
@@ -91,7 +93,7 @@ export default function UserLlmSettings({ current = {}, onSave, validate }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   wrap: { paddingVertical: 12 },
   title: { fontSize: 16, fontWeight: '700', color: theme.color.ink },
   hint: { fontSize: 13, color: theme.color.inkSoft, marginTop: 4, marginBottom: 10 },

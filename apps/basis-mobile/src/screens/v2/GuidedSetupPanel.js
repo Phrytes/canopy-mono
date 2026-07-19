@@ -14,9 +14,9 @@
  * offline fallback. Template content carries its own copy; the chrome
  * (Continue / Skip / Open settings) stays localized via t().
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { t as defaultT } from '../../core/localisation.js';
 import {
   DEFAULT_SETTINGS_TEMPLATE,
@@ -35,6 +35,8 @@ export default function GuidedSetupPanel({
   onDone,
   onClose,
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [template, setTemplate] = useState(templateProp || DEFAULT_SETTINGS_TEMPLATE);
   const [state, setState] = useState(() => startGuidedSetup(templateProp || DEFAULT_SETTINGS_TEMPLATE));
   // multiselect checkbox state for the current step (reset on each step).
@@ -157,7 +159,7 @@ export default function GuidedSetupPanel({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', paddingHorizontal: 18 },
   card:         { backgroundColor: theme.color.paper, borderRadius: theme.radius.md, padding: 18, maxHeight: '80%' },
   head:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },

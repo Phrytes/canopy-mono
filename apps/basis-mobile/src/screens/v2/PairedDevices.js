@@ -6,16 +6,18 @@
  * handlers' returned roster, so the host doesn't re-render the whole settings screen.
  * Uses the SHARED circle.pairedDevices.* locale keys (one source for web + mobile).
  */
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { QrCodeView } from '@onderling/react-native/qr/view';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import QrScannerModal from '../../rn/QrScannerModal.js';
 import { makePairUri, parsePairUri } from '../../../../basis/src/core/qrSchemes.js';
 
 const short = (a) => (a && a.length > 16 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a);
 
 export default function PairedDevices({ selfAddr = '', peers: initialPeers = [], t, onAdd, onRemove }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const tr = typeof t === 'function' ? t : (k) => k;
   const [peers, setPeers] = useState(Array.isArray(initialPeers) ? initialPeers : []);
   const [draft, setDraft] = useState('');
@@ -103,7 +105,7 @@ export default function PairedDevices({ selfAddr = '', peers: initialPeers = [],
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   intro:    { fontSize: 13, color: theme.color.inkSoft, marginBottom: 8 },
   label:    { fontSize: 12, fontWeight: '600', color: theme.color.inkSoft, marginBottom: 2 },
   addr:     { fontSize: 13, color: theme.color.ink, fontFamily: 'monospace', backgroundColor: theme.color.card, borderRadius: theme.radius.md, padding: 8, marginBottom: 10 },

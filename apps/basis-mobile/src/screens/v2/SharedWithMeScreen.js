@@ -9,7 +9,7 @@
  */
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { buildSharedWithMe, openSharedCopy } from '@onderling-app/basis';
 import { t } from '../../core/localisation.js';
 
@@ -19,6 +19,8 @@ export default function SharedWithMeScreen({
   onBack,
   onOpened,
 }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [openedId, setOpenedId] = useState(null);
 
   // The ONE shared selector — identical projection web uses.
@@ -67,7 +69,7 @@ export default function SharedWithMeScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   page:    { flex: 1, backgroundColor: theme.color.paper, padding: 12 },
   bar:     { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   back:    { color: theme.color.accent, fontSize: 16 },

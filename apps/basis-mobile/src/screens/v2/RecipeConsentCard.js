@@ -13,9 +13,9 @@
  * string via `t()` (the shared `circle.recipeConsent.*` locale keys the web card added). Mirrors the
  * `<Modal transparent>` pattern of ExtensionConsentSheet.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, View, Text, Pressable, ScrollView, Switch, StyleSheet } from 'react-native';
-import { theme } from './theme.js';
+import { useTheme } from './themeContext.js';
 import { t } from '../../core/localisation.js';
 import { declinedKeysFrom } from '../../core/recipeConsentWiring.js';
 
@@ -30,6 +30,8 @@ function capLabel(cap) {
 }
 
 export default function RecipeConsentCard({ model, visible, onAgree, onDecline }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const optItems = Array.isArray(model?.consent?.items) ? model.consent.items : [];
   // Per-cap keep-on switch state (default on; a pre-declined cap starts off) — reset whenever a new model opens.
   const [checked, setChecked] = useState({});
@@ -114,7 +116,7 @@ export default function RecipeConsentCard({ model, visible, onAgree, onDecline }
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   backdrop:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 16 },
   sheet:        { backgroundColor: theme.color.paper, borderRadius: theme.radius?.lg ?? 12, padding: 20, width: '100%', maxWidth: 460, maxHeight: '85%' },
   title:        { fontSize: 18, fontWeight: '600', color: theme.color.ink, marginBottom: 6 },
