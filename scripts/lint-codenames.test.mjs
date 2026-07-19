@@ -10,11 +10,22 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
-  tracked, isScopedCode, isScopedDoc,
-  commentMask, docProseMask, findCodenames,
+  tracked, isScopedCode, isScopedDoc, isPublicApiDoc, isWave1PkgJson,
+  commentMask, docProseMask, pkgDescriptionMask, findCodenames,
 } from './codenames-scope.mjs';
 
 const ids = (s, mask = commentMask) => findCodenames(mask(s)).map((h) => h.id);
+// Public-API surface (docs/api + wave-1 package.json descriptions): base + extras.
+const apiIds = (s, mask = docProseMask) => findCodenames(mask(s), 'api').map((h) => h.id);
+
+/** Mirror the guard's per-file scope selection (scripts/lint-codenames.mjs scopeOf). */
+function scopeOf(f) {
+  if (isWave1PkgJson(f)) return { mask: pkgDescriptionMask, context: 'api' };
+  if (isPublicApiDoc(f)) return { mask: docProseMask, context: 'api' };
+  if (isScopedCode(f)) return { mask: commentMask, context: 'code' };
+  if (isScopedDoc(f)) return { mask: docProseMask, context: 'doc' };
+  return null;
+}
 
 describe('curated patterns FLAG real internal codenames', () => {
   const cases = [
@@ -83,18 +94,51 @@ describe('scope: only COMMENTS / PROSE are scanned', () => {
   });
 });
 
+describe('PUBLIC API surface: the fuller pattern set (base + extras)', () => {
+  // The extras are enforced on docs/api/** + wave-1 package.json descriptions —
+  // the projection of wave-1 exported-symbol JSDoc that a fresh reader meets.
+  const flagged = [
+    ['A spelled-out planning phase — Phase 52.2.x.', 'phase-word'],
+    ['Extracted 2026-05-11 (Phase 50.1.A).', 'phase-word'],
+    ['as part of the standardisation P1 work.', 'std-P'],
+    ['Locked Q-D.1: five standard roles.', 'Q-letter'],
+    ['peer-fetch gate (Q#2 2026-05-14).', 'Q-hash'],
+    ['follow-up B — snapshot support.', 'followup'],
+    ['the §1b capability-routing seam.', 'section-ref'],
+    ['see plan §52.10 for the layout.', 'section-ref'],
+    ['V0 ships the first two modes.', 'V-milestone'],
+  ];
+  for (const [line, id] of flagged) {
+    it(`flags ${JSON.stringify(line)} as ${id} on the public surface`, () => {
+      expect(apiIds(line)).toContain(id);
+    });
+  }
+  it('the EXTRA pattern ids never fire in ordinary source comments (extras are api-scope only)', () => {
+    for (const [line, id] of flagged) {
+      // Base patterns may still legitimately fire (e.g. "P1" as P-phase); the
+      // POINT is that the api-only extra id is not produced outside api scope.
+      expect(findCodenames(commentMask(`// ${line}`), 'code').map((h) => h.id)).not.toContain(id);
+    }
+  });
+  it('reads a package.json description via pkgDescriptionMask, not its other fields', () => {
+    const pj = '{\n  "name": "@onderling/pseudo-pod",\n  "description": "Standardisation Phase 52.2 companion.",\n  "version": "0.1.0"\n}\n';
+    expect(apiIds(pj, pkgDescriptionMask)).toContain('phase-word');
+    // the version 0.1.0 and package name must not be mistaken for codenames
+    const clean = '{\n  "name": "@onderling/x",\n  "description": "A plain, honest description.",\n  "version": "1.2.0"\n}\n';
+    expect(apiIds(clean, pkgDescriptionMask)).toEqual([]);
+  });
+});
+
 describe('FORWARD PROTECTION: the real tree is clean today', () => {
-  it('no internal codename in any scoped source comment or doc', () => {
+  it('no internal codename in any scoped source comment, doc, api-ref, or wave-1 description', () => {
     const hits = [];
     for (const f of tracked()) {
-      const code = isScopedCode(f);
-      const doc = isScopedDoc(f);
-      if (!code && !doc) continue;
+      const scope = scopeOf(f);
+      if (!scope) continue;
       let src;
       try { src = readFileSync(f, 'utf8'); } catch { continue; }
-      const masked = code ? commentMask(src) : docProseMask(src);
-      for (const h of findCodenames(masked, code ? 'code' : 'doc')) hits.push(`${f} [${h.id}: ${h.match}]`);
+      for (const h of findCodenames(scope.mask(src), scope.context)) hits.push(`${f} [${h.id}: ${h.match}]`);
     }
-    expect(hits, `codenames leaked back into scoped comments/docs:\n${hits.join('\n')}`).toEqual([]);
+    expect(hits, `codenames leaked back into a scoped surface:\n${hits.join('\n')}`).toEqual([]);
   });
 });

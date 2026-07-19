@@ -7,11 +7,22 @@
 //   - Prose in tracked public DOCS: docs/**, root README/QUICKSTART/CLAUDE/
 //     AGENTS/CONTRIBUTING .md, apps/*/docs/**, and any CHANGELOG*.md — minus
 //     fenced/inline code so codenames inside code samples aren't flagged.
+//   - The PUBLIC API surface the appendix generator produces + consumes:
+//     the generated reference under docs/api/** (the projection of every wave-1
+//     package's EXPORTED-symbol JSDoc) and each wave-1 package.json `description`
+//     (emitted verbatim into that reference). These are scanned with a FULLER
+//     pattern set (base + PUBLIC_SURFACE_PATTERNS) because a fresh reader of the
+//     published docs meets these strings first — a "Phase 52.2.x" or "§1b" that
+//     leaks through the generator is exactly the class task #26 chased. Guarding
+//     the projection (not every internal comment) keeps false positives low:
+//     internal working-note comments that never reach the public docs are left
+//     to the conservative base patterns.
 //
 // OUT OF SCOPE (never scanned): node_modules, vendored bundles (**/vendor/**,
 //   *.min.js), private working notes (plans/**, _archive/**, root PLAN-*/
 //   DESIGN-*/REMAINING-WORK.md — gitignored anyway), locale JSON data
-//   (values, not comments), and non-.js/.jsx assets.
+//   (values, not comments), non-wave-1 package.json descriptions, and
+//   non-.js/.jsx assets.
 
 import { execSync } from 'node:child_process';
 
@@ -34,6 +45,26 @@ export function isScopedDoc(f) {
   if (/(^|\/)CHANGELOG[^/]*\.md$/i.test(f)) return true;
   if (['README.md', 'QUICKSTART.md', 'CLAUDE.md', 'AGENTS.md', 'CONTRIBUTING.md'].includes(f)) return true;
   return false;
+}
+
+// The wave-1 packages whose public API is generated into docs/api/ and whose
+// package.json `description` is emitted verbatim into that reference. Kept in
+// sync with WAVE1 in scripts/api-appendix.mjs (the generator).
+export const WAVE1_PACKAGES = [
+  'sdk', 'core', 'transports', 'vault', 'pod-client', 'redaction', 'pseudo-pod',
+  'item-types', 'item-store', 'app-manifest', 'app-scaffold', 'attribute-charter',
+  'logger', 'oidc-session', 'agent-registry',
+];
+
+/** A generated public API-reference doc (docs/api/**) — the projection of wave-1 source JSDoc. */
+export function isPublicApiDoc(f) {
+  return /^docs\/api\/.*\.md$/.test(f);
+}
+
+/** A wave-1 package.json whose `description` is emitted verbatim into the public API reference. */
+export function isWave1PkgJson(f) {
+  const m = f.match(/^packages\/([^/]+)\/package\.json$/);
+  return !!m && WAVE1_PACKAGES.includes(m[1]);
 }
 
 export function tracked() {
@@ -103,6 +134,25 @@ export function docProseMask(src) {
   return s;
 }
 
+/**
+ * Keep ONLY the `description` string value of a package.json, preserving line
+ * numbers (everything else → BLANK). Lets the description be scanned for
+ * codenames without flagging package names, dep specifiers, or script bodies.
+ */
+export function pkgDescriptionMask(src) {
+  const out = new Array(src.length).fill(BLANK);
+  for (let i = 0; i < src.length; i++) if (src[i] === '\n') out[i] = '\n';
+  const m = src.match(/"description"\s*:\s*"/);
+  if (m) {
+    for (let i = m.index + m[0].length; i < src.length; i++) {
+      if (src[i] === '\\') { out[i] = src[i]; if (src[i + 1] !== '\n') out[i + 1] = src[i + 1]; i++; continue; }
+      if (src[i] === '"') break;
+      if (src[i] !== '\n') out[i] = src[i];
+    }
+  }
+  return out.join('');
+}
+
 // The curated codename patterns (the SPEC). Each entry: a stable id and a
 // GLOBAL regex. Tuned to the actual internal planning codenames that leaked
 // into this tree, and verified to have a low false-positive rate (see the
@@ -126,14 +176,45 @@ export const CODENAME_PATTERNS = [
   { id: 'V-tag',     re: /\bV\d+\.\d+\b/g },
 ];
 
+// EXTRA patterns enforced ONLY on the PUBLIC API surface (context 'api':
+// docs/api/** + wave-1 package.json descriptions). These forms are planning
+// codenames wherever they surface in the published reference, but are common
+// enough in INTERNAL working-note comments (design-section citations, phase
+// tags) that flagging them tree-wide would be noisy — so they are scoped to the
+// generator's public projection, where a fresh reader actually meets them.
+//   phase-word  — a spelled-out planning phase, "Phase 52.2.x", "Phase 50.1.A".
+//   std-P       — "standardisation P1"-style standardisation-phase tag.
+//   Q-letter    — an open-question ref, "Q-D.1" / "Q-F.2".
+//   Q-hash      — an open-question ref, "Q#2".
+//   followup    — a lettered follow-up label, "follow-up A".
+//   section-ref — a plan/design SECTION ref, "§1b" / "§52.10".
+//   V-milestone — a bare milestone label, "V0" / "V1" (the dotted V<n>.<n> form
+//                 is already the base V-tag; this catches the bare milestone).
+export const PUBLIC_SURFACE_PATTERNS = [
+  { id: 'phase-word',  re: /\bPhase\s+\d+(?:\.(?:\d+|x))*[a-z]?\b/gi },
+  { id: 'std-P',       re: /\bstandardisation\s+P\d+\b/gi },
+  { id: 'Q-letter',    re: /\bQ-[A-Z]\.\d+\b/g },
+  { id: 'Q-hash',      re: /\bQ#\d+\b/g },
+  { id: 'followup',    re: /\bfollow-up\s+[A-Z]\b/g },
+  { id: 'section-ref', re: /§\s?\d+(?:\.\d+)*[a-z]?\b/g },
+  { id: 'V-milestone', re: /\bV[0-9]\b/g },
+];
+
 /**
  * All codename hits in a masked text; returns [{id, match, index}].
- * `context` is 'code' (default) or 'doc'; doc prose skips codeOnly patterns.
+ * `context`:
+ *   'code' (default) — source comments: the base patterns (incl. codeOnly).
+ *   'doc'            — public doc prose: base patterns minus codeOnly.
+ *   'api'            — the generated API reference + wave-1 descriptions:
+ *                      base (minus codeOnly) PLUS PUBLIC_SURFACE_PATTERNS.
  */
 export function findCodenames(maskedText, context = 'code') {
+  const patterns = context === 'api'
+    ? [...CODENAME_PATTERNS, ...PUBLIC_SURFACE_PATTERNS]
+    : CODENAME_PATTERNS;
   const hits = [];
-  for (const { id, re, codeOnly } of CODENAME_PATTERNS) {
-    if (codeOnly && context === 'doc') continue;
+  for (const { id, re, codeOnly } of patterns) {
+    if (codeOnly && context !== 'code') continue;
     re.lastIndex = 0;
     let m;
     while ((m = re.exec(maskedText))) {

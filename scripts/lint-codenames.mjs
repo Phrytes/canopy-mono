@@ -17,8 +17,8 @@
 
 import { readFileSync } from 'node:fs';
 import {
-  tracked, isScopedCode, isScopedDoc,
-  commentMask, docProseMask, findCodenames,
+  tracked, isScopedCode, isScopedDoc, isPublicApiDoc, isWave1PkgJson,
+  commentMask, docProseMask, pkgDescriptionMask, findCodenames,
 } from './codenames-scope.mjs';
 
 const MODE = process.argv.includes('--json') ? 'json'
@@ -30,16 +30,23 @@ function lineOf(text, index) {
   return line;
 }
 
+/** Pick the mask + findCodenames context for a scoped file (null → out of scope). */
+function scopeOf(f) {
+  if (isWave1PkgJson(f)) return { mask: pkgDescriptionMask, context: 'api' };
+  if (isPublicApiDoc(f)) return { mask: docProseMask, context: 'api' };
+  if (isScopedCode(f)) return { mask: commentMask, context: 'code' };
+  if (isScopedDoc(f)) return { mask: docProseMask, context: 'doc' };
+  return null;
+}
+
 const violations = [];
 const files = tracked();
 for (const f of files) {
-  const isCode = isScopedCode(f);
-  const isDoc = isScopedDoc(f);
-  if (!isCode && !isDoc) continue;
+  const scope = scopeOf(f);
+  if (!scope) continue;
   let src;
   try { src = readFileSync(f, 'utf8'); } catch { continue; }
-  const masked = isCode ? commentMask(src) : docProseMask(src);
-  for (const hit of findCodenames(masked, isCode ? 'code' : 'doc')) {
+  for (const hit of findCodenames(scope.mask(src), scope.context)) {
     const line = lineOf(src, hit.index);
     const lineText = src.split('\n')[line - 1] ?? '';
     violations.push({ file: f, line, id: hit.id, match: hit.match, text: lineText.trim().slice(0, 120) });
