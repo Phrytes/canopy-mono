@@ -32,9 +32,25 @@ to whichever canopy app owns the op (household, tasks-v0, stoop,
 folio's pod-doable subset). User can spawn multiple threads, each
 with its own event-filter + permission config.
 
-Today the chat shell is **command-first** — slash grammar is the
-deterministic dispatcher. A future v0.8 LLM layer translates
-natural language into the same dispatch primitives.
+The deterministic gate still routes routine phrases ("add milk",
+"done X") without the model. But the chat surface is no longer
+command-only:
+
+- **Guided onboarding + a standing help bot.** First run opens a help
+  circle ("Uitleg") whose only other member is the Onderling bot — a
+  real peer member, so onboarding is just the bot's chat. The bot
+  answers from a pure in-app card deck first; on a miss it *offers* to
+  forward the question to an LLM, and only after consent takes the
+  grounded help-answer path — with wording honest about whether that
+  route is confidential.
+- **Tag-to-address.** Because the bot is a genuine circle member it
+  answers every line only in a real 1:1-with-a-bot; in a circle with
+  other people it answers only when named or @-tagged. The 1:1
+  assistant-header strip follows the same gate.
+- **The kring Taken tab.** Per-circle task list plus the *entrust*
+  (task-scoped delegation) picker, mirrored on web and mobile.
+- **Theme toggle.** A systeem/licht/donker control with a reactive
+  theme context; every v2 screen recolours live on both platforms.
 
 ## What this app is NOT
 

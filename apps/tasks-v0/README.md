@@ -5,7 +5,7 @@
 > for this functionality inside the unified chat surface — not a separate app/build/shell. See the root
 > README's *Direction* note.
 
-> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, local-store, chat-p2p, identity-resolver, notifier, skill-match}`. Direct kernel use is allowed only when justified in this README's `## Direct kernel use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, local-store, chat-p2p, identity-resolver, notifier, offering-match}`. Direct kernel use is allowed only when justified in this README's `## Direct kernel use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 >
 > **Manifest + tier policy.** This app's surface is declared in
 > [`manifest.js`](./manifest.js) (NavModel substrate V0.8 / Q1–Q27).
@@ -48,6 +48,18 @@ See [`CHANGELOG.md`](./CHANGELOG.md) for the 12-slice breakdown +
 commit refs, and
 `../../Project Files/Tasks App/v2-web-functional-design-2026-05-11.md`
 for the design source.
+
+> **Recent (2026-07) — the shared tasks substrate.** The package name is now
+> **`@onderling-app/tasks`** (the directory stays `apps/tasks-v0`). The task engine moved to the
+> canonical, per-circle **`CircleItemStore`** in `@onderling/item-store`; every task behaviour is now a
+> pure function over that store (`taskLifecycle` / `taskCrud`, wrapped by `createTaskStore`), and the
+> old monolithic `ItemStore` is retired (parity-only). New capabilities landed on this substrate:
+> **co-ownership** (`assignees[]` capped by `maxAssignees`), a **cross-circle "my tasks"** aggregate,
+> **sendable lists** (a whole container subtree shared into another circle), and **task-scoped
+> delegation** — the *entrust* (NL *toevertrouwen*) / mandate primitive (`TaskGrantManager`:
+> attenuated, off-by-default, auto-revoked on complete). The human "I can do X" datum is now an
+> **offering** (*aanbod*), matched via `@onderling/offering-match`. See the CHANGELOG's Unreleased
+> section for the per-feature list.
 
 V0 (single-household, no Circle envelope) ships unchanged; V1 is
 additive — `createCircleAgent` wires the V1+ surface; the legacy

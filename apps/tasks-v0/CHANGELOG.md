@@ -1,4 +1,31 @@
-# Changelog — @onderling-app/tasks-v0
+# Changelog — @onderling-app/tasks
+
+> Package renamed `@onderling-app/tasks-v0` → **`@onderling-app/tasks`** (2026-07-18); the directory
+> stays `apps/tasks-v0`.
+
+## [Unreleased] — 2026-07-18/19 — shared tasks substrate + co-ownership + delegation
+
+The task engine moved onto the canonical **`CircleItemStore`** (`@onderling/item-store`) — a generic,
+per-circle, type-indexed store — and every task behaviour became a **pure function over that store**.
+The old monolithic `ItemStore` is retired (kept only as a parity reference for migration tests and the
+pure `computeStatus`).
+
+- **Store + lifecycle as pure functions.** `taskLifecycle` (`claim` / `reassign` / `markComplete` /
+  `submit` / `approve` / `reject` / `revoke`), `taskCrud` (add / list / get / update / remove), and
+  `createTaskStore` (wraps the pair back into an emitter + audit + sync surface).
+- **Co-ownership.** A task's owners are an `assignees[]` array capped by `maxAssignees` (default 1);
+  `assignee` is a mirror of `assignees[0]`; `claim` compare-and-swap-appends the actor.
+- **Cross-circle "my tasks".** A pure aggregator projects a per-circle `{open, overdue,
+  awaitingApproval, mine}` roll-up across a user's circles, busiest-first.
+- **Sendable lists.** A whole container subtree can travel into another circle — a depth-guarded
+  pre-order walk fans the single-item in-place share over every node.
+- **Task-scoped delegation (entrust / mandate).** `TaskGrantManager` issues one attenuated,
+  task-stamped cap-token, off by default and auto-revoked on complete/cancel. Surfaced in the kring
+  Taken tab as the *entrust* (NL *toevertrouwen*) picker.
+- **Roles as capability bundles.** A role materializes into signed cap-tokens on grant (`RoleBundle` /
+  `RoleGrantManager`), enforced by the one `PolicyEngine`.
+- **Offering vocabulary.** The human "I can do X" datum is an **offering** (NL *aanbod*); matching runs
+  through `@onderling/offering-match` (was `skill-match`). Legacy `skills` fields/ids are read-accepted.
 
 ## [Unreleased] — basis browser integration (2026-05-23, `ab6f32f`)
 
