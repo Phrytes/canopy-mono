@@ -1,0 +1,77 @@
+/**
+ * relayFixture.js — Playwright globalSetup/globalTeardown that brings up a local
+ * @onderling/relay for the `relay` project (a hermetic WebSocket transport, so the
+ * matrix's relay cells don't depend on public NKN reaching the sandbox network).
+ *
+ * ARMING: only starts a relay when `PEER_TEST_RELAY` is set (a ws://host:port URL) —
+ * so DEFAULT runs (and the `nkn` project) are unchanged and never leak a process.
+ *   PEER_TEST_RELAY=ws://127.0.0.1:8787 npx playwright test --project=relay
+ * The harness (peerHarness.js) reads the SAME `PEER_TEST_RELAY` (inherited by the
+ * worker processes from the CLI env) and seeds it into each relay/both-mode client
+ * (localStorage `cc.relayUrl` + the `?relay=` boot param). globalTeardown kills it.
+ *
+ * If the port is ALREADY listening (a relay you started by hand, or a reused one),
+ * globalSetup attaches to it instead of spawning — and teardown leaves it alone.
+ */
+import { spawn } from 'node:child_process';
+import net from 'node:net';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const RELAY_BIN = path.resolve(HERE, '../../../packages/relay/bin/relay.js');
+const PID_FILE = path.join(HERE, '.relay-fixture.pid');
+
+function parseHostPort(url) {
+  try { const u = new URL(url); return { host: u.hostname || '127.0.0.1', port: Number(u.port || 8787) }; }
+  catch { return { host: '127.0.0.1', port: 8787 }; }
+}
+
+function portOpen(host, port, timeoutMs = 800) {
+  return new Promise((resolve) => {
+    const sock = net.connect({ host, port });
+    const done = (ok) => { try { sock.destroy(); } catch { /* */ } resolve(ok); };
+    sock.once('connect', () => done(true));
+    sock.once('error', () => done(false));
+    setTimeout(() => done(false), timeoutMs);
+  });
+}
+
+async function waitForPort(host, port, tries = 40) {
+  for (let i = 0; i < tries; i++) {
+    if (await portOpen(host, port)) return true;
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  return false;
+}
+
+export default async function globalSetup() {
+  const url = process.env.PEER_TEST_RELAY;
+  if (!url) return;   // not armed — default/nkn runs stay exactly as they were.
+  const { host, port } = parseHostPort(url);
+
+  if (await portOpen(host, port)) {
+    console.log(`[relay-fixture] ${host}:${port} already listening — attaching (no spawn).`);
+    return;
+  }
+  console.log(`[relay-fixture] starting @onderling/relay on ${host}:${port} …`);
+  const child = spawn(process.execPath, [RELAY_BIN, String(port)], {
+    env: { ...process.env, HOST: host, PORT: String(port) },
+    stdio: 'inherit',
+    detached: false,
+  });
+  try { fs.writeFileSync(PID_FILE, String(child.pid)); } catch { /* */ }
+  const up = await waitForPort(host, port);
+  if (!up) { console.warn(`[relay-fixture] relay did NOT come up on ${host}:${port} — relay cells will degrade.`); }
+  else     { console.log(`[relay-fixture] relay ready at ${url}`); }
+}
+
+export async function globalTeardown() {
+  let pid = null;
+  try { pid = Number(fs.readFileSync(PID_FILE, 'utf8').trim()); } catch { return; }
+  if (pid) {
+    try { process.kill(pid); console.log(`[relay-fixture] stopped relay (pid ${pid}).`); } catch { /* already gone */ }
+  }
+  try { fs.unlinkSync(PID_FILE); } catch { /* */ }
+}

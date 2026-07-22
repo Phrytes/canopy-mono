@@ -25,6 +25,18 @@
  */
 import { defineConfig, devices } from '@playwright/test';
 
+/* The connectivity SETUP/MODE MATRIX (test-browser/setups.js + matrix.spec.js) adds a small set of
+ * transport-dimension PROJECTS so a reviewer can run one setup:
+ *   --project=chromium  the existing default (NKN, no relay env) — unchanged.
+ *   --project=nkn       the NKN transport setup explicitly (alias of the default transport).
+ *   --project=relay     the relay transport setup. Bring up a local @onderling/relay by ARMING the
+ *                       fixture with PEER_TEST_RELAY (a ws:// URL); globalSetup starts it, the harness
+ *                       seeds it per-client (localStorage cc.relayUrl + ?relay=), globalTeardown kills it:
+ *                         PEER_TEST_RELAY=ws://127.0.0.1:8787 npx playwright test --project=relay
+ * The per-client seed is the robust knob; VITE_CIRCLE_RELAY_URL below is the belt (only applied when
+ * Playwright itself STARTS the dev server — a reused pre-existing :5173 keeps its own env). */
+const RELAY_URL = process.env.PEER_TEST_RELAY || null;
+
 export default defineConfig({
   testDir: './test-browser',
   /* Run tests in parallel where safe; the dev server is shared. */
@@ -35,6 +47,10 @@ export default defineConfig({
   /* Single worker keeps two-tab orchestration deterministic. */
   workers: 1,
   reporter: process.env.CI ? 'list' : 'html',
+  /* Relay fixture: only spawns a relay when PEER_TEST_RELAY is set (default/nkn runs are untouched,
+   * and nothing leaks). Teardown stops whatever globalSetup started. */
+  globalSetup: './test-browser/relayFixture.js',
+  globalTeardown: './test-browser/relayTeardown.js',
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
@@ -43,7 +59,12 @@ export default defineConfig({
     headless: true,
   },
   projects: [
+    /* Existing default — kept first + unchanged so bare `playwright test` behaves exactly as before. */
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    /* Transport-dimension setups. Same browser; they differ by which transport the harness seeds per
+     * client (the transportMode boot option). `relay` needs PEER_TEST_RELAY armed (see the fixture). */
+    { name: 'nkn',   use: { ...devices['Desktop Chrome'] } },
+    { name: 'relay', use: { ...devices['Desktop Chrome'] } },
   ],
   /* Boot the dev server automatically.  The reuseExistingServer flag
    * lets a manually-started `pnpm dev` survive across test runs. */
@@ -58,6 +79,11 @@ export default defineConfig({
      * `@assistant …` just fans out, and the gate smokes fail. Injected here so the harness is
      * self-contained (no manually-prepped `VITE_CIRCLE_LLM_BASEURL=… pnpm dev` required).
      * NB: only applied when Playwright STARTS the server; a reused pre-existing server keeps its env. */
-    env: { VITE_CIRCLE_LLM_BASEURL: 'http://127.0.0.1:9999' },
+    env: {
+      VITE_CIRCLE_LLM_BASEURL: 'http://127.0.0.1:9999',
+      /* Belt to the per-client seed: when the relay setup is armed, boot the dev server with the relay
+       * as its build-time default too (ignored by a reused server — the per-client cc.relayUrl wins). */
+      ...(RELAY_URL ? { VITE_CIRCLE_RELAY_URL: RELAY_URL } : {}),
+    },
   },
 });
