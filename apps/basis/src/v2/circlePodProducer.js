@@ -41,6 +41,9 @@ function memorySharing() {
  * @param {(circleId:string) => {read:Function, write:Function}} [deps.makePodClient]  REQUIRED for p2/p3.
  * @param {{grant:Function, revoke:Function}} [deps.sharing]  ACL (defaults to a memory no-op).
  * @param {boolean} [deps.bootstrap=true]  bootstrap the control agent's key resource immediately.
+ * @param {{ append: (event:object) => any }} [deps.keyEventLog]  optional no-pod distribution sink — passed
+ *   through to the control agent so every establish/grant/rotation ALSO fans the versioned key AS a log
+ *   key-event to the then-current members (self-distributing with no pod). Absent → pod-only, unchanged.
  * @param {string} [deps.controllerKeyPrefix]
  * @returns {Promise<{circleId, storagePosture, sealingIdentity, controlAgent:(object|null), podClient:(object|null), circleRootUri:(string|null)}>}
  */
@@ -54,6 +57,7 @@ export async function createCirclePodProducer({
   circleRootUri,
   sharing,
   bootstrap = true,
+  keyEventLog = null,
   controllerKeyPrefix = 'cc.circle-controller-key',
   groupKeyPrefix = 'cc.circle-groupkey',
 } = {}) {
@@ -122,6 +126,9 @@ export async function createCirclePodProducer({
     circleId, storagePosture, podClient,
     sharing: sharing ?? memorySharing(),
     controllerKey, circleRootUri: root, roster: fullRoster,
+    // No-pod distribution: the control agent fans every versioned key AS a log key-event through this
+    // sink (rotation on remove → fanned to the REMAINING members only, backward secrecy). Absent → pod-only.
+    keyEventLog,
   });
 
   /** Save the pod's current group-key resource to the vault (call after bootstrap + each membership change). */

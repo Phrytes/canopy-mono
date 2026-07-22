@@ -29,6 +29,10 @@ const SEALED_POSTURES = new Set(['p2', 'p3']);
  * @param {{ publicKey: string, privateKey: string }} [deps.controllerKey]  the agent's sealing keypair.
  * @param {string} [deps.circleRootUri]   the circle's pod container root (default a mem:// uri).
  * @param {Array<{ webId: string, publicKey: string, role?: string }>} [deps.roster]  initial members.
+ * @param {{ append: (event:object) => any }} [deps.keyEventLog]  optional no-pod distribution sink — when
+ *   present, every key establish/grant/rotation ALSO emits the versioned key AS a log key-event (fanned to
+ *   the then-current members, self-distributing with no pod). The pod key resource is still written
+ *   (defense-in-depth); the LOG is the source for a no-pod circle. Absent → pod-only, unchanged.
  * @returns {object|null}  the control-agent facade, or `null` for an unsealed (p0/p1) circle.
  */
 export function createCircleControlAgent({
@@ -39,6 +43,7 @@ export function createCircleControlAgent({
   controllerKey,
   circleRootUri,
   roster = [],
+  keyEventLog = null,
 } = {}) {
   if (!circleId) throw new Error('createCircleControlAgent: circleId is required');
   if (!SEALED_POSTURES.has(storagePosture)) return null;   // p0/p1 → no sealing, no control agent
@@ -58,6 +63,11 @@ export function createCircleControlAgent({
     controllerKey,
     modes: ['read', 'write'],
     roster,
+    // No-pod distribution: when a sink is injected, the control-agent fans each versioned key AS a
+    // log key-event to the then-current members (the departed excluded on a rotation → backward
+    // secrecy). `groupId` = the circle id, so a member folds only this circle's events.
+    keyEventLog,
+    groupId: circleId,
   });
 
   return {

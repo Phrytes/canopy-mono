@@ -12,6 +12,7 @@
     "./followUp":       "./src/followUp.js",
     "./deliveryState":  "./src/deliveryState.js",
     "./kringBroadcast": "./src/kringBroadcast.js",
+    "./keyEventLogSink": "./src/keyEventLogSink.js",
     "./mappingsStore":  "./src/mappingsStore.js",
     "./objectVersionsStorage": "./src/objectVersionsStorage.js",
     "./mappingsLoader":        "./src/mappingsLoader.js",

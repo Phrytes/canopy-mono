@@ -202,6 +202,7 @@ import { EventLog } from '../../src/eventLog.js';
 import { createDeliveryStateMap } from '@onderling/kring-host/deliveryState';
 // Phase 2 — shared kring chat send primitives (optimistic event + best-effort fan-out), web + mobile.
 import { kringChatMessageEvent, broadcastKringFanOut } from '@onderling/kring-host/kringBroadcast';
+import { makeKeyEventLogSink, recipientAddrsFromRoster } from '@onderling/kring-host/keyEventLogSink';
 // "only you" vs "whole kring" — message scope (a data property; the badge renders it).
 import { scopeForReply } from '../../src/v2/messageScope.js';
 import {
@@ -1264,11 +1265,35 @@ async function ensureCirclePod(circleId, policy) {
     const sharing = (routing && circleAuthedFetch && circleOwnerWebId)
       ? createCirclePodSharing({ fetch: circleAuthedFetch, ownerWebId: circleOwnerWebId })
       : undefined;
+    // No-pod key distribution: attach a key-event log sink so a membership change (notably a REMOVE →
+    // rotation) fans the new versioned key AS a log key-event to the circle's REMAINING members over the
+    // SAME peer channel content rides — sealed to them only, so the departed cannot open post-removal
+    // content with no shared pod. The pod key resource is still written (defense-in-depth); the log is the
+    // source for a no-pod circle. Lazy refs (rawCallSkill / _peerAgent are set at boot; the sink only fires
+    // on a later membership change). Recording into a local no-pod log + the receive/read side is the
+    // separate next step, so `recordLocal` is omitted here (the fan is forward-additive today).
+    const keyEventLog = makeKeyEventLogSink({
+      groupId: circleId,
+      sendPeer: (addr, payload, opts) => (typeof _peerAgent?.sendPeerMessage === 'function'
+        ? _peerAgent.sendPeerMessage(addr, payload, opts)
+        : Promise.resolve()),
+      // Held (not lost) for an offline member, flushed on reconnect — the same channel content fans over.
+      sendOptions: { hold: true, firstSendTimeoutMs: 0, retryDelays: [] },
+      resolveRecipientAddrs: async (event) => {
+        if (typeof rawCallSkill !== 'function') return [];
+        let members = [];
+        try {
+          const r = await rawCallSkill('stoop', 'listGroupMembers', { groupId: circleId });
+          members = Array.isArray(r?.members) ? r.members : [];
+        } catch { return []; }
+        return recipientAddrsFromRoster(event, members);
+      },
+    });
     const producer = await createCirclePodProducer({
       circleId, storagePosture, vault: circleVault, generateKeypair: podGenerateKeypair,
       makePodClient: routing ? routing.makePodClient : makeCirclePodClient,
       circleRootUri: routing ? routing.circleRootUri(circleId) : undefined,
-      sharing,
+      sharing, keyEventLog,
     });
     circlePods.set(circleId, producer);
     return producer;

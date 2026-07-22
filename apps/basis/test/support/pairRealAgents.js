@@ -37,9 +37,14 @@ import {
   sealingPublicKeyFromNetworkKey,
   establishKeyEvent, rotateKeyEvent, readKeyChain, currentGroupKey, openAcrossKeyChain,
   sealForAudience,
+  PodClient, generateKeypair as podGenerateKeypair,
 } from '@onderling/pod-client';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
+import { VaultMemory } from '@onderling/vault';
+import { makeKeyEventLogSink } from '@onderling/kring-host/keyEventLogSink';
 
 import { createRealHouseholdAgent } from '../../src/web/realAgent.js';
+import { createCirclePodProducer, createCircleControlAgentRouter } from '../../src/v2/circlePodProducer.js';
 import { openerForIdentity } from '../../src/v2/sharedCopyOpener.js';
 import { makePeerRouter } from '../../src/core/handlers/peerRouter.js';
 import {
@@ -94,11 +99,21 @@ export async function bootRealAgentNode(label = 'agent') {
   const keyEvents = [];
   const sealedContent = [];
 
+  // S4 — a per-node control-agent router over this node's own circle-producer map, wired as the stoop
+  // agent's `controlAgent`. For an UNSEALED (p0) circle the map stays empty → getProducer returns null →
+  // the redeem/leave membership hooks no-op (the pre-S4 behaviour the default harness relies on). A SEALED
+  // circle (`sealCircleViaProducer`) registers a producer here, so the REAL `removeMember` op routes into
+  // the producer's control agent, which fans the rotation key-event through the injected sink.
+  const circlePods = new Map();
+  const circleControlAgentRouter = createCircleControlAgentRouter((id) => circlePods.get(id) ?? null);
+
   const agent = await createRealHouseholdAgent({
     // Test-only seam: the browser wires this inside connectPeerTransport; in node
     // we hand it in via the existing secureAgentOpts pass-through. Ref-indirected
     // so the router can be built after boot with the live callSkill/sendPeerMessage.
     secureAgentOpts: { onPeerMessage: (env) => routerRef.fn?.(env) },
+    // The real per-circle control-agent router (S4) — the same one circleApp.js wires as stoopControlAgent.
+    stoopControlAgent: circleControlAgentRouter,
     // A fresh, code-minting REAL circle must show only real members — keep demo
     // scaffolding off so rosters carry exactly the creator + real joiners.
     seedDemoData: false,
@@ -137,7 +152,7 @@ export async function bootRealAgentNode(label = 'agent') {
     logger: QUIET,
   });
 
-  return { agent, pubKey, received, sendPeerRedeem, pendingMap, label, keyEvents, sealedContent };
+  return { agent, pubKey, received, sendPeerRedeem, pendingMap, label, keyEvents, sealedContent, circlePods, circleControlAgentRouter };
 }
 
 /**
@@ -313,6 +328,63 @@ export async function postSealed({ admin, members = [], groupId, text }) {
   await Promise.all(members.map((n) =>
     admin.agent.sendPeerMessage(n.pubKey, { type: 'sealed-content', subtype: 'sealed-content', groupId, env }, SEALED_SEND)));
   return env;
+}
+
+// ── Sealed circle via the REAL producer + control agent (drives the LIVE removeMember op) ───────────────────
+//
+// `bootSealedCircle`/`removeAndRotate` above stand in for the control agent (they call the key-event builders
+// directly). The helpers below instead stand up the REAL per-circle producer + control agent — the same
+// `createCirclePodProducer` the web shell builds — wired with the same `makeKeyEventLogSink`. A membership
+// change then flows through the production path: the admin's stoop `removeMember` op → the control-agent
+// router → the producer's control agent → `emitKeyEvent` → the sink → the fan. No harness stand-in on the
+// remove path; the sink records the admin's own copy + fans the rotation to the remaining members over the bus.
+
+/** A node-shaped in-memory pod client (createPseudoPod + PodClient), the node analogue of the web host's
+ *  `makeCirclePodClient` — an ephemeral per-circle pseudo-pod, no OIDC/CSS. */
+function makeNodePodClient(circleId) {
+  const deviceId = `circle-${circleId}`;
+  const pseudoPod = createPseudoPod({ backend: createMemoryBackend(), mode: 'standalone', deviceId });
+  return new PodClient({ podRoot: `pseudo-pod://${deviceId}/`, auth: { getAuthHeaders: async () => ({}) }, pseudoPod });
+}
+
+/**
+ * Seal a circle through the REAL producer: build a per-circle control agent (over an in-memory pseudo-pod)
+ * wired with a `makeKeyEventLogSink` that records the admin's own key-events + fans each to the member
+ * nodes, register it in the admin's control-agent router, then seed the group key to the admin + each
+ * member using their NETWORK-derived sealing key (the family the harness openers use). After this, the
+ * admin + every member hold the establishing key-event, and the REAL `removeMember` op will rotate from it.
+ */
+export async function sealCircleViaProducer({ admin, members = [], groupId }) {
+  const memberNodes = members;
+  // The sink: the control agent hands us each versioned key-event; we record the admin's own copy (so the
+  // admin's chain advances for sealing NEW content) and fan it to exactly the member nodes whose sealing
+  // key is among the event's recipients (a removed member is absent from a rotation → not fanned).
+  const keyEventLog = makeKeyEventLogSink({
+    groupId,
+    recordLocal: (event) => { admin.keyEvents.push(event); },
+    sendPeer: (addr, payload, opts) => admin.agent.sendPeerMessage(addr, payload, opts),
+    sendOptions: SEALED_SEND,
+    resolveRecipientAddrs: (event) => {
+      const recips = new Set(Array.isArray(event?.recipients) ? event.recipients : []);
+      return memberNodes.filter((n) => recips.has(memberSealingPubKey(n))).map((n) => n.pubKey);
+    },
+  });
+
+  const producer = await createCirclePodProducer({
+    circleId: groupId, storagePosture: 'p2', vault: new VaultMemory(),
+    generateKeypair: podGenerateKeypair, makePodClient: makeNodePodClient,
+    keyEventLog,
+  });
+  admin.circlePods.set(groupId, producer);
+
+  // Seed the group key to the admin + each member under their network-derived sealing key, via the router
+  // (the same addMember path a redeem drives). Each grant re-wraps the SAME v1 key to one more recipient +
+  // emits a key-event through the sink (recorded locally; fanned to the members who are recipients so far).
+  await admin.circleControlAgentRouter.addMember({ webId: admin.pubKey, publicKey: memberSealingPubKey(admin), role: 'admin', groupId });
+  for (const n of memberNodes) {
+    await admin.circleControlAgentRouter.addMember({ webId: n.pubKey, publicKey: memberSealingPubKey(n), role: 'member', groupId });
+  }
+  return producer;
 }
 
 /**
