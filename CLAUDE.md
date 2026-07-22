@@ -57,6 +57,10 @@ file only helps if it's written to.
    moving private data onto an untrusted host. → [`pod-independence.md`](docs/conventions/pod-independence.md).
 8. **Every user-facing string goes through `t()`** with a locale entry — hardcoded English is a defect.
    → [`localisation.md`](docs/conventions/localisation.md).
+9. **Names are legible without the plans.** A code file — identifiers, titles, comments, UI labels — must read on its own; a
+   name that only makes sense to someone who has read a plan/design doc (a project codename, a `report-flow`-style journey tag)
+   is a defect. The `lint-codenames` guard (`scripts/lint-codenames.mjs`) enforces the codename half; keep new names
+   self-explanatory. The same discipline applies in the plan docs — spell journeys/flows out, don't invent opaque tags.
 
 ## Further conventions
 Project-wide rules beyond the invariants — concise here, full detail in [`docs/conventions/`](docs/conventions/):
