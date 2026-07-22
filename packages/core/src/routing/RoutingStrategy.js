@@ -59,6 +59,22 @@ export class RoutingStrategy {
   get peerGraph()     { return this.#peerGraph; }
 
   /**
+   * Attach (or replace) the PeerGraph after construction. Some consumers
+   * build the router before the peer registry exists — e.g. a secure-agent
+   * constructs its shared router at factory time, while the app-owned
+   * PeerGraph (the per-transport address registry consulted by
+   * `PeerGraph.addressesOf`, B2) is only created once the app has booted.
+   * Wiring it here lets `selectTransport`'s type hints AND the send path's
+   * per-transport address resolution start consulting the graph without
+   * re-constructing the router.
+   *
+   * @param {object|null} peerGraph  — a PeerGraph instance, or null to detach.
+   */
+  attachPeerGraph(peerGraph) {
+    this.#peerGraph = peerGraph ?? null;
+  }
+
+  /**
    * Select the best transport instance for a given peer.
    *
    * @param {string} peerId

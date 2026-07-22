@@ -222,6 +222,10 @@ import { makeHandlePersonaPropsUpdate, makeHandlePersonaPropsAck, makeSendPerson
 // drivers #5 (b) — flag noticeboard posts that resonate with my private drivers (on-device match).
 import { annotateResonantPosts } from '../../src/core/handlers/driverMatchNotify.js';
 import { buildCircleInviteUri, joinCircleFromInvite } from '../../src/v2/circleInvite.js';
+// connectivity — populate the app PeerGraph with the admin's per-transport
+// addresses from a decoded invite BEFORE the redeem, so the secure router resolves
+// the relay/nkn wire address (`addressesOf`) instead of degrading to the bare pubKey.
+import { decodeInvite as decodeInviteForPopulate, populateAdminAddressesFromInvite } from '../../src/core/wizards/joinGroupState.js';
 import { feedHouseholdRoster } from '../../src/v2/householdRosterPairing.js';
 import { makeKringChatPeerHandler } from '../../src/v2/kringChatReceiver.js';
 import { rehydrateKringChatsFromStoop } from '../../src/v2/kringChatRehydrate.js';
@@ -1442,6 +1446,13 @@ function buildCircleBot(agent) {
   // (it was in-memory and vanished on refresh). PeerGraph reads through the
   // backend, so a fresh graph over the same store rehydrates automatically.
   circlePeerGraph = new PeerGraph({ storageBackend: createLocalStoragePeerBackend() });
+  // Phase-2 · Piece-2 (B2 wiring) — hand the app-owned peer registry to the
+  // secure-agent's SHARED RoutingStrategy so the cross-peer send path resolves
+  // the transport-appropriate wire address per peer (relay → pubKey, NKN →
+  // native addr) via `PeerGraph.addressesOf`, instead of using the canonical id
+  // verbatim on every transport. Best-effort: an older agent surface without
+  // the seam just keeps the pre-slice-2 (address === id) behaviour.
+  try { agent.sa?.attachPeerGraph?.(circlePeerGraph); } catch { /* seam optional */ }
   circleCoreAgent = agent.sa?.agent ?? null;   // the core chat agent — discoverA2A's hello/native-upgrade target
   if (typeof window !== 'undefined') {
     window.canopyCirclePods = circlePods;   // S4 debug / e2e seam
@@ -3257,7 +3268,7 @@ function mountMyDataWizard(renderWizard, extra = {}) {
 // OBJ-2 — Join a circle (no pod). Paste an invite (the QR's stoop-invite:// payload) and mount the SHARED
 // join wizard through the same overlay adapter; the joiner-side peer-redeem sender carries the no-pod
 // handshake. On success we feed the new roster (so items sync) and refresh the launcher. Pure reuse.
-function showJoinCircle(inviteArg) {
+async function showJoinCircle(inviteArg) {
   let invite = (typeof inviteArg === 'string' && inviteArg.trim())
     ? inviteArg.trim()
     : (globalThis.prompt?.(t('circle.join.paste')) || '').trim();
@@ -3266,6 +3277,16 @@ function showJoinCircle(inviteArg) {
   if (/^https?:\/\//i.test(invite)) {
     try { const j = new URL(invite).searchParams.get('join'); if (j) invite = j; } catch { /* keep as-is */ }
   }
+  // decode once up front to learn the admin's transport addresses and seed the
+  // app PeerGraph BEFORE the wizard runs its peer redeem. The router then
+  // resolves the relay (pubKey) + nkn native address via `addressesOf` on the
+  // redeem send, instead of falling back to the un-routable bare pubKey. Best-effort:
+  // a bad/relay-only invite just populates nothing and the join proceeds unchanged.
+  try {
+    const decoded = {};
+    decodeInviteForPopulate(invite, decoded);
+    if (decoded.invite) await populateAdminAddressesFromInvite({ peerGraph: circlePeerGraph, invite: decoded.invite });
+  } catch { /* population must never block the join */ }
   mountMyDataWizard(renderJoinGroupWizard, {
     args: { invite },
     sendPeerRedeem: circleSendPeerRedeem,

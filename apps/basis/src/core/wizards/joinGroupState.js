@@ -114,6 +114,42 @@ export function decodeInvite(invite, state) {
   }
 }
 
+/* ─── Peer-address population from an invite ─────────────────── */
+
+/**
+ * Populate an app-owned PeerGraph with the ADMIN's per-transport wire
+ * addresses carried in a decoded invite, so the secure router's
+ * `addressesOf(adminPubKey)` resolves the transport-appropriate address for
+ * the redeem handshake — the relay address (the Ed25519 pubKey) AND the NKN
+ * native address — instead of the send path degrading to the bare pubKey (a
+ * string NKN can't route). Call after `decodeInvite`, BEFORE the peer redeem
+ * send, so `route → addressFor` picks the relay tier and addresses it right.
+ *
+ * The invite carries `adminPeerAddr` (the pubKey = relay wire address) and,
+ * when the admin had NKN up at invite time, `adminNknAddr` (the native
+ * address). The PeerGraph is keyed by `pubKey`, so the admin's canonical id
+ * here is `adminPeerAddr`; `transports` shallow-merges on upsert and
+ * `addressesOf` reads a string value directly, so we store the flat shape
+ * `{ relay: <pubKey>, nkn: <native> }` (nkn omitted for a relay-only admin).
+ *
+ * Additive + best-effort: no invite / no adminPeerAddr / no graph → no-op
+ * (returns null); never throws into the join flow.
+ *
+ * @param {{ peerGraph:{upsert:Function}, invite:object }} a
+ * @returns {Promise<object|null>} the merged peer record, or null when skipped
+ */
+export async function populateAdminAddressesFromInvite({ peerGraph, invite } = {}) {
+  const adminPeerAddr = invite?.adminPeerAddr;
+  if (!adminPeerAddr || !peerGraph || typeof peerGraph.upsert !== 'function') return null;
+  const transports = { relay: adminPeerAddr };
+  if (invite?.adminNknAddr) transports.nkn = invite.adminNknAddr;
+  try {
+    return await peerGraph.upsert({ pubKey: adminPeerAddr, transports });
+  } catch {
+    return null;   // population must never block the join
+  }
+}
+
 /* ─── Rules text ────────────────────────────────────────────── */
 
 /**

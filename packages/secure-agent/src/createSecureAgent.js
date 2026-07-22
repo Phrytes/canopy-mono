@@ -143,6 +143,41 @@ const STUB_OPTS = Object.freeze([
 ]);
 
 /**
+ * Phase-2 · Piece-1 (G4) — default bound on failover attempts per send.
+ * Caps how many transport tiers a single `sendToPeer` will try before it
+ * gives up and lets the error propagate (to the outer handshake-retry, then
+ * the app's hold/error path).  With direct→mesh (relay→NKN) only two tiers
+ * exist today; the budget guards against a router that keeps yielding fresh
+ * names so a truly-unreachable peer can't spin.  Override per-call with
+ * `opts.failoverBudget`.
+ */
+const FAILOVER_ATTEMPT_BUDGET = 3;
+
+/**
+ * Phase-2 · Piece-1 (G4) — classify a send error as an APPLICATION/skill
+ * error (which must NOT trigger transport failover) vs a transport-class
+ * error (which does).  The secure send path performs only transport work
+ * (HI handshake + one-way send), so the default is transport-class; this
+ * returns `true` only for errors a different transport could not fix:
+ *   - an explicit marker (`err.application` / `err.isApplicationError`, or
+ *     `err.name` of `ApplicationError` / `SkillError`), or
+ *   - a message that names an application-layer refusal (muted / refused /
+ *     forbidden / not permitted / invalid payload).
+ *
+ * @param {*} err
+ * @returns {boolean}
+ */
+function isApplicationError(err) {
+  if (!err) return false;
+  if (err.application === true || err.isApplicationError === true) return true;
+  const name = err.name;
+  if (name === 'ApplicationError' || name === 'SkillError') return true;
+  return /\bmuted\b|refused|not permitted|forbidden|invalid payload/i.test(
+    String(err?.message ?? err),
+  );
+}
+
+/**
  * Build a secure agent + (optional) cross-peer transport.
  *
  * @param {CreateSecureAgentOpts} [opts]
@@ -225,7 +260,20 @@ export async function createSecureAgent(opts = {}) {
   // WebRTC upgrade) + mdns/ble registration — now take effect on the secure-agent's sendToPeer path
   // too (resolving the T3b/T4 entanglement). Transports register via `routing.addTransport(name, tx)`
   // DIRECTLY (not `agent.addTransport`, which would re-wrap security over makeReceiveHandler's wiring).
-  const routing = new RoutingStrategy({ transports: new Map() });
+  //
+  // Phase-2 · Piece-2 (B2 wiring) — attach a PeerGraph so the send path's
+  // `addressFor` (route → PeerGraph.addressesOf) can resolve the
+  // transport-appropriate wire address per peer (relay routes by the Ed25519
+  // pubKey; NKN by its seed-derived native address — one canonical peer id,
+  // two wire addresses). The app owns the peer registry, so it is normally
+  // attached AFTER boot via `sa.attachPeerGraph(...)`; `opts.peerGraph` covers
+  // callers (tests / pre-built topologies) that already have one at factory
+  // time. With no graph, `addressesOf` has nothing to resolve and the address
+  // degrades to the caller-supplied id — the pre-slice-2 behaviour.
+  const routing = new RoutingStrategy({
+    transports: new Map(),
+    peerGraph:  opts.peerGraph ?? null,
+  });
   const agent = new Agent({ identity, transport, routing });
   await agent.start();
 
@@ -922,30 +970,86 @@ export async function createSecureAgent(opts = {}) {
    * (fall back to old eager-send behavior).
    */
   /**
-   * A1 — pick which transport to use for outbound sends based on the
-   * current transportMode.  Returns null if no suitable transport is
-   * connected.
+   * Phase-2 · Piece-1 (C1) — THE ONE routing owner for the secure send
+   * path.  Folds the old `pickTransport` (which returned only a transport
+   * and never surfaced the name) into a single selector that resolves a
+   * complete `{ name, transport, address }` route over the SHARED
+   * `RoutingStrategy` — the same instance the core Agent routes over
+   * (T5.1).  The name is what makes real failover possible: it lets the
+   * failover loop drive `routing.onTransportFailure(peer, name)` so the
+   * degraded transport is skipped on the re-`route` (see `_sendWithFailover`).
    *
-   *   'nkn'   — NknTransport only (current default; throws if NKN not connected)
-   *   'relay' — RelayTransport only (throws if relay not connected)
-   *   'both'  — prefer NKN; fall back to relay if NKN isn't connected.
-   *             (Doesn't broadcast on both — that would duplicate at
-   *             the receiver.)
+   *   'nkn'   — NknTransport only (explicit pin; no failover alternative)
+   *   'relay' — RelayTransport only (explicit pin; no failover alternative)
+   *   'both'  — the RoutingStrategy picks the BEST reachable, NON-DEGRADED
+   *             route by canonical priority + latency; NKN is the always-on
+   *             bottom tier, so a dead relay socket falls to NKN on re-route.
+   *
+   * `address` comes from Phase-1's per-transport address map
+   * (`PeerGraph.addressesOf`, keyed by transport name) when a PeerGraph is
+   * wired on the router; otherwise it degrades to the caller-supplied `addr`
+   * (secure-agent does not populate a PeerGraph today, so this is inert —
+   * `address === addr` — until one is wired, matching current behaviour).
+   *
+   * @param {string} addr  — the peer's canonical / wire address
+   * @returns {Promise<{ name: string, transport: object, address: string }|null>}
    */
-  async function pickTransport(addr) {
-    // Explicit pin — respect a user-chosen single transport.
-    if (transportMode === 'nkn')   return peerTransport ?? null;
-    if (transportMode === 'relay') return relayTransport ?? null;
-    // 'both' (auto) — T2: let the RoutingStrategy pick the BEST reachable route for this peer
-    // (canonical priority + reachability), instead of the old fixed prefer-NKN. Falls back to
-    // the static prefer-NKN-then-relay if the router can't decide (no addr / nothing reachable).
+  async function route(addr) {
+    // Explicit pin — respect a user-chosen single transport (no alternative
+    // to fail over to; the failover loop degrades to a single attempt).
+    if (transportMode === 'nkn') {
+      return peerTransport
+        ? { name: 'nkn', transport: peerTransport, address: await addressFor(addr, 'nkn') }
+        : null;
+    }
+    if (transportMode === 'relay') {
+      return relayTransport
+        ? { name: 'relay', transport: relayTransport, address: await addressFor(addr, 'relay') }
+        : null;
+    }
+    // 'both' (auto) — let the shared RoutingStrategy pick the best reachable,
+    // non-degraded route for this peer (canonical priority + reachability).
     if (addr) {
       try {
         const sel = await routing.selectTransport(addr);
-        if (sel?.transport) return sel.transport;
+        if (sel?.transport) {
+          return { name: sel.name, transport: sel.transport, address: await addressFor(addr, sel.name) };
+        }
       } catch { /* fall through to the static fallback */ }
     }
-    return peerTransport ?? relayTransport ?? null;
+    // Static fallback when the router can't decide (no addr / nothing
+    // reachable): prefer NKN then relay, reporting whatever name applies so
+    // the failover loop can still degrade it.
+    if (peerTransport)  return { name: 'nkn',   transport: peerTransport,  address: addr };
+    if (relayTransport) return { name: 'relay', transport: relayTransport, address: addr };
+    return null;
+  }
+
+  /**
+   * Resolve the transport-appropriate wire address for `peerId` on the
+   * transport named `name`, from Phase-1's `PeerGraph.addressesOf` map.
+   * Falls back to `peerId` itself when no PeerGraph is wired on the router
+   * or it has no per-transport address recorded — which is the case for
+   * secure-agent today, so this never changes the observable address.
+   */
+  async function addressFor(peerId, name) {
+    const pg = routing.peerGraph;
+    if (pg && typeof pg.addressesOf === 'function') {
+      try {
+        const map = await pg.addressesOf(peerId);
+        if (map && typeof map[name] === 'string' && map[name]) return map[name];
+      } catch { /* fall through to peerId */ }
+    }
+    return peerId;
+  }
+
+  /**
+   * Backward-compat shim: the pre-fold `pickTransport(addr)` returned just
+   * the transport.  Kept as a thin wrapper over `route` so any incidental
+   * caller keeps working; the send path now uses `route` directly.
+   */
+  async function pickTransport(addr) {
+    return (await route(addr))?.transport ?? null;
   }
 
   /**
@@ -969,7 +1073,7 @@ export async function createSecureAgent(opts = {}) {
     let lastErr = null;
     for (let attempt = 0; attempt <= delays.length; attempt++) {
       try {
-        return await _sendToPeerOnce(addr, payload);
+        return await _sendWithFailover(addr, payload, opts);
       } catch (err) {
         lastErr = err;
         const msg = String(err?.message ?? err);
@@ -985,26 +1089,102 @@ export async function createSecureAgent(opts = {}) {
     throw lastErr;
   }
 
-  async function _sendToPeerOnce(addr, payload) {
-    const tx = await pickTransport(addr);
-    if (!tx) {
-      throw new Error(
-        `Peer transport not connected (mode=${transportMode}).  ` +
-        `Call sa.peer.connect() and/or sa.relay.connect() first.`,
-      );
-    }
-    // S1 + S4 — refuse to send to a muted peer (alias-aware).  Throws
-    // (not silent) so the caller knows their intent didn't reach the
-    // wire.
+  /**
+   * Phase-2 · Piece-1 (G4) — REAL failover around the send.
+   *
+   * The old path picked ONE transport and, if its send threw, the whole
+   * operation errored — `routing.onTransportFailure` (defined on the shared
+   * RoutingStrategy but never driven from here) did nothing, so "try relay,
+   * else NKN" was never automatic on the real send path.  This wraps the
+   * per-route send: on a TRANSPORT-CLASS error (a routing/connectivity
+   * failure — NOT a skill/application error) it degrades the failed
+   * transport via `routing.onTransportFailure(peer, name)`, re-`route`s
+   * (which now skips the degraded transport and drops to the next tier —
+   * NKN is the always-on bottom), and resends.  Bounded by an attempt
+   * budget so a truly-unreachable peer doesn't spin: once the budget is
+   * spent (or no fresh transport remains) the last error propagates, which
+   * the outer `sendToPeer` handshake-retry — and ultimately the app's
+   * hold/error path — takes over.
+   *
+   * Transport-class vs application error: this send path does only
+   * transport work (HI handshake + one-way send), so EVERY error here is
+   * treated as transport-class and eligible for re-route EXCEPT those
+   * explicitly marked as application/skill errors (`isApplicationError`) —
+   * e.g. a muted-peer refusal or a caller-tagged `SkillError`.  Those bubble
+   * unchanged; re-routing a different transport would not fix them.
+   *
+   * @param {string} addr
+   * @param {*}      payload
+   * @param {object} [opts]  — `firstSendTimeoutMs`, `failoverBudget`
+   */
+  async function _sendWithFailover(addr, payload, opts = {}) {
+    // S1 + S4 — refuse to send to a muted peer (alias-aware) up front.
+    // This is an APPLICATION decision, never a transport failure: no
+    // re-route, no degrade.  Throws so the caller knows the intent didn't
+    // reach the wire.
     if (await isPeerMuted(addr)) {
       throw new Error(`secure-agent: peer "${addr}" is muted; sendTo refused`);
     }
+
+    const budget = Math.max(1, Number.isInteger(opts.failoverBudget)
+      ? opts.failoverBudget
+      : FAILOVER_ATTEMPT_BUDGET);
+    const tried  = new Set();
+    let   lastErr = null;
+
+    for (let attempt = 0; attempt < budget; attempt++) {
+      const sel = await route(addr);
+      if (!sel) {
+        throw new Error(
+          `Peer transport not connected (mode=${transportMode}).  ` +
+          `Call sa.peer.connect() and/or sa.relay.connect() first.`,
+        );
+      }
+      // The router keeps returning a transport we've already exhausted
+      // (single-transport mode, or every alternative degraded) → no fresh
+      // tier to fail over to.  Stop and surface the last error / send once.
+      if (tried.has(sel.name)) {
+        if (lastErr) throw lastErr;
+      }
+      tried.add(sel.name);
+
+      try {
+        return await _sendOverRoute(addr, payload, sel, opts);
+      } catch (err) {
+        lastErr = err;
+        // Application/skill error → never re-route (a different transport
+        // would hit the same rejection).  Bubble unchanged.
+        if (isApplicationError(err)) throw err;
+        // Transport-class error → degrade this transport for the peer so the
+        // next `route()` picks a different tier (NKN is the bottom), then
+        // loop.  When the budget is spent the error falls through below.
+        try { routing.onTransportFailure(addr, sel.name); } catch { /* defensive */ }
+        if (typeof console !== 'undefined') {
+          console.info(
+            `[secure-agent] transport "${sel.name}" failed for ${String(addr).slice(0, 16)}… ` +
+            `(${String(err?.message ?? err)}); failing over (attempt ${attempt + 1}/${budget})`,
+          );
+        }
+      }
+    }
+    throw lastErr;
+  }
+
+  /**
+   * Send `payload` to `addr` over ONE already-resolved route (`sel` from
+   * `route()`): first-contact HI handshake (unchanged bilateral-HI + peer-key
+   * wait) then the one-way send.  Extracted from the old `_sendToPeerOnce`
+   * so the failover loop can drive it once per candidate transport.
+   */
+  async function _sendOverRoute(addr, payload, sel, opts = {}) {
+    const tx      = sel.transport;
+    const wireAddr = sel.address ?? addr;   // per-transport address (Phase-1 map); === addr today
     if (!helloedPeers.has(addr)) {
       if (typeof console !== 'undefined') {
         console.log('[secure-agent] sending outbound HI to ' + String(addr).slice(0, 16) + '…');
       }
       try {
-        await tx.sendHello(addr, { pubKey: identity.pubKey });
+        await tx.sendHello(wireAddr, { pubKey: identity.pubKey });
         if (typeof console !== 'undefined') {
           console.log('[secure-agent] outbound HI sent OK to ' + String(addr).slice(0, 16) + '…');
         }
@@ -1045,6 +1225,20 @@ export async function createSecureAgent(opts = {}) {
       // Only mark as helloed after the bidirectional handshake fully
       // completed (or wasn't needed because we already had their key).
       helloedPeers.add(addr);
+      // Phase-2 · Piece-2b (population) — now that HI resolved a live route to
+      // this peer, record its transport-appropriate wire address into the
+      // app-owned PeerGraph attached on the shared router, so LATER sends
+      // resolve `addressesOf(peer)[name]` (rather than degrading to the id).
+      // `addr` is the canonical peer id (the pubKey the graph keys on); `sel.name`
+      // is the transport that reached them; `wireAddr` is that transport's address.
+      // Best-effort + additive: no graph / upsert failure → inert (pre-2b behaviour).
+      const pg = routing.peerGraph;
+      if (pg && typeof pg.upsert === 'function') {
+        pg.upsert({
+          pubKey:     addr,
+          transports: { [sel.name]: { address: wireAddr, lastSeen: Date.now() } },
+        }).catch(() => { /* population must never break a send */ });
+      }
     }
     // v0.7.cc — record outbound for /debug-dump diagnostic.
     recordTraffic({
@@ -1053,7 +1247,7 @@ export async function createSecureAgent(opts = {}) {
       subtype: payload?.subtype ?? payload?.type ?? null,
       size:    JSON.stringify(payload ?? {}).length,
     });
-    return tx.sendOneWay(addr, payload);
+    return tx.sendOneWay(wireAddr, payload);
   }
 
   /**
@@ -1167,6 +1361,13 @@ export async function createSecureAgent(opts = {}) {
     },
     get transportMode() { return transportMode; },
     setTransportMode,
+    // Phase-2 · Piece-2 (B2 wiring) — attach (or replace) the peer registry on
+    // the SHARED router so the send path resolves the transport-appropriate
+    // wire address per peer (`route` → `addressFor` → `PeerGraph.addressesOf`).
+    // The app owns the roster (basis's `circlePeerGraph`) and builds it after
+    // boot, so it wires it here rather than at factory time.
+    attachPeerGraph: (peerGraph) => routing.attachPeerGraph(peerGraph),
+    get peerGraph() { return routing.peerGraph; },
     // T5.2a — register an externally-built transport (mdns/ble from the RN app, or any
     // Transport-shaped object) into the secure-mesh: security-wrapped + router-registered.
     addSecureTransport,
