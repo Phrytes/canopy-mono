@@ -36,6 +36,11 @@ import { defineConfig, devices } from '@playwright/test';
  * The per-client seed is the robust knob; VITE_CIRCLE_RELAY_URL below is the belt (only applied when
  * Playwright itself STARTS the dev server — a reused pre-existing :5173 keeps its own env). */
 const RELAY_URL = process.env.PEER_TEST_RELAY || null;
+/* Dedicated-port isolation: other jobs on this machine restart Vite on :5173, which kills shared runs.
+ * Set PEER_TEST_PORT to boot the matrix on its own port (strictPort → fails loudly if taken):
+ *   PEER_TEST_PORT=5273 PEER_TEST_RELAY=ws://127.0.0.1:8788 npx playwright test --project=relay  */
+const PORT = process.env.PEER_TEST_PORT || '5173';
+const BASE_URL = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: './test-browser',
@@ -52,7 +57,7 @@ export default defineConfig({
   globalSetup: './test-browser/relayFixture.js',
   globalTeardown: './test-browser/relayTeardown.js',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: BASE_URL,
     trace: 'on-first-retry',
     /* Headless by default — flip to false locally with
      * `pnpm exec playwright test --headed` to watch the flows. */
@@ -69,10 +74,12 @@ export default defineConfig({
   /* Boot the dev server automatically.  The reuseExistingServer flag
    * lets a manually-started `pnpm dev` survive across test runs. */
   webServer: {
-    command: 'pnpm dev',
-    url: 'http://localhost:5173',
+    command: `pnpm dev -- --port ${PORT} --strictPort`,
+    url: BASE_URL,
     reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
+    /* Cold-boot of this large app on a fresh dedicated port (PEER_TEST_PORT) needs well over 60s —
+     * the old default only worked because it reused another job's warm :5173 server. */
+    timeout: 240_000,
     /* Circle-bot smokes (circle-kring-bot.spec.js) need a circle LLM provider to EXIST so the bot
      * "engages" — the deterministic gate path (`@assistant add/done X`) never CALLS it, so a dummy
      * loopback URL is enough. Without this the server boots with no provider, the bot stays inert,
