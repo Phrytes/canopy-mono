@@ -608,6 +608,100 @@ export async function createSecureAgent(opts = {}) {
   const peerState = { status: 'idle', address: null, error: null };
   const helloedPeers = new Set();
 
+  // ─── Delivery guarantee — local sender-hold + presence-flush ───────
+  // (Connectivity Phase 2, the "deliver" ladder — the offline ladder's
+  // missing rung-1: hold-forward WITHOUT a companion/pod.)
+  //
+  // A send tagged `guarantee:'hold-forward'` (or `hold:true`) to a peer we
+  // cannot reach right now is not dropped and does not hard-error — it is
+  // parked in this local pending queue and re-sent the moment a PRESENCE
+  // signal for that peer arrives (their inbound envelope in makeReceiveHandler,
+  // or an explicit reachability/peer-joined event via `presenceSignal(addr)`).
+  // Purely event-driven; there is no timer/poll here.
+  //
+  //   pendingHold : peerAddr → Map<holdKey, { payload, opts, ts }>
+  //
+  // De-dup is at TWO layers: the sender collapses a repeat `msgId` here (so a
+  // retry while offline doesn't double-queue), and the receiver stays the
+  // single source of exactly-once idempotency on `msgId` (unchanged — we do
+  // NOT rebuild that). Flush snapshots-and-clears a peer's queue atomically so
+  // two presence signals can't double-deliver.
+  //
+  // Later (kept for a following phase, NOT built here): the QueueStore that
+  // unifies this local-pending queue with the relay + companion + pod hold
+  // queues behind one port.
+  const pendingHold = new Map();
+  let   holdSeq     = 0;
+
+  /** Does this send opt in to the hold-forward delivery guarantee? */
+  function wantsHold(sendOpts) {
+    return sendOpts?.hold === true || sendOpts?.guarantee === 'hold-forward';
+  }
+
+  /** The de-dup key for a payload: its message id when it carries one, else a
+   *  per-send sequence (an id-less payload is never treated as a duplicate). */
+  function holdKeyFor(payload) {
+    const id = payload?.msgId ?? payload?.id ?? payload?._id;
+    return (id != null) ? `id:${id}` : `seq:${++holdSeq}`;
+  }
+
+  /**
+   * Park a message for an unreachable peer. Collapses a repeat msgId so a
+   * caller that retries while the peer is offline holds it only once. Returns
+   * a structured `{ held:true, ... }` result (never throws) so the send path
+   * can surface "held" to the app instead of an error.
+   */
+  function enqueueHold(addr, payload, sendOpts) {
+    const msgId = payload?.msgId ?? payload?.id ?? payload?._id ?? null;
+    let q = pendingHold.get(addr);
+    if (!q) { q = new Map(); pendingHold.set(addr, q); }
+    const key = holdKeyFor(payload);
+    if (q.has(key)) {
+      return { held: true, delivered: false, deduped: true, msgId, pending: q.size };
+    }
+    q.set(key, { payload, opts: sendOpts, ts: Date.now() });
+    if (typeof console !== 'undefined') {
+      console.info(`[secure-agent] peer ${String(addr).slice(0, 16)}… unreachable — holding message (${q.size} queued)`);
+    }
+    return { held: true, delivered: false, deduped: false, msgId, pending: q.size };
+  }
+
+  /**
+   * PRESENCE-FLUSH — a presence signal for `addr` says the peer is reachable
+   * now, so re-send everything we were holding for them. Snapshot-and-clear
+   * first so a concurrent presence signal doesn't double-send; a still-failing
+   * transport-class send re-holds (a later presence retries), while an
+   * application refusal (e.g. muted) drops the held message (a resend can't fix
+   * it). Best-effort, fire-and-forget from the receive path.
+   */
+  async function flushPending(addr) {
+    const q = pendingHold.get(addr);
+    if (!q || q.size === 0) return { flushed: 0 };
+    const entries = [...q.values()];
+    pendingHold.delete(addr);
+    let flushed = 0;
+    for (const { payload, opts } of entries) {
+      try {
+        await _sendWithFailover(addr, payload, { ...opts, hold: false, guarantee: 'best-effort' });
+        flushed++;
+      } catch (err) {
+        if (isApplicationError(err)) continue;   // unfixable by resend → drop
+        enqueueHold(addr, payload, opts);         // still unreachable → re-hold
+      }
+    }
+    if (flushed && typeof console !== 'undefined') {
+      console.info(`[secure-agent] presence-flush delivered ${flushed} held message(s) to ${String(addr).slice(0, 16)}…`);
+    }
+    return { flushed };
+  }
+
+  /** Is there a live route to `addr` right now? (route() returns null when no
+   *  connected transport reports it can reach the peer.) */
+  async function hasLiveRoute(addr) {
+    try { return !!(await route(addr)); }
+    catch { return false; }
+  }
+
   // ─── Relay state (WebSocket relay; stays idle until connectRelay) ───
   // A1 (2026-05-23): second cross-peer transport.  Both transports
   // share the same envelope handler (extracted into makeReceiveHandler
@@ -736,6 +830,13 @@ export async function createSecureAgent(opts = {}) {
             console.error('[secure-agent] onPeerMessage threw', err);
           }
         }
+      }
+      // Delivery guarantee — PRESENCE-FLUSH. Any inbound envelope from a peer
+      // (their reconnect HI, or any message) proves they are reachable now, so
+      // flush anything we were holding for them. Fire-and-forget: re-hold on a
+      // still-failing send is handled inside flushPending.
+      if (pendingHold.has(env._from)) {
+        flushPending(env._from).catch(() => { /* re-hold handled internally */ });
       }
     });
   }
@@ -1069,6 +1170,37 @@ export async function createSecureAgent(opts = {}) {
    * to a fresh peer races the handshake.
    */
   async function sendToPeer(addr, payload, opts = {}) {
+    // Delivery guarantee — hold-forward. When the caller opts in, a peer we
+    // can't reach right now enqueues locally and returns "held" instead of
+    // erroring; a later presence signal flushes it. Two triggers:
+    //   1. PROACTIVE — no connected transport reports it can reach the peer
+    //      (route() === null), so hold up front and skip the multi-second HI
+    //      wait for a peer we already know is offline.
+    //   2. REACTIVE — a real transport (NKN/relay canReach is address-agnostic,
+    //      so offline surfaces only as a send failure) throws a transport-class
+    //      error after failover → hold rather than propagate. An application
+    //      refusal (muted / not permitted) still throws — a resend can't fix it.
+    if (wantsHold(opts)) {
+      if (!(await hasLiveRoute(addr))) return enqueueHold(addr, payload, opts);
+      try {
+        const result = await _sendWithHandshakeRetry(addr, payload, opts);
+        const msgId = payload?.msgId ?? payload?.id ?? payload?._id ?? null;
+        return { held: false, delivered: true, msgId, result };
+      } catch (err) {
+        if (isApplicationError(err)) throw err;
+        return enqueueHold(addr, payload, opts);
+      }
+    }
+    return _sendWithHandshakeRetry(addr, payload, opts);
+  }
+
+  /**
+   * The first-contact-race retry loop around `_sendWithFailover`: retries only
+   * on a HI-handshake error (the peer's reciprocal HI racing our first send),
+   * with backoff, so callers don't need an application-layer retry wrapper.
+   * Non-handshake errors propagate immediately.
+   */
+  async function _sendWithHandshakeRetry(addr, payload, opts = {}) {
     const delays = Array.isArray(opts.retryDelays) ? opts.retryDelays : [3000, 5000];
     let lastErr = null;
     for (let attempt = 0; attempt <= delays.length; attempt++) {
@@ -1379,6 +1511,15 @@ export async function createSecureAgent(opts = {}) {
     rotateIdentity,
     securityStatus,
     shutdown,
+
+    // Delivery guarantee — hold-forward + presence-flush.
+    // `presenceSignal(addr)` is the explicit reachability/peer-joined hook (the
+    // inbound-envelope path in makeReceiveHandler flushes automatically); it
+    // re-sends everything held for `addr` and resolves with `{ flushed }`.
+    // `heldFor(addr)` reports how many messages are currently parked for a peer
+    // (0 when none) for diagnostics + tests.
+    presenceSignal: (addr) => flushPending(addr),
+    heldFor: (addr) => pendingHold.get(addr)?.size ?? 0,
 
     /** v0.7.cc — diagnostic snapshot of the last 10 envelopes,
      * inbound + outbound, for /debug-dump bug reports. */

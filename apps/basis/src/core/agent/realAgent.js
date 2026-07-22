@@ -2914,9 +2914,30 @@ export async function createRealHouseholdAgent(opts = {}) {
      * Fire-and-forget cross-peer send.  Auto-HI on first contact,
      * SecurityLayer sign+encrypt — both handled inside the factory.
      * S1 mute-block: throws when targetAddress is muted.
+     *
+     * `opts` is forwarded to the secure send path. Pass
+     * `{ guarantee: 'hold-forward' }` (or `{ hold: true }`) to opt in to the
+     * delivery guarantee: a send to an unreachable peer is parked locally and
+     * flushed on the peer's next presence signal instead of being lost/errored
+     * (returns a `{ held: true, ... }` result rather than throwing).
      */
-    async sendPeerMessage(targetAddress, payload) {
-      return sa.peer.sendTo(targetAddress, payload);
+    async sendPeerMessage(targetAddress, payload, opts = {}) {
+      return sa.peer.sendTo(targetAddress, payload, opts);
+    },
+
+    /**
+     * Presence hook for the delivery guarantee — call when a peer becomes
+     * reachable again (a reachability / peer-joined event) to flush any
+     * messages held for them. Inbound traffic from the peer flushes
+     * automatically; this is the explicit trigger for reachability events.
+     */
+    presenceSignal(targetAddress) {
+      return sa.presenceSignal(targetAddress);
+    },
+
+    /** Diagnostics: how many messages are currently held for a peer. */
+    heldFor(targetAddress) {
+      return sa.heldFor(targetAddress);
     },
 
     /**

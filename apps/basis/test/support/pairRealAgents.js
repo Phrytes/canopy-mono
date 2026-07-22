@@ -135,10 +135,45 @@ export async function bootRealAgentNode(label = 'agent') {
  * exact address). Mirrors sendRouteResolution.test.js.
  */
 export async function connectAgentsOverBus(a, b, { transportName = 'relay' } = {}) {
-  const bus = new InternalBus();
-  await a.agent.sa.addSecureTransport(transportName, new InternalTransport(bus, a.pubKey));
-  await b.agent.sa.addSecureTransport(transportName, new InternalTransport(bus, b.pubKey));
+  // A presence-aware bus so a `disconnect()` is a real "unreachable" signal
+  // (membership-based `canReach`) — the offline/reconnect helpers rely on it.
+  const bus = new InternalBus({ presenceAware: true });
+  const txA = new InternalTransport(bus, a.pubKey);
+  const txB = new InternalTransport(bus, b.pubKey);
+  await a.agent.sa.addSecureTransport(transportName, txA);
+  await b.agent.sa.addSecureTransport(transportName, txB);
+  // Stash each node's bus transport so the offline/reconnect helpers can toggle
+  // it (a disconnect on the shared bus = that node goes offline).
+  a._busTransport = txA;
+  b._busTransport = txB;
   return bus;
+}
+
+/**
+ * Take a node OFFLINE by disconnecting its shared-bus transport. It removes the
+ * node's `msg:<addr>` listener + its `__peers` entry, so a peer's `canReach`
+ * toward it now reports false — the transport-neutral "unreachable" signal the
+ * send path's hold-forward rung keys on. (An InternalBus disconnect stands in
+ * for a device that drops off the mesh.)
+ */
+export async function goOffline(node) {
+  if (node?._busTransport) await node._busTransport.disconnect();
+}
+
+/**
+ * Bring a node back ONLINE and emit a PRESENCE signal to `announceTo`: it
+ * reconnects the bus transport (re-registering it) and sends a HI to the peer,
+ * standing in for an agent re-announcing itself to known peers on reconnect.
+ * That inbound HI is the presence signal that flushes anything the peer held
+ * for this node. Pass no `announceTo` to reconnect silently (e.g. to then drive
+ * the explicit `presenceSignal(addr)` reachability hook instead).
+ */
+export async function goOnline(node, { announceTo = null } = {}) {
+  if (node?._busTransport) await node._busTransport.connect();
+  if (announceTo && node?._busTransport) {
+    try { await node._busTransport.sendHello(announceTo.pubKey, { pubKey: node.pubKey }); }
+    catch { /* presence is best-effort; the explicit presenceSignal() hook is the fallback */ }
+  }
 }
 
 /**

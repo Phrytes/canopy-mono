@@ -13,8 +13,21 @@ import { Transport } from './Transport.js';
 import { Emitter }   from '../Emitter.js';
 
 /** Shared message bus. Pass the same instance to all InternalTransports that
- *  should be able to reach each other. */
-export class InternalBus extends Emitter {}
+ *  should be able to reach each other.
+ *
+ *  `presenceAware` (default false) opts the bus in to membership-based
+ *  reachability: while off, its InternalTransports are address-agnostic (they
+ *  report `canReach:true` for any address — the long-standing behaviour, so an
+ *  InternalTransport can stand in for an address-agnostic relay to a peer that
+ *  never joined the bus). While on, a peer is reachable only while its own
+ *  transport is connected, so a `disconnect()` becomes a real "unreachable"
+ *  signal — what the delivery-guarantee / offline tests key on. */
+export class InternalBus extends Emitter {
+  constructor({ presenceAware = false } = {}) {
+    super();
+    this.presenceAware = presenceAware;
+  }
+}
 
 /**
  * In-process transport: all instances sharing one InternalBus can reach each other.
@@ -58,6 +71,24 @@ export class InternalTransport extends Transport {
    */
   peerTransport(address) {
     return this.#bus.__peers?.get(address) ?? null;
+  }
+
+  /**
+   * Reachability signal. Address-agnostic by default (`true` for any peer,
+   * unchanged behaviour). On a `presenceAware` bus it tracks membership: a peer
+   * is reachable only while its own InternalTransport is connected — when a
+   * sibling calls `disconnect()` it removes its `msg:<addr>` listener and its
+   * `__peers` entry, so `_put` toward it would emit to no listener (silently
+   * lost). Reporting `canReach:false` then lets routing skip it (and the
+   * delivery-guarantee send path hold the message) instead of dropping it.
+   *
+   * @param {string} peerAddress
+   * @returns {boolean}
+   */
+  canReach(peerAddress) {
+    if (!this.#bus?.presenceAware) return true;
+    if (peerAddress == null) return true;
+    return this.#bus.__peers?.has(peerAddress) ?? false;
   }
 
   async connect() {
