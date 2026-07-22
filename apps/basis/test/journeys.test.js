@@ -51,7 +51,10 @@ const LOCAL_ACTOR = 'webid:local-demo-user';
  * Returns the live pipes used by the tests.
  */
 async function bootTestWorkspace() {
-  const agent = await createRealHouseholdAgent();
+  // These journeys exercise the demo experience (seeded members/tasks/posts), so
+  // opt into the demo scaffolding explicitly — it is OFF by default now that a
+  // real circle must show only real members + no phantom tasks.
+  const agent = await createRealHouseholdAgent({ seedDemoData: true });
   const rawCatalog = mergeManifests([
     { manifest: basisManifest },
     { manifest: agent.manifest },

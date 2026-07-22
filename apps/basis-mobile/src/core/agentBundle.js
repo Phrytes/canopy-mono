@@ -231,6 +231,10 @@ export async function bootAgentBundle(opts = {}) {
       // from the host so it can flip them based on its own first-boot
       // flag.  Default left undefined (truthy) so the first boot still
       // seeds.
+      // Opt-in demo scaffolding (seeded demo members/tasks/posts). OFF by
+      // default so a real circle shows only real members; forwarded here so
+      // the demo deploy + fixtures can enable it via the bundle.
+      seedDemoData:     opts.seedDemoData,
       seedTasks:        opts.seedTasks,
       seedStoopProfile: opts.seedStoopProfile,
       seedStoopPosts:   opts.seedStoopPosts,

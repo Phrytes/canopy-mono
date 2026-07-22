@@ -54,6 +54,10 @@ async function bootWorkspace({ chatVault, secureAgentOpts } = {}) {
   let routerRef;
   const agent = await createRealHouseholdAgent({
     chatVault, secureAgentOpts,
+    // These journeys assert the demo experience (seeded members/tasks/posts +
+    // the resolveContact demo directory), so opt into the demo scaffolding —
+    // it is OFF by default now that a real circle shows only real members.
+    seedDemoData: true,
     publishEvent: (event) => {
       if (routerRef) routerRef.deliver(event);
     },

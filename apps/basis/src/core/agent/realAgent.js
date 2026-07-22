@@ -227,6 +227,14 @@ export async function createRealHouseholdAgent(opts = {}) {
     ? opts.publishEvent
     : () => {};
 
+  // Opt-in demo scaffolding. OFF by default: a freshly created REAL circle must
+  // show only real members (the creator + actual joiners) and no phantom tasks.
+  // When explicitly enabled (demo deploy / journey fixtures), the factory seeds
+  // the three named demo members (Anne/Karl/Maria) into the default tasks + stoop
+  // circles, the matching demo contacts, and the starter demo tasks/posts. Nothing
+  // here fabricates peers into the `_sync` hint — that reads real state regardless.
+  const seedDemoData = opts.seedDemoData === true;
+
   const bus = new InternalBus();
 
   // claim-router hook holder. Hosts call agent.setAfterClaimHook(fn)
@@ -419,21 +427,18 @@ export async function createRealHouseholdAgent(opts = {}) {
     try { return !(householdMirrors.get(circleId || 'household')?.listPeers?.() ?? []).includes(pubKey); } catch { return true; }
   }
 
-  // v0.6 demo — household runs as a 'decentralized' circle with three
-  // simulated peers.  Mostly online; one randomly unreachable so the
-  // sync-hint UI surfaces a recognisable pattern.  Real apps populate
-  // _sync from their actual sync-engine state.
-  const SIM_PEERS = ['webid:anne', 'webid:karl', 'webid:maria'];
+  // `_sync` reply hint — REAL connectivity state, never a fabricated demo roster.
+  // Reads this device's live household no-pod peer roster (the mirror the shell
+  // feeds as a circle's members become known). Empty until real peers pair, so the
+  // renderer shows the honest "saved locally; awaiting peer sync" (formatSyncHints'
+  // 0-peer branch) instead of inventing offline peers. Shape stays the
+  // `decentralized` SyncHints envelope the renderer + calendar already consume.
+  // (Kept named `simulateSync` — the param registerCalendarSkills + the callSkill
+  // adapters expect — but the value is now real, not simulated.)
   function simulateSync() {
-    const offline = Math.random() < 0.4
-      ? [SIM_PEERS[Math.floor(Math.random() * SIM_PEERS.length)]]
-      : [];
-    return {
-      style:       'decentralized',
-      peers:       SIM_PEERS.filter((p) => !offline.includes(p)),
-      pending:     [],
-      unreachable: offline,
-    };
+    let peers = [];
+    try { peers = householdMirror?.listPeers?.() ?? []; } catch { peers = []; }
+    return { style: 'decentralized', peers, pending: [], unreachable: [] };
   }
 
   /* ─────────── v0.7.10 — Calendar app skills ─────────── */
@@ -848,11 +853,14 @@ export async function createRealHouseholdAgent(opts = {}) {
   // name when the query matches a known household member.
   hostAgent.register('resolveContact', async ({ parts }) => {
     const query = String(parts?.[0]?.data?.query ?? '').toLowerCase();
-    const members = [
+    // Demo-only contact directory (Anne/Karl/Maria). Empty in a real install so
+    // resolveContact answers an honest "no contact matches" until real members
+    // exist; the named contacts return only under the opt-in seedDemoData flag.
+    const members = seedDemoData ? [
       { displayName: 'Anne',  webid: 'webid:anne',  handle: 'anne'  },
       { displayName: 'Karl',  webid: 'webid:karl',  handle: 'karl'  },
       { displayName: 'Maria', webid: 'webid:maria', handle: 'maria' },
-    ];
+    ] : [];
     const exact = members.find((m) => m.handle === query || m.displayName.toLowerCase() === query);
     if (exact) return [DataPart({ ...exact, confidence: 'exact' })];
     const fuzzy = members.find((m) => m.displayName.toLowerCase().includes(query) && query.length >= 2);
@@ -980,14 +988,18 @@ export async function createRealHouseholdAgent(opts = {}) {
       kind:    'household',
       members: [
         // chatAgent's pubKey is what tasks-v0 sees as `from`; bind
-        // it to the local-demo-user webid + admin role.
+        // it to the local-demo-user webid + admin role. This is the
+        // only real member of a fresh circle — the creator.
         { webid: chatId.pubKey, displayName: 'me', role: 'admin' },
-        // Aliases so existing CC tests that mention 'webid:anne'
-        // / 'webid:karl' / 'webid:maria' still resolve to known
-        // circle members.
-        { webid: 'webid:anne',  displayName: 'Anne',  role: 'coordinator' },
-        { webid: 'webid:karl',  displayName: 'Karl',  role: 'member'      },
-        { webid: 'webid:maria', displayName: 'Maria', role: 'member'      },
+        // Demo-only aliases (Anne/Karl/Maria) — gated behind the opt-in
+        // seedDemoData flag (OFF by default) so a fresh REAL circle's roster
+        // holds only real members. With the flag on they let the demo +
+        // journey fixtures that mention these webids resolve to circle members.
+        ...(seedDemoData ? [
+          { webid: 'webid:anne',  displayName: 'Anne',  role: 'coordinator' },
+          { webid: 'webid:karl',  displayName: 'Karl',  role: 'member'      },
+          { webid: 'webid:maria', displayName: 'Maria', role: 'member'      },
+        ] : []),
       ],
     },
     // Mirrors `opts.stoopPersistDb` below.  Browser passes
@@ -1002,16 +1014,17 @@ export async function createRealHouseholdAgent(opts = {}) {
   });
   await chatAgent.hello(tasksCircle.address);
 
-  // Pre-seed the demo circle with the same 4 tasks the mock used —
-  // existing tests + the user-facing demo expect /mytasks to show
-  // these out of the box.  Skip when caller passes seedTasks:false
-  // (clean-slate fixtures, e.g. for persistence tests).
+  // Pre-seed the demo circle with 4 starter tasks — the demo + journey
+  // fixtures expect /mytasks to show these out of the box.  DEMO-ONLY: a real
+  // circle gets no phantom tasks, so this is gated behind the opt-in
+  // seedDemoData flag (OFF by default).  seedTasks:false is still honoured as
+  // an independent clean-slate opt-out (e.g. persistence tests).
   //
   // Perf #1 (2026-05-30): also skip seeding when the circle already
   // has tasks (warm-boot after persisted storage).  One cheap listOpen
   // probe avoids 4 sequential addTask round-trips that were blocking
   // every boot on mobile.  Fail-open: if the probe errors, seed anyway.
-  if (opts.seedTasks !== false) {
+  if (seedDemoData && opts.seedTasks !== false) {
     let alreadySeeded = false;
     try {
       const probe  = await chatAgent.invoke(tasksCircle.address, 'listOpen', [DataPart({})]);
@@ -1071,9 +1084,13 @@ export async function createRealHouseholdAgent(opts = {}) {
     group:      opts.stoopGroup ?? 'cc-default-buurt',
     members:    opts.stoopMembers ?? [
       { webid: chatId.pubKey,     displayName: 'me',    role: 'admin'       },
-      { webid: 'webid:anne',      displayName: 'Anne',  role: 'coordinator' },
-      { webid: 'webid:karl',      displayName: 'Karl',  role: 'member'      },
-      { webid: 'webid:maria',     displayName: 'Maria', role: 'member'      },
+      // Demo-only phantom members — gated behind seedDemoData (OFF by default)
+      // so a fresh REAL buurt's roster shows only the creator + actual joiners.
+      ...(seedDemoData ? [
+        { webid: 'webid:anne',      displayName: 'Anne',  role: 'coordinator' },
+        { webid: 'webid:karl',      displayName: 'Karl',  role: 'member'      },
+        { webid: 'webid:maria',     displayName: 'Maria', role: 'member'      },
+      ] : []),
     ],
     persistDb:  opts.stoopPersistDb,   // browser IDB; opt-in via caller
     // S4 — per-circle control-agent router: redeem→addMember / leave→removeMember route
@@ -1103,13 +1120,15 @@ export async function createRealHouseholdAgent(opts = {}) {
     }
   }
 
-  // Pre-seed 3 demo posts so /feed has content out of the box
-  // (matches the previous mock seed; opts.seedStoopPosts:false to opt out).
+  // Pre-seed 3 demo posts so /feed has content out of the box.  DEMO-ONLY
+  // (the posts name the demo members) — a real buurt starts with an empty
+  // feed, so this is gated behind the opt-in seedDemoData flag (OFF by
+  // default).  seedStoopPosts:false remains an independent opt-out.
   //
   // Perf #1 (2026-05-30): skip when stoop already has open posts
   // (warm-boot after persisted storage).  One listOpen probe avoids 3
   // sequential postRequest round-trips that were blocking every boot.
-  if (opts.seedStoopPosts !== false) {
+  if (seedDemoData && opts.seedStoopPosts !== false) {
     let alreadySeeded = false;
     try {
       const probe = await chatAgent.invoke(stoopAgent.address, 'listOpen', [DataPart({})]);

@@ -27,8 +27,10 @@ async function bootMobileBundle() {
   return bootAgentBundle({
     chatVault: new VaultMemory(),
     hostVault: new VaultMemory(),
-    // No seedTasks override needed — primary circle gets the standard 4
-    // seeds; the per-circle circles are spawned empty on demand.
+    // Opt into the demo seed so the primary circle IS pre-seeded — the
+    // separation test below then genuinely proves those seeded tasks don't
+    // leak into a per-circle store. (The demo seed is OFF by default now.)
+    seedDemoData: true,
   });
 }
 
