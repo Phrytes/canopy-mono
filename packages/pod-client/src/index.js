@@ -81,6 +81,8 @@ export {
   createSealedIndex, upsertEntry, removeEntry, getEntry, decodePseudonym,
   queryIndex, semanticQuery, serializeIndex, parseIndex, shardKeyFor,
   createControlAgent, createCanonicalShare, createPodKeyStore, readGroupKey, createMemberSealingIdentity,
+  KEY_EVENT_KIND, buildKeyEvent, establishKeyEvent, rotateKeyEvent,   // key-events in the log — self-distributing group key + rotation (no pod)
+  foldKeyEvents, readKeyChain, currentGroupKey, openAcrossKeyChain,
   resolveCircleStorage, circleStorageClient,
   SEAL_SCHEMES, chooseSealScheme, resolveSealStrategy, sealForAudience, openSealedEnvelope,   // the one seal resolver
 } from './sealing/index.js';

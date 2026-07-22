@@ -33,8 +33,14 @@
  */
 
 import { InternalBus, InternalTransport } from '@onderling/core';
+import {
+  sealingPublicKeyFromNetworkKey,
+  establishKeyEvent, rotateKeyEvent, readKeyChain, currentGroupKey, openAcrossKeyChain,
+  sealForAudience,
+} from '@onderling/pod-client';
 
 import { createRealHouseholdAgent } from '../../src/web/realAgent.js';
+import { openerForIdentity } from '../../src/v2/sharedCopyOpener.js';
 import { makePeerRouter } from '../../src/core/handlers/peerRouter.js';
 import {
   makeHandleGroupRedeemRequest,
@@ -83,6 +89,10 @@ export async function until(pred, { timeout = 4000, step = 10 } = {}) {
 export async function bootRealAgentNode(label = 'agent') {
   const routerRef = { fn: null };
   const received = [];
+  // A sealed circle's log carries key-events + sealed content over the real transport; a node records what
+  // it receives here (inert for the unsealed default harness — these stay empty unless a sealed circle boots).
+  const keyEvents = [];
+  const sealedContent = [];
 
   const agent = await createRealHouseholdAgent({
     // Test-only seam: the browser wires this inside connectPeerTransport; in node
@@ -107,6 +117,10 @@ export async function bootRealAgentNode(label = 'agent') {
     'group-redeem-response': makeHandleGroupRedeemResponse({ pendingMap, logger: QUIET }),
     // Both sides: record a mesh-introduced peer into the local roster.
     'buurt-peer-intro': makeHandleBuurtPeerIntro({ callSkill, logger: QUIET }),
+    // Sealed circle: a fanned key-event lands in this node's key-event log (the no-pod key-chain carrier);
+    // sealed content lands in its content log. Recording is all a member does — folding happens on read.
+    'group-key-event': (_from, payload) => { if (payload?.event) keyEvents.push(payload.event); },
+    'sealed-content':  (_from, payload) => { if (payload?.env) sealedContent.push(payload); },
   };
   const sendPeerRedeem = makeSendGroupRedeemRequest({
     sendPeer,
@@ -123,7 +137,7 @@ export async function bootRealAgentNode(label = 'agent') {
     logger: QUIET,
   });
 
-  return { agent, pubKey, received, sendPeerRedeem, pendingMap, label };
+  return { agent, pubKey, received, sendPeerRedeem, pendingMap, label, keyEvents, sealedContent };
 }
 
 /**
@@ -146,6 +160,21 @@ export async function connectAgentsOverBus(a, b, { transportName = 'relay' } = {
   // it (a disconnect on the shared bus = that node goes offline).
   a._busTransport = txA;
   b._busTransport = txB;
+  return bus;
+}
+
+/**
+ * Connect N booted node agents onto ONE shared presence-aware bus (the three-agent generalisation of
+ * `connectAgentsOverBus`). Each node's chat transport is registered under its chat pubKey, so any node can
+ * `sendPeerMessage(peer.pubKey, …)` to any other; each node's `_busTransport` is stashed for goOffline/goOnline.
+ */
+export async function connectNodesOverBus(nodes, { transportName = 'relay' } = {}) {
+  const bus = new InternalBus({ presenceAware: true });
+  for (const n of nodes) {
+    const tx = new InternalTransport(bus, n.pubKey);
+    await n.agent.sa.addSecureTransport(transportName, tx);
+    n._busTransport = tx;
+  }
   return bus;
 }
 
@@ -187,39 +216,121 @@ export async function pairCircle(admin, joiner, {
   handle = 'peerbee',
   purpose = 'node pairing test',
 } = {}) {
-  const adminCallSkill = (app, op, args) => admin.agent.callSkill(app, op, args);
-  const joinerCallSkill = (app, op, args) => joiner.agent.callSkill(app, op, args);
+  const { created } = await createCircle(admin, { groupId, name, purpose });
+  const { invite, joined } = await joinExistingCircle(admin, joiner, { groupId, handle });
+  return { created, invite, joined, groupId };
+}
 
-  // 1. Create — the create wizard's real op path (createGroupState.finalSubmit →
-  //    stoop.createGroupV2). buildRulesObjectFromState builds the rules blob.
+/**
+ * Create a circle via the real create-wizard op path (createGroupState.finalSubmit → stoop.createGroupV2).
+ * The single-admin creator step, split out so ONE circle can then take MULTIPLE joiners (the sealed-circle
+ * three-member case) instead of `pairCircle` minting a fresh circle per pair.
+ */
+export async function createCircle(admin, { groupId = 'peer-circle', name = 'Peer Circle', purpose = 'node pairing test' } = {}) {
+  const adminCallSkill = (app, op, args) => admin.agent.callSkill(app, op, args);
   const state = createGroupInitialState();
   state.groupId = groupId;
   state.name = name;
   state.purpose = purpose;
   const { result: created, state: outState } = await createGroupFinalSubmit({ state, callSkill: adminCallSkill });
   if (!created) throw new Error(`createGroupV2 failed: ${outState?.submitError ?? 'unknown'}`);
+  return { created, groupId };
+}
 
-  // 2. Invite — the admin reads the circle's current code + stamps its peer
-  //    address (its chat pubKey — the address our shared-bus transport routes to).
-  const invite = await buildCircleInviteUri({
-    callSkill: adminCallSkill,
-    circleId: groupId,
-    adminPeerAddr: admin.pubKey,
-  });
+/**
+ * Join an EXISTING circle: the admin mints a fresh invite for the current code, the joiner redeems it over the
+ * in-process transport (the real join wizard op path → group-redeem peer bridge → membership trail). Callable
+ * repeatedly against one circle to admit several members.
+ */
+export async function joinExistingCircle(admin, joiner, { groupId = 'peer-circle', handle = 'peerbee' } = {}) {
+  const adminCallSkill = (app, op, args) => admin.agent.callSkill(app, op, args);
+  const joinerCallSkill = (app, op, args) => joiner.agent.callSkill(app, op, args);
+
+  const invite = await buildCircleInviteUri({ callSkill: adminCallSkill, circleId: groupId, adminPeerAddr: admin.pubKey });
   if (invite?.error) throw new Error(`buildCircleInviteUri failed: ${invite.error}`);
 
-  // 3. Redeem — the join wizard's real op path (joinGroupState.finalSubmit). The
-  //    local redeemMembershipCode misses (joiner has no code item), so it falls
-  //    back to sendPeerRedeem → group-redeem-request → admin verify → response →
-  //    recordRemoteRedemption. THIS is the full app join the browser couldn't confirm.
   const joined = await joinCircleFromInvite({
     inviteUri: invite.uri,
     callSkill: joinerCallSkill,
     sendPeerRedeem: joiner.sendPeerRedeem,
     handle,
   });
+  return { invite, joined, groupId };
+}
 
-  return { created, invite, joined, groupId };
+// ── Sealed circle (posture p2) — a group key + rotations carried in the log, no pod ─────────────────────────
+//
+// The default harness circle is UNSEALED (no group key). These helpers boot a SEALED circle over the SAME real
+// agents + transport: a member's stable sealing PUBLIC key is derived from its published network key
+// (`sealingPublicKeyFromNetworkKey`), and its sealing PRIVATE key stays encapsulated behind an opener closure
+// (`openerForIdentity` → AgentIdentity.sharedCopyOpener) — the exact app seam, no secret ever surfaced. Key
+// establishment/rotation ride the log as key-events fanned over `sendPeerMessage` (real hold-forward when a peer
+// is offline); content is sealed by the seal resolver under the current version and fanned the same way. This is
+// the no-pod key-rotation mechanism end-to-end, with the harness standing in only for the stoop skill that would
+// emit/record the events (as it already stands in for the browser's connectPeerTransport wiring).
+
+/** A member's stable sealing PUBLIC key — derived from its published network key (deterministic, no trail dependency). */
+export function memberSealingPubKey(node) {
+  return sealingPublicKeyFromNetworkKey(node.pubKey);
+}
+
+/** A member's sealing OPENER: `(sealedText) => plaintext` bound to its sealing PRIVATE key, which never escapes
+ *  the closure (the encapsulated `AgentIdentity.sharedCopyOpener` path the app uses for shared copies). */
+export function memberOpener(node) {
+  return openerForIdentity(node.agent.sa.agent.identity);
+}
+
+// Hold-forward on: a key-event/content send to an offline member is HELD (not lost), then flushed on reconnect.
+const SEALED_SEND = { hold: true, firstSendTimeoutMs: 0, retryDelays: [] };
+
+/** Fan a key-event to each recipient node over the real transport (offline recipients are held). */
+async function fanKeyEvent(from, toNodes, groupId, event) {
+  await Promise.all(toNodes.map((n) =>
+    from.agent.sendPeerMessage(n.pubKey, { type: 'group-key-event', subtype: 'group-key-event', groupId, event }, SEALED_SEND)));
+}
+
+/**
+ * Boot a sealed circle: the admin ESTABLISHES version-1 group key sealed to every member's sealing key and fans
+ * that key-event to the members over the log/transport. The admin keeps its own copy in its key-event log.
+ */
+export async function bootSealedCircle({ admin, members = [], groupId }) {
+  const recipients = [memberSealingPubKey(admin), ...members.map(memberSealingPubKey)];
+  const { event } = establishKeyEvent({ groupId, recipients });
+  admin.keyEvents.push(event);
+  await fanKeyEvent(admin, members, groupId, event);
+  return { groupId, recipients };
+}
+
+/**
+ * The admin seals `text` under the CURRENT group-key version (folded from its own key-event log) via the seal
+ * resolver, then fans the sealed envelope to `members`. Returns the tagged envelope (also recorded on receipt).
+ */
+export async function postSealed({ admin, members = [], groupId, text }) {
+  const chain = readKeyChain(admin.keyEvents, { groupId, opener: memberOpener(admin) });
+  const groupKey = currentGroupKey(chain);
+  if (!groupKey) throw new Error('postSealed: the admin holds no current group key to seal with');
+  const env = sealForAudience(text, { groupKey }, { audience: 'circle' });
+  await Promise.all(members.map((n) =>
+    admin.agent.sendPeerMessage(n.pubKey, { type: 'sealed-content', subtype: 'sealed-content', groupId, env }, SEALED_SEND)));
+  return env;
+}
+
+/**
+ * Remove a member + rotate: the admin mints the NEXT-version key sealed to the REMAINING recipients only (the
+ * departed omitted → backward secrecy) and fans that rotation key-event to `keep` alone. Returns the new event.
+ */
+export async function removeAndRotate({ admin, keep = [], groupId }) {
+  const recipients = [memberSealingPubKey(admin), ...keep.map(memberSealingPubKey)];
+  const { event } = rotateKeyEvent({ groupId, priorEvents: admin.keyEvents, recipients });
+  admin.keyEvents.push(event);
+  await fanKeyEvent(admin, keep, groupId, event);   // the removed member is NOT among the recipients of this fan
+  return { event };
+}
+
+/** A member reads a sealed envelope across the versions it holds (folds its key-event log, opens by trial). */
+export function readSealed(node, env, groupId) {
+  const chain = readKeyChain(node.keyEvents, { groupId, opener: memberOpener(node) });
+  return openAcrossKeyChain(env, chain);
 }
 
 /** Read a circle roster via the real listGroupMembers op. */

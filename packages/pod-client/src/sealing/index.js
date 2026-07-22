@@ -15,6 +15,10 @@ export {
   createSealedIndex, upsertEntry, removeEntry, getEntry, decodePseudonym,
   queryIndex, semanticQuery, serializeIndex, parseIndex, shardKeyFor,
 } from './sealedIndex.js';
+export {
+  KEY_EVENT_KIND, buildKeyEvent, establishKeyEvent, rotateKeyEvent,   // key establishment + rotation carried in the log
+  foldKeyEvents, readKeyChain, currentGroupKey, openAcrossKeyChain,   // fold(log) → key chain; read/open across versions
+} from './keyEventsLog.js';
 export { createControlAgent } from './controlAgent.js';
 export { createCanonicalShare } from './canonicalShare.js';   // objective L — revocable canonical cross-circle share
 export {

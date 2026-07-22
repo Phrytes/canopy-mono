@@ -118,3 +118,37 @@ describe('controlAgent — bootstrap', () => {
     expect(() => createControlAgent({ sharing: { grant() {}, revoke() {} }, keyStore: { read() {}, write() {} } })).toThrow(/controllerKey/);
   });
 });
+
+describe('controlAgent — emits log key-events (self-distributing key, no pod)', () => {
+  function sealedSetup() {
+    const sharing = { grant: vi.fn(async () => {}), revoke: vi.fn(async () => {}) };
+    let stored = null;
+    const keyStore = { read: async () => stored, write: async (r) => { stored = r; } };
+    const controllerKey = generateKeypair();
+    const log = [];
+    const keyEventLog = { append: (e) => { log.push(e); } };
+    const agent = createControlAgent({ sharing, containerUri: 'https://pod/c/', keyStore, controllerKey, keyEventLog, groupId: 'c1' });
+    return { agent, controllerKey, log, keyStore: { current: () => stored } };
+  }
+
+  it('grant + remove each emit a key-event, and the rotation key-event excludes the departed member', async () => {
+    const { agent, log } = sealedSetup();
+    const bob = generateKeypair();
+    const carol = generateKeypair();
+
+    await agent.addMember({ webId: 'did:bob', publicKey: bob.publicKey, role: 'admin' });
+    await agent.addMember({ webId: 'did:carol', publicKey: carol.publicKey });
+    const afterAdds = log.length;
+    expect(afterAdds).toBeGreaterThanOrEqual(2);                 // an establish/grant event per add
+    expect(log.every((e) => e.kind === 'group-key-event' && e.groupId === 'c1')).toBe(true);
+    const beforeRemove = log[log.length - 1];
+    expect(beforeRemove.recipients).toContain(carol.publicKey);  // carol is a recipient while a member
+
+    await agent.removeMember({ webId: 'did:carol' });
+    expect(log.length).toBe(afterAdds + 1);                      // removal emitted exactly one rotation event
+    const rotation = log[log.length - 1];
+    expect(rotation.version).toBe(beforeRemove.version + 1);     // a NEW version
+    expect(rotation.recipients).not.toContain(carol.publicKey);  // sealed to the REMAINING members only
+    expect(rotation.recipients).toContain(bob.publicKey);
+  });
+});

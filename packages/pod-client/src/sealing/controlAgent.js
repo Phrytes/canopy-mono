@@ -11,7 +11,8 @@
 // Pure orchestration: pod I/O is injected — `sharing.grant/revoke`, and a `keyStore` {read,write} that
 // persists the key resource to the pod (e.g. /.keys/group-vN.json via a SealedPodClient or PodClient).
 
-import { grantMember, rotateGroupKeyResource, buildGroupKeyResource, banFromHistory } from './groupKeyResource.js';
+import { grantMember, rotateGroupKeyResource, buildGroupKeyResource, banFromHistory, unwrapGroupKey } from './groupKeyResource.js';
+import { buildKeyEvent } from './keyEventsLog.js';
 import { generateGroupKey } from './envelope.js';
 
 function normalizeMember(m) {
@@ -31,8 +32,12 @@ function normalizeMember(m) {
  * @param {{ publicKey: string, privateKey: string }} a.controllerKey  the agent's own keypair (always a recipient)
  * @param {string[]} [a.modes]                                    ACL modes granted to members (default read+write)
  * @param {Array<{webId,publicKey,role}>} [a.roster]             initial member roster
+ * @param {{ append: (event:object) => any }} [a.keyEventLog]     optional log sink — when present, every key
+ *   establishment/grant/rotation ALSO emits the versioned key AS a log key-event (self-distributing, no-pod).
+ *   The pod key resource is still written (defense-in-depth); the LOG is the source. Absent → pod-only, unchanged.
+ * @param {string} [a.groupId]                                    circle id stamped onto emitted key-events.
  */
-export function createControlAgent({ sharing, containerUri, keyStore, controllerKey, modes = ['read', 'write'], roster = [], revokeMeshProof = null }) {
+export function createControlAgent({ sharing, containerUri, keyStore, controllerKey, modes = ['read', 'write'], roster = [], revokeMeshProof = null, keyEventLog = null, groupId = null }) {
   if (!sharing || typeof sharing.grant !== 'function' || typeof sharing.revoke !== 'function') {
     throw new Error('createControlAgent: sharing with grant/revoke required');
   }
@@ -45,12 +50,26 @@ export function createControlAgent({ sharing, containerUri, keyStore, controller
   let members = roster.map(normalizeMember);
   const recipientsWithController = (pubs) => [...new Set([...pubs, controllerKey.publicKey])];
 
+  /** Emit the just-written key RESOURCE as a log key-event too, so the SAME versioned key self-distributes with
+   *  no pod (the resource is defense-in-depth; the log is the source). Best-effort: a sink failure never breaks
+   *  the membership op — the pod resource still carries the key. No-op when no `keyEventLog` was injected. */
+  async function emitKeyEvent(resource) {
+    if (!keyEventLog || typeof keyEventLog.append !== 'function' || !resource) return;
+    try {
+      const groupKey = unwrapGroupKey(resource, controllerKey.privateKey);   // the controller is always a recipient
+      await keyEventLog.append(buildKeyEvent({
+        groupId, version: resource.version, groupKey, recipients: resource.recipients,
+      }));
+    } catch { /* the log key-event is best-effort; the pod resource remains the fallback */ }
+  }
+
   /** Build the initial key resource for the current roster (idempotent — no-op if one exists). */
   async function bootstrap() {
     if (await keyStore.read()) return null;
     const pubs = recipientsWithController(members.map((m) => m.publicKey));
     const res = buildGroupKeyResource({ version: 1, groupKey: generateGroupKey(), recipients: pubs });
     await keyStore.write(res);
+    await emitKeyEvent(res);
     return res;
   }
 
@@ -76,6 +95,7 @@ export function createControlAgent({ sharing, containerUri, keyStore, controller
         ? grantMember(cur, { newRecipient: m.publicKey, granterPrivateKey: controllerKey.privateKey, currentRecipients: currentPubs })
         : buildGroupKeyResource({ version: 1, groupKey: generateGroupKey(), recipients: [...currentPubs, m.publicKey] });
       await keyStore.write(next);
+      await emitKeyEvent(next);   // the new roster's key-event — the added member is now a recipient in the log too
       members = [...members, m];
       return { keyResource: next, members: members.slice() };
     },
@@ -109,6 +129,9 @@ export function createControlAgent({ sharing, containerUri, keyStore, controller
         next = banFromHistory(next, { excludePubKey: target.publicKey, controllerPrivateKey: controllerKey.privateKey });
       }
       await keyStore.write(next);
+      // The rotation as a log key-event: sealed to the REMAINING recipients only, so the departed — absent from
+      // it — never folds the new version in and cannot open post-removal content (backward secrecy, no pod).
+      await emitKeyEvent(next);
       members = remaining;
       // ── Coupling: revoke the departed's mesh membership proof too (both policies). Best-effort:
       //    a failure is surfaced in the return, never silently swallowed and never left partial-then-thrown.
