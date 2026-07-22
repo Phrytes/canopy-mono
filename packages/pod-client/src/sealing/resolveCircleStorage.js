@@ -17,6 +17,7 @@
 
 import { recipientStrategy, groupKeyStrategy, createSealedPodClient } from './SealedPodClient.js';
 import { readableGroupKeys } from './groupKeyResource.js';
+import { chooseSealScheme, SEAL_SCHEMES } from './sealResolver.js';
 
 /**
  * Map a circle's storage posture to a `SealedPodClient` strategy: p2 → group-key (cross-version
@@ -33,8 +34,12 @@ import { readableGroupKeys } from './groupKeyResource.js';
  * @returns {{seal:Function, open:Function}|null}  a SealedPodClient strategy, or null for plaintext
  */
 export function resolveCircleStorage({ posture, resource, groupKey, recipients, privateKey } = {}) {
-  switch (posture) {
-    case 'p2':
+  // The scheme is chosen in ONE place (the seal resolver), from the posture, rather than switched inline
+  // here: p2 → group-key, p3 → pairwise (recipient-wrap), p0/p1 → no client-side seal. The strategy
+  // CONSTRUCTION (and its fail-safe key-material checks) stays local, unchanged.
+  const scheme = chooseSealScheme({ posture });
+  switch (scheme) {
+    case SEAL_SCHEMES.GROUP_KEY:
       // Preferred: the retained RESOURCE + the reader's private key → the cross-version reader. Fail-safe —
       // if this key unwraps NO version (a never-member), fall through to null rather than a strategy whose
       // open would only ever throw. A revoked member keeps a non-empty (historic-only) readable set, so they
@@ -43,13 +48,11 @@ export function resolveCircleStorage({ posture, resource, groupKey, recipients, 
         return readableGroupKeys(resource, privateKey).length ? groupKeyStrategy({ resource, privateKey }) : null;
       }
       return groupKey ? groupKeyStrategy({ groupKey }) : null;
-    case 'p3': {
+    case SEAL_SCHEMES.PAIRWISE: {
       const hasRecipients = Array.isArray(recipients) ? recipients.length > 0 : !!recipients;
       // a processor (private key, no recipients) can still OPEN; a writer (recipients) can SEAL.
       return (hasRecipients || privateKey) ? recipientStrategy({ recipients, privateKey }) : null;
     }
-    case 'p0':
-    case 'p1':
     default:
       return null;
   }

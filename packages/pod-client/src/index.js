@@ -82,6 +82,7 @@ export {
   queryIndex, semanticQuery, serializeIndex, parseIndex, shardKeyFor,
   createControlAgent, createCanonicalShare, createPodKeyStore, readGroupKey, createMemberSealingIdentity,
   resolveCircleStorage, circleStorageClient,
+  SEAL_SCHEMES, chooseSealScheme, resolveSealStrategy, sealForAudience, openSealedEnvelope,   // the one seal resolver
 } from './sealing/index.js';
 
 // Identity-on-pod (extracted from @onderling/core — Track B / identity-pod-schema).

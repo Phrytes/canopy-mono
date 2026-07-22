@@ -23,3 +23,7 @@ export {
 export { createPodKeyStore, readGroupKey } from './podKeyStore.js';
 export { createMemberSealingIdentity } from './memberIdentity.js';
 export { resolveCircleStorage, circleStorageClient } from './resolveCircleStorage.js';
+export {
+  SEAL_SCHEMES, chooseSealScheme, resolveSealStrategy,   // the one seal resolver — scheme chosen by policy
+  sealForAudience, openSealedEnvelope,
+} from './sealResolver.js';
