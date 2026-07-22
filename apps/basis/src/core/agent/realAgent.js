@@ -1105,6 +1105,14 @@ export async function createRealHouseholdAgent(opts = {}) {
     // to the joined circle's sealed-pod producer (multi-member sealing). Opt-in; absent
     // → membership hooks no-op (the pre-S4 behaviour).
     controlAgent: opts.stoopControlAgent,
+    // Route kring chat fan-out through the SAME reliable choke durable circle content uses:
+    // `sa.peer.sendTo(..., {guarantee:'hold-forward'})`. This is what gives a kring chat
+    // failover (`_sendWithFailover`) + offline hold-forward — the reliability the bus-local
+    // `chat.send` transport (stoop's own in-process agent) never had. The stoop skill builds a
+    // conforming `kring-chat-message` envelope and calls this per recipient; a briefly-offline
+    // member has the message HELD and flushed on reconnect, exactly like a task/noticeboard fan.
+    reliableSend: (to, envelope, sendOpts = {}) =>
+      sa.peer.sendTo(to, envelope, { guarantee: 'hold-forward', ...sendOpts }),
     label:      'StoopAgent(cc)',
   });
   await chatAgent.hello(stoopAgent.address);

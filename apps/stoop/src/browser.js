@@ -70,6 +70,10 @@ export async function createBrowserStoopAgent({
   persistDb,
   label = 'StoopAgent',
   controlAgent,
+  // Optional host-injected reliable cross-peer sender (basis wires
+  // `sa.peer.sendTo(..., {guarantee:'hold-forward'})`). Threaded straight into
+  // the bundle so kring chat fan-out inherits failover + offline hold-forward.
+  reliableSend,
 }) {
   if (!bus)           throw new TypeError('createBrowserStoopAgent: bus required');
   if (!identityVault) throw new TypeError('createBrowserStoopAgent: identityVault required');
@@ -96,6 +100,7 @@ export async function createBrowserStoopAgent({
     persistDb,
     label,
     controlAgent,   // sealed-pod membership hooks (no-op when absent) — see the param doc above
+    reliableSend,   // host-injected hold-forward sender for kring chat fan-out (absent → chat.send fallback)
   });
 
   return {

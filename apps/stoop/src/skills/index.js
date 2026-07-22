@@ -439,6 +439,65 @@ async function _fanOutToMembers({ members, chat, selfWebid, subtype, threadId, b
 }
 
 /**
+ * Fan a kring chat message out to every other member over a host-injected RELIABLE
+ * sender (`bundle.reliableSend` = basis's `sa.peer.sendTo(..., {guarantee:'hold-forward'})`),
+ * instead of the bus-local `chat.send`. This is what lets a kring chat inherit the SAME
+ * failover + offline hold-forward durable circle content already has: a member who is
+ * briefly offline has the envelope HELD and delivered on their next presence signal
+ * (`held:true`), which counts as a successful send — NOT a failure.
+ *
+ * The envelope is the conforming `kring-chat-message` wire shape the existing receiver
+ * (basis peerRouter → `makeKringChatPeerHandler` → chatMessageInbox → `ingestKringMessage`)
+ * validates and renders — carrying a top-level `text` (the chat.send path emitted `body`,
+ * which that receiver rejects), `circleId`, `msgId`, `ts`, `fromActor`. Dedup stays on
+ * `msgId` at the receiver; ordering + persistence + catch-up are unchanged.
+ *
+ * Return shape mirrors `_fanOutToMembers` ({sent, attempted, errors}) so the delivery-state
+ * classifier (`classifyFanOut`) is unaffected. A recipient with no resolvable address is an
+ * honest `recipient-pubkey-unknown` (permanent) — same reason code chat.send produced.
+ *
+ * @param {object} a
+ * @param {{list:()=>Promise<Array>, resolveByWebid:Function}} a.members
+ * @param {(addr:string, envelope:object, opts?:object)=>Promise<any>} a.reliableSend
+ * @param {string|null} a.selfWebid    webid to omit from the fan-out (the sender)
+ * @param {object} a.envelope          the conforming kring-chat-message wire envelope
+ * @returns {Promise<{sent:number, attempted:number, errors:Array<{webid:string,reason:string}>}>}
+ */
+async function _fanOutViaReliableSend({ members, reliableSend, selfWebid, envelope }) {
+  const list = await members.list();
+  const targets = new Map();      // routable address → webid (dedupe by address)
+  const unresolved = [];
+  for (const m of list ?? []) {
+    const webid = typeof m === 'string' ? m : (m?.webid ?? m?.webId ?? null);
+    if (!webid || webid === selfWebid) continue;
+    let addr = (m && typeof m === 'object' && typeof m.pubKey === 'string' && m.pubKey) ? m.pubKey : null;
+    if (!addr) {
+      try { const peer = await members.resolveByWebid(webid); addr = peer?.pubKey ?? null; } catch { addr = null; }
+    }
+    // basis circles bind webid === the member's chat pubKey (the routable secure-agent
+    // address the harness/prod route on), so a webid is a valid fallback address when the
+    // (lossy) MemberMap has no captured pubKey — strictly more reachable than chat.send.
+    if (!addr && typeof webid === 'string' && webid) addr = webid;
+    if (!addr) { unresolved.push(webid); continue; }
+    if (!targets.has(addr)) targets.set(addr, webid);
+  }
+  let sent = 0;
+  const errors = unresolved.map((webid) => ({ webid, reason: 'recipient-pubkey-unknown' }));
+  await Promise.all([...targets].map(async ([addr, webid]) => {
+    try {
+      const r = await reliableSend(addr, envelope, { guarantee: 'hold-forward' });
+      // held (offline → queued for hold-forward) AND delivered both count as sent; a send
+      // that explicitly reports neither is the only genuine transient failure.
+      if (r && r.held === false && r.delivered === false) errors.push({ webid, reason: 'not-delivered' });
+      else sent += 1;
+    } catch (err) {
+      errors.push({ webid, reason: String(err?.message ?? err) });
+    }
+  }));
+  return { sent, attempted: targets.size + unresolved.length, errors };
+}
+
+/**
  * Shared inbound-peer filter for BOTH ingest paths (kring chat + buurt post),
  * so eviction + mute can't drift between them (E1 drift-guard). Returns a
  * rejection verdict (`{evicted:true}` | `{muted:true}`) or `null` (let through).
@@ -3286,17 +3345,32 @@ export function buildSkills({
         console.warn('[broadcastKringMessage] local mirror failed:', err?.message ?? err);
       }
 
-      if (!chat?.send)           return { error: 'chat-unavailable', sent: 0, errors: [], itemId: localItemId };
-      if (!members)              return { error: 'members-unavailable', sent: 0, errors: [], itemId: localItemId };
+      // Prefer the host-injected RELIABLE sender (basis wires the secure-agent
+      // hold-forward choke). Falls back to the bus-local `chat.send` when no host
+      // wired one — stoop's own single-process tests exercise that path unchanged.
+      const reliableSend = (typeof bundle?.reliableSend === 'function') ? bundle.reliableSend : null;
+      if (!reliableSend && !chat?.send) return { error: 'chat-unavailable', sent: 0, errors: [], itemId: localItemId };
+      if (!members)                     return { error: 'members-unavailable', sent: 0, errors: [], itemId: localItemId };
 
-      const { sent, attempted, errors } = await _fanOutToMembers({
-        members, chat, selfWebid: from,
-        subtype: 'kring-chat-message', threadId: _groupId, body: text,
-        extras: {
-          circleId: _groupId, msgId: a.msgId, ts, fromActor: a.fromActor ?? from ?? null,
-          ...(media ? { media } : {}),
-        },
-      });
+      const fromActor = a.fromActor ?? from ?? null;
+      const { sent, attempted, errors } = reliableSend
+        ? await _fanOutViaReliableSend({
+            members, reliableSend, selfWebid: from,
+            envelope: {
+              type: 'p2p-chat', subtype: 'kring-chat-message',
+              circleId: _groupId, msgId: a.msgId, ts, text,
+              fromActor, fromWebid: from,
+              ...(media ? { media } : {}),
+            },
+          })
+        : await _fanOutToMembers({
+            members, chat, selfWebid: from,
+            subtype: 'kring-chat-message', threadId: _groupId, body: text,
+            extras: {
+              circleId: _groupId, msgId: a.msgId, ts, fromActor,
+              ...(media ? { media } : {}),
+            },
+          });
       metrics?.record?.('kring-chat-fanout');
       return { sent, attempted, errors, itemId: localItemId };
     }, {

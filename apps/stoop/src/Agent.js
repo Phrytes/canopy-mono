@@ -168,6 +168,19 @@ export async function createNeighborhoodAgent({
    * (testbed, web Stoop) keep working unchanged.
    */
   registerSkills = true,
+  /**
+   * Optional RELIABLE cross-peer sender, injected by a host that owns the
+   * secure-agent reliability layer (basis wires `sa.peer.sendTo(...,
+   * {guarantee:'hold-forward'})`). When present, kring chat fan-out
+   * (`broadcastKringMessage`) routes each recipient through it instead of the
+   * bus-local `chat.send` transport — so a kring chat inherits the SAME
+   * failover + offline hold-forward that durable circle content (tasks,
+   * noticeboard, key-events) already has. Signature:
+   *   `(toAddress, envelope, opts?) => Promise<{held?, delivered?, ...} | any>`
+   * Absent → fan-out falls back to `chat.send` (the pre-existing behaviour;
+   * stoop's own single-process tests exercise that path unchanged).
+   */
+  reliableSend,
   label = 'NeighborhoodAgent',
 }) {
   if (!offeringMatchOpts?.group || !offeringMatchOpts?.localActor) {
@@ -448,6 +461,7 @@ export async function createNeighborhoodAgent({
     _podCtx: cache ? podCtx : null,   // Phase 2.4 — filled by attachPod
     persist,
     chat,
+    reliableSend: (typeof reliableSend === 'function') ? reliableSend : null,  // host-injected hold-forward sender (kring chat fan-out)
     metrics,
     oidcSession: null,
     pushRegistry,                   // Phase 21 — Web-Push subscriptions per webid
