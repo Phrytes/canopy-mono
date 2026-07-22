@@ -1478,7 +1478,22 @@ function buildCircleBot(agent) {
       // feedback bot as a member (no Solid login). — trigger on `projectId` alone so a reload (the
       // OIDC handler strips `code`) still re-attaches the feedback circle (code is pulled from localStorage).
       if (params.get('projectId')) openFeedbackInviteFromBoot(_bootSearch);
-    } catch { /* no addbot / invite param */ }
+      // ?relay=<wss> applies the relay transport; ?join=<stoop-invite:// | full deep-link> auto-runs the
+      // circle-join flow — one QR scan on a phone configures the relay AND joins. Relay first so the join
+      // can reach the admin; wait for the peer agent to come up before sending the redeem.
+      const relayParam = params.get('relay');
+      const joinParam  = params.get('join');
+      if (relayParam || joinParam) {
+        (async () => {
+          if (relayParam) { try { await applyRelayUrl(relayParam); } catch { /* relay best-effort */ } }
+          if (joinParam) {
+            let inv = joinParam; try { inv = decodeURIComponent(joinParam); } catch { /* keep raw */ }
+            for (let i = 0; i < 40 && !_peerAgent; i++) await new Promise((r) => setTimeout(r, 500));
+            showJoinCircle(inv);
+          }
+        })();
+      }
+    } catch { /* no boot param */ }
   }
 
   // Deployment env config = the FALLBACK when the member hasn't set their own endpoint in settings.
@@ -3242,9 +3257,15 @@ function mountMyDataWizard(renderWizard, extra = {}) {
 // OBJ-2 — Join a circle (no pod). Paste an invite (the QR's stoop-invite:// payload) and mount the SHARED
 // join wizard through the same overlay adapter; the joiner-side peer-redeem sender carries the no-pod
 // handshake. On success we feed the new roster (so items sync) and refresh the launcher. Pure reuse.
-function showJoinCircle() {
-  const invite = (globalThis.prompt?.(t('circle.join.paste')) || '').trim();
+function showJoinCircle(inviteArg) {
+  let invite = (typeof inviteArg === 'string' && inviteArg.trim())
+    ? inviteArg.trim()
+    : (globalThis.prompt?.(t('circle.join.paste')) || '').trim();
   if (!invite) return;
+  // tolerate a full deep-link (https://…/?join=<invite>&relay=…): pull the invite out of it
+  if (/^https?:\/\//i.test(invite)) {
+    try { const j = new URL(invite).searchParams.get('join'); if (j) invite = j; } catch { /* keep as-is */ }
+  }
   mountMyDataWizard(renderJoinGroupWizard, {
     args: { invite },
     sendPeerRedeem: circleSendPeerRedeem,
@@ -3270,6 +3291,9 @@ function showJoinCircle() {
 // stoop-invite:// QR for another device to scan/paste. Shown in the same modal overlay.
 async function showCircleInvite(circleId) {
   const adminPeerAddr = circleHouseholdAgent?.householdSelfAddr ?? null;
+  // B2 — the admin's NKN native address (distinct from the pubKey), so a pure-NKN
+  // joiner can route the redeem handshake. Best-effort: null when NKN isn't up.
+  const adminNknAddr = circleHouseholdAgent?.peer?.address ?? null;
   // embed the circle's freedom template in the invite so the joiner can review its
   // opt-outable capabilities at join (see circleConsent.js). Best-effort: a missing policy just omits it.
   let invitePolicy = {};
@@ -3285,7 +3309,7 @@ async function showCircleInvite(circleId) {
   let r;
   try {
     r = await buildCircleInviteUri({
-      callSkill: rawCallSkill, circleId, adminPeerAddr,
+      callSkill: rawCallSkill, circleId, adminPeerAddr, adminNknAddr,
       capabilities: invitePolicy.capabilities,
       apps:         invitePolicy.apps,
       offeringsMatching: inviteOfferingsMatching,
@@ -3308,16 +3332,21 @@ async function showCircleInvite(circleId) {
     card.appendChild(p);
     return;
   }
+  // Scannable deep-link: a phone camera opens the hosted app with ?join=<invite> (+ the admin's current
+  // relay, so one scan configures transport AND joins). showJoinCircle tolerates the raw invite too (paste).
+  const relayForLink = resolveRelayUrl(localStorageRelayIo().load(), CIRCLE_RELAY_ENV);
+  const deepLink = `${location.origin}/?join=${encodeURIComponent(r.uri)}`
+    + (relayForLink ? `&relay=${encodeURIComponent(relayForLink)}` : '');
   const canvas = document.createElement('canvas');
   canvas.width = 220; canvas.height = 220;
   canvas.style.cssText = 'display:block;margin:10px auto;background:#fff;max-width:220px'; // hex-ok: QR scanner contrast
   card.appendChild(canvas);
-  import('qrcode').then((m) => (m.default ?? m).toCanvas(canvas, r.uri, { width: 220, margin: 1 }, () => {})).catch(() => { canvas.remove(); });
+  import('qrcode').then((m) => (m.default ?? m).toCanvas(canvas, deepLink, { width: 220, margin: 1, errorCorrectionLevel: 'L' }, () => {})).catch(() => { canvas.remove(); });
   const hint = document.createElement('p');
   hint.textContent = t('circle.invite.hint');
   card.appendChild(hint);
   const code = document.createElement('code');
-  code.textContent = r.uri;
+  code.textContent = deepLink;
   code.style.cssText = 'display:block;word-break:break-all;font-size:11px;margin-top:6px;opacity:.7';
   card.appendChild(code);
 }

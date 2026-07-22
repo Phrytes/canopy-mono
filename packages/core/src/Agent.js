@@ -501,10 +501,17 @@ export class Agent extends Emitter {
     if (this.#peers) {
       const peerPubKey = this.#security.getPeerKey(peerAddress);
       if (peerPubKey) {
+        // B2 / G5 — record the address under the NAME of the transport that reaches
+        // it (relay/nkn/…), not the opaque `default`, so `addressesOf(pubKey)`
+        // resolves the transport-appropriate wire address. `peerAddress` IS the
+        // transport-specific address the hello travelled over. Falls back to
+        // `default` in single-transport setups (unchanged behaviour there).
+        let txName = 'default';
+        try { txName = (await this.routeFor(peerAddress))?.name ?? 'default'; } catch { /* keep default */ }
         this.#peers.upsert({
           type:          'native',
           pubKey:        peerPubKey,
-          transports:    { default: { address: peerAddress, lastSeen: Date.now() } },
+          transports:    { [txName]: { address: peerAddress, lastSeen: Date.now() } },
           lastSeen:      Date.now(),
           reachable:     true,
           discoveredVia: 'hello',

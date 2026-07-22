@@ -15,6 +15,20 @@ describe('buildCircleInviteUri', () => {
     expect(r.uri).toMatch(/^stoop-invite:\/\//);
   });
 
+  it('B2 — carries BOTH addresses (pubKey adminPeerAddr + NKN adminNknAddr) when known; omits nkn otherwise', async () => {
+    const callSkill = vi.fn(async (app, op) =>
+      (op === 'getCurrentMembershipCode' ? { code: 'C', expiresAt: 1 } : {}));
+    const decode = (uri) => JSON.parse(Buffer.from(
+      uri.replace(/^stoop-invite:\/\//, '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
+    const both = await buildCircleInviteUri({ callSkill, circleId: 'c', adminPeerAddr: 'PUBKEY', adminNknAddr: 'nkn-addr' });
+    const d = decode(both.uri);
+    expect(d.adminPeerAddr).toBe('PUBKEY');
+    expect(d.adminNknAddr).toBe('nkn-addr');
+    // relay-only admin (no NKN up) → the nkn field is simply absent (older-invite shape).
+    const relayOnly = await buildCircleInviteUri({ callSkill, circleId: 'c', adminPeerAddr: 'PUBKEY' });
+    expect('adminNknAddr' in decode(relayOnly.uri)).toBe(false);
+  });
+
   it('admin-only is terminal (does not try to mint); missing args rejected', async () => {
     const callSkill = vi.fn(async () => ({ error: 'admin-only' }));
     expect(await buildCircleInviteUri({ callSkill, circleId: 'c' })).toEqual({ error: 'admin-only' });

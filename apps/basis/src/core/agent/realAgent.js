@@ -1091,10 +1091,10 @@ export async function createRealHouseholdAgent(opts = {}) {
   if (opts.seedStoopProfile !== false) {
     try {
       await chatAgent.invoke(stoopAgent.address, 'setMyHandle', [DataPart({
-        handle: opts.stoopHandle ?? 'frits-westend-42',
+        handle: opts.stoopHandle ?? 'nieuwe-buur',
       })]);
       await chatAgent.invoke(stoopAgent.address, 'setMyDisplayName', [DataPart({
-        displayName: opts.stoopDisplayName ?? 'Frits',
+        displayName: opts.stoopDisplayName ?? 'Nieuwe buur',
       })]);
     } catch (err) {
       if (typeof console !== 'undefined') {
@@ -2548,6 +2548,14 @@ export async function createRealHouseholdAgent(opts = {}) {
     // Each member carries webid/handle/displayName/role from MemberMap.
     if (opId === 'listGroupMembers' && Array.isArray(data.members)) {
       return {
+        // Preserve the RAW roster alongside the chat projection so programmatic
+        // consumers (the admin panel roster, the mandate WIE picker) read the
+        // full-fidelity `members` (webid/role/displayName/sealingPublicKey/…),
+        // while the chat-shell list renderer reads the projected `items`. Dropping
+        // `members` here silently emptied every non-chat roster consumer even
+        // after the trail-derived roster (B1) started returning members.
+        groupId: data.groupId,
+        members: data.members,
         items: data.members.map((m) => ({
           id:          m.webid,
           type:        'member',

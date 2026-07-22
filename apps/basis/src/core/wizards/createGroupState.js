@@ -304,6 +304,9 @@ export function encodeMembershipCodeUrl(result) {
     code:      result.code,
     expiresAt: result.expiresAt,
     ...(result.adminPeerAddr ? { adminPeerAddr: result.adminPeerAddr } : {}),
+    // B2 — the admin's NKN native address, so a pure-NKN joiner can route the
+    // redeem to the admin (the pubKey adminPeerAddr isn't NKN-routable). Additive.
+    ...(result.adminNknAddr ? { adminNknAddr: result.adminNknAddr } : {}),
     ...(result.rules    ? { rules:    result.rules    } : {}),
     // embed the circle's freedom template so the joiner can review + opt out of
     // OPT-OUTABLE capabilities at join (see circleConsent.js). Symmetric with the embedded rules doc.

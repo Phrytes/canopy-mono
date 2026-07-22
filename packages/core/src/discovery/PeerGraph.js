@@ -102,6 +102,27 @@ export class PeerGraph extends Emitter {
   }
 
   /**
+   * Connectivity Phase 1, Part B (B2 / G5) — the canonical peer-id → per-transport
+   * address map. A peer exposes a DIFFERENT wire address per transport (relay uses
+   * the Ed25519 pubKey; NKN uses a seed-derived native address), so a send must
+   * resolve the transport-appropriate one. `transports` on a PeerRecord is
+   * `{ name → {address, …} }`; this flattens it to `{ name → address }`.
+   *
+   * @param {string} peerId  — canonical peer id (the signing pubKey), or the url key.
+   * @returns {Promise<Record<string,string>>}  transportName → wire address (empty when unknown).
+   */
+  async addressesOf(peerId) {
+    const rec = await this.#load(peerId);
+    const out = {};
+    const transports = rec?.transports ?? {};
+    for (const [name, cfg] of Object.entries(transports)) {
+      const addr = typeof cfg === 'string' ? cfg : (cfg?.address ?? cfg?.url ?? null);
+      if (typeof addr === 'string' && addr) out[name] = addr;
+    }
+    return out;
+  }
+
+  /**
    * @returns {Promise<object[]>}
    */
   async all() {

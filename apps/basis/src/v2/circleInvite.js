@@ -35,11 +35,19 @@ import { initialState, decodeInvite, finalSubmit } from '../core/wizards/joinGro
  * turns it into the visible pre-checked "share skills as category" default. Purely additive: absent
  * on older invites / non-matching circles ⇒ the joiner's default stays withhold.
  *
- * @param {{ callSkill:Function, circleId:string, adminPeerAddr?:string|null,
+ * B2 / G13 (Phase 1) — the invite advertises the admin's FULL address set: the
+ * canonical `adminPeerAddr` (the Ed25519 pubKey — the relay-routable address, kept
+ * for back-compat) PLUS the admin's `adminNknAddr` (the NKN native address) when
+ * known. A pure-NKN joiner (no relay up) needs the NKN address to reach the admin
+ * for the redeem handshake; an invite that carried only the pubKey addressed a
+ * string NKN can't route. Additive: an older invite / relay-only admin simply omits
+ * `adminNknAddr` and the joiner falls back to the pubKey as today.
+ *
+ * @param {{ callSkill:Function, circleId:string, adminPeerAddr?:string|null, adminNknAddr?:string|null,
  *           capabilities?:object|null, apps?:string[]|null, offeringsMatching?:boolean|null }} a
  * @returns {Promise<{uri:string, expiresAt?:number} | {error:string}>}
  */
-export async function buildCircleInviteUri({ callSkill, circleId, adminPeerAddr = null, capabilities = null, apps = null, offeringsMatching = null } = {}) {
+export async function buildCircleInviteUri({ callSkill, circleId, adminPeerAddr = null, adminNknAddr = null, capabilities = null, apps = null, offeringsMatching = null } = {}) {
   if (typeof callSkill !== 'function' || !circleId) return { error: 'missing-args' };
   let res;
   try { res = await callSkill('stoop', 'getCurrentMembershipCode', { groupId: circleId }); }
@@ -60,6 +68,9 @@ export async function buildCircleInviteUri({ callSkill, circleId, adminPeerAddr 
   const invite = {
     groupId: circleId, code, expiresAt,
     ...(adminPeerAddr ? { adminPeerAddr } : {}),
+    // B2 — the NKN native address, so a pure-NKN joiner can route the redeem to
+    // the admin (the pubKey alone isn't NKN-routable). Additive; absent = pubKey-only.
+    ...(adminNknAddr ? { adminNknAddr } : {}),
     // embed the freedom template so the joiner can review + opt out at join.
     ...(capabilities && typeof capabilities === 'object' && !Array.isArray(capabilities) && Object.keys(capabilities).length
       ? { capabilities } : {}),

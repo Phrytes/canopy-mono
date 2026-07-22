@@ -70,6 +70,7 @@ import { validateHandle } from '../lib/handle.js';
 import { getPrivacyNotice } from '../lib/privacyNotice.js';
 import { categoryFor, TAXONOMY } from '../lib/offeringsMatch.js';
 import { findNearDuplicate } from '../lib/dupCheck.js';
+import { deriveRoster } from '../lib/deriveRoster.js';
 import { encryptBackup, decryptBackup } from '../lib/encryptedBackup.js';
 import { startPodSignIn, completePodSignIn, signOutOfPod, podSignInStatus } from '../lib/podSignIn.js';
 import { loadSettings, updateSettings as updateSettingsLib } from '../lib/Settings.js';
@@ -553,52 +554,48 @@ async function listGroupMembersCore(scope, a, ctx) {
   const _groupId = a.groupId ?? groupId;
   if (!members) return { members: [] };
   const list = await members.list();
-  // Per-circle scoping: derive THIS group's membership from the redemption audit
-  // trail — `membership-redemption` items carry `source.groupId` + `redeemedBy`
-  // (the same source EvictionRoster reduces). Founders (admin/coordinator) are
-  // always kept (they CREATE a group, never redeem its own code). Fall back to the
-  // full roster when the group has no redemption data yet (legacy single-buurt /
-  // seeded members) so existing single-group setups are unchanged.
+  // B1 fix (C2) — proof-derived membership: the roster is a PROJECTION of the
+  // durable, signed `membership-redemption` trail (the same source EvictionRoster
+  // reduces), NOT `MemberMap.list() ∩ trail`. The MemberMap is a lossy in-memory
+  // cache that reads EMPTY at runtime even after a JOIN succeeded on the trail; the
+  // old intersection therefore went empty and took the roster + fan-out + mandate
+  // WIE down with it. `deriveRoster` starts FROM the trail and left-joins the
+  // MemberMap for display only — so the roster never goes empty when the trail has
+  // members. (See plans/DESIGN-connectivity-phase1-membership.md, Part A.)
   let redemptions = [];
   try { redemptions = await store.listOpen({ type: 'membership-redemption' }); } catch { redemptions = []; }
   const forGroup = redemptions.filter((i) => i?.source?.groupId === _groupId);
+
+  // Legacy back-compat (unchanged): a group with NO redemption trail (a seeded
+  // single-buurt roster from before code-minting) has no durable source to
+  // project from — fall back to the full MemberMap so those setups are unchanged.
   if (forGroup.length === 0) return { groupId: _groupId, members: list };
-  const joined = new Set(forGroup.map((i) => i?.source?.redeemedBy).filter(Boolean));
-  // webid → the sealing PUBLIC key the joiner published on redeem — lets a sealed circle's
-  // producer seed its group-key roster with members who joined before it was live.
-  const sealKeys = new Map();
-  // webid → the SIGNING pubKey captured on redeem — lets the roster carry the
-  // fan-out routing key for code-redeemers even after a reload where the member
-  // list is reduced from the redemption audit trail (mirror of sealKeys).
-  const signKeys = new Map();
-  // webid → the per-circle ADDRESS captured on redeem (identity step 5B/C) —
-  // the unlinkable address the member presents in THIS circle. Recovered from
-  // the redemption trail like signKeys, so it survives a roster rebuild.
-  const addrKeys = new Map();
-  // webid → the coarse persona properties the member disclosed on redeem (property layer). Recovered from the
-  // redemption trail like the others, so it survives a roster rebuild.
-  const personaMaps = new Map();
-  for (const r of forGroup) {
-    const { redeemedBy, sealingPublicKey, signingPublicKey, circleAddress, personaProperties } = r?.source ?? {};
-    if (redeemedBy && sealingPublicKey && !sealKeys.has(redeemedBy)) sealKeys.set(redeemedBy, sealingPublicKey);
-    if (redeemedBy && signingPublicKey && !signKeys.has(redeemedBy)) signKeys.set(redeemedBy, signingPublicKey);
-    if (redeemedBy && circleAddress && !addrKeys.has(redeemedBy)) addrKeys.set(redeemedBy, circleAddress);
-    if (redeemedBy && personaProperties && Object.keys(personaProperties).length && !personaMaps.has(redeemedBy)) personaMaps.set(redeemedBy, personaProperties);
+
+  // Founder(s) — the creator never redeems their own code. Derive them from two
+  // sources so the roster survives a cold MemberMap:
+  //   1. durable — the circle's `group-rules` author (skip the joiner-side MIRROR,
+  //      whose `addedBy` is the joiner, not the founder — the joiner learns the
+  //      admin via `confirmedBy` instead).
+  //   2. back-compat — any admin/coordinator-role MemberMap entry (implicit
+  //      founder for legacy circles with no rules item; additive, never a filter).
+  const founderWebids = new Set();
+  try {
+    const rules = await store.listOpen({ type: 'group-rules' });
+    for (const it of rules) {
+      if (it?.source?.groupId !== _groupId) continue;
+      if (it?.source?.mirrored === true) continue;
+      if (typeof it?.addedBy === 'string' && it.addedBy) founderWebids.add(it.addedBy);
+    }
+  } catch { /* no rules item → the MemberMap-admin + trail paths still stand */ }
+  for (const m of list) {
+    if (m?.webid && isCircleAdmin(m.role)) founderWebids.add(m.webid);
   }
-  const scoped = list
-    .filter((m) => joined.has(m.webid) || isCircleAdmin(m.role))
-    .map((m) => {
-      let out = m;
-      if (sealKeys.has(m.webid)) out = { ...out, sealingPublicKey: sealKeys.get(m.webid) };
-      // Only backfill pubKey when the member row doesn't already carry one.
-      if (!out.pubKey && signKeys.has(m.webid)) out = { ...out, pubKey: signKeys.get(m.webid) };
-      // Prefer the row's circleAddress (createGroupV2 admin path), else backfill
-      // from the redemption trail (joiner path).
-      if (!out.circleAddress && addrKeys.has(m.webid)) out = { ...out, circleAddress: addrKeys.get(m.webid) };
-      // Persona properties: prefer the row's (createGroupV2 admin path), else the redemption trail (joiner path).
-      if (!out.personaProperties && personaMaps.has(m.webid)) out = { ...out, personaProperties: personaMaps.get(m.webid) };
-      return out;
-    });
+
+  const scoped = deriveRoster({
+    redemptions: forGroup,
+    founderWebids: [...founderWebids],
+    memberMapForDisplay: list,
+  });
   return { groupId: _groupId, members: scoped };
 }
 
