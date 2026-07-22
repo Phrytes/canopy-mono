@@ -27,6 +27,7 @@ export {
 export { createPodKeyStore, readGroupKey } from './podKeyStore.js';
 export { createMemberSealingIdentity } from './memberIdentity.js';
 export { resolveCircleStorage, circleStorageClient } from './resolveCircleStorage.js';
+export { podStorageBackend } from './podStorageBackend.js';   // adapt a Solid pod to the blind StorageBackend port
 export {
   SEAL_SCHEMES, chooseSealScheme, resolveSealStrategy,   // the one seal resolver — scheme chosen by policy
   sealForAudience, openSealedEnvelope,

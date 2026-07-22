@@ -219,6 +219,14 @@ export { DataSource }        from './storage/DataSource.js';
 export { MemorySource }      from './storage/MemorySource.js';
 export { IndexedDBSource }   from './storage/IndexedDBSource.js';
 export { FileSystemSource }  from './storage/FileSystemSource.js';
+// `StorageBackend` is a second, narrower PORT: a BLIND ciphertext store
+// (put/get/list, ciphertext only). The seal — not the store's access control —
+// gates who can read, so the store is a free choice and sealed content is
+// portable across backends. `MemoryStorageBackend` is the reference adapter; the
+// pod adapter (`podStorageBackend`) lives in @onderling/pod-client. See
+// docs/conventions/ports.md and conformance/storageBackendConformance.js.
+export { StorageBackend }       from './storage/StorageBackend.js';
+export { MemoryStorageBackend } from './storage/MemoryStorageBackend.js';
 // NOTE: `SolidPodSource` lives in `@onderling/pod-client` — import it directly.
 // The concrete Solid pod DataSource + its portable archive pair (`PodExporter`
 // / `PodImporter`) were extracted OUT of `core`; it no longer re-exports them

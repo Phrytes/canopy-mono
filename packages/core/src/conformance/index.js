@@ -23,5 +23,10 @@ export {
 } from './dataSourceConformance.js';
 
 export {
+  assertStorageBackendConformance,
+  REQUIRED_STORAGE_BACKEND_METHODS,
+} from './storageBackendConformance.js';
+
+export {
   assertActorResolverConformance,
 } from './actorResolverConformance.js';
