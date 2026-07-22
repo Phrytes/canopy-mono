@@ -325,7 +325,15 @@ export async function createRealHouseholdAgent(opts = {}) {
    */
   const householdCircleId = opts.householdCircleId ?? 'household';
   const householdEnvelopeAdapter = createSecureMeshEnvelopeAdapter({
-    sendPeerMessage: (to, payload) => sa.peer.sendTo(to, payload),
+    // Durable circle content (tasks, noticeboard/prikbord items — every item-sync
+    // envelope this mirror fans) rides with the hold-forward delivery guarantee:
+    // a member who is briefly offline has the envelope HELD locally and delivered
+    // on their next presence signal, instead of silently lost. One well-placed
+    // default here covers every durable item fan (publishEnvelope is the single
+    // choke), rather than opting in per write. The online path is unchanged
+    // (a reachable peer is delivered immediately, held:false); receivers already
+    // de-dupe by etag/_v so a late-flushed copy is idempotent.
+    sendPeerMessage: (to, payload) => sa.peer.sendTo(to, payload, { guarantee: 'hold-forward' }),
     selfAddress:     chatId.pubKey,
   });
   const householdSubstrate = buildHouseholdSubstrateStack({
@@ -1279,7 +1287,11 @@ export async function createRealHouseholdAgent(opts = {}) {
   // sendToPeer (task). sa.peer.sendTo handles it transparently.
   // Wrapper alias kept for the existing fan-out callsite so the diff
   // stays small; new code can call sa.peer.sendTo directly.
-  const _saSendWithRetry = (sa, addr, payload) => sa.peer.sendTo(addr, payload);
+  // The one caller is the buurt-post/request fan-out (durable circle content), so it
+  // rides with the hold-forward delivery guarantee: a member offline at fan time has
+  // the post HELD and delivered on reconnect rather than dropped. Online delivery is
+  // unchanged (reachable peer delivered immediately).
+  const _saSendWithRetry = (sa, addr, payload) => sa.peer.sendTo(addr, payload, { guarantee: 'hold-forward' });
 
   /**
    * 2026-05-24 — list the buurts this user has peer-confirmed
