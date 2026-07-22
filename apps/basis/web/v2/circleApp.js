@@ -35,7 +35,7 @@ import { initLocalisation, t, setLang, detectDeviceLang, currentLang,
 // the producer just consumes the injected makePodClient/generateKeypair.
 import { PodClient, generateKeypair as podGenerateKeypair, createSealedPodClient, SolidOidcAuth,
   createSealedPodDataSource, podGroupPrefix,
-  recipientStrategy as podRecipientStrategy,
+  recipientStrategy as podRecipientStrategy, makeOpener as podMakeOpener,
   sealingPublicKeyFromNetworkKey as podSealingPublicKeyFromNetworkKey } from '@onderling/pod-client';
 import { createPseudoPod } from '@onderling/pseudo-pod';
 import { circleVersioningFor, getCircleVersionStore } from '../../src/web/circleVersioning.js';
@@ -214,6 +214,10 @@ import { buildTaskRows } from '../../src/v2/taskRows.js';
 // D1 (§5A) — per-circle action-frequency counter behind the quickActions block.
 import { createActionFrequencyStore } from '../../src/v2/actionFrequency.js';
 import { makePeerRouter } from '../../src/core/handlers/peerRouter.js';
+// No-pod group-key rotation, RECEIVE side: record a fanned key-event into the local per-circle log +
+// fold the recorded events into the key chain on a content read (the counterpart to the key-event log sink).
+import { makeHandleGroupKeyEvent } from '../../src/core/handlers/groupKeyEvent.js';
+import { createKeyEventStore, openViaKeyEvents } from '../../src/v2/keyEventStore.js';
 // OBJ-2 membership — the peer-redeem handshake (joiner ⇄ admin) is shared core; v2 just wires the
 // same three factories the classic shells use (groupRedeem.js) into its peer router + join glue.
 import { makeHandleGroupRedeemRequest, makeHandleGroupRedeemResponse, makeSendGroupRedeemRequest } from '../../src/core/handlers/groupRedeem.js';
@@ -1156,6 +1160,12 @@ const circleVault = (() => {
 const circlePods = new Map();    // S4 — circleId → per-circle pod producer (sealing identity + control agent)
 let circleRealPodRouting = null; // S4 circle OIDC — set when signed in; routes sealed circles to the real pod
 const circleSealStrategies = new Map();   // S4 — circleId → resolved {seal,open} content strategy (or null for p0/p1)
+// No-pod group-key rotation — the LOCAL per-circle key-event log this device holds: its OWN emitted key-events
+// (recorded by the key-event log sink's `recordLocal` below) + every event fanned to it by another member (the
+// `group-key-event` receive handler in the peer router). A content read folds these into the key chain, so a
+// sealed circle stays readable with NO pod, and a removed member — never sent the rotation event — cannot open
+// post-removal content. Shared with mobile by construction (the same store module + handler).
+const circleKeyEventStore = createKeyEventStore();
 // S4 — routes stoop membership events (redeem/leave) to the joined circle's producer, so
 // a new member's sealing key is wrapped into that circle's group key (multi-member sealing).
 // V0: routes to a LIVE producer (circle opened on this device); seeding from prior redemptions
@@ -1175,10 +1185,38 @@ async function getCircleSealStrategy(circleId, policy) {
     if (prod?.controlAgent && prod.sealingIdentity) {
       const idKey = await prod.sealingIdentity.ensure();
       strat = await prod.controlAgent.sealingStrategy(idKey.privateKey);
+      // No-pod defense-in-depth: wrap the reader so content sealed under a group-key version carried in the
+      // LOG (a key-event fanned to this device, not the pod key resource) still opens. The pod strategy is
+      // tried FIRST and unchanged; only on its miss do we trial the chain FOLDED from the recorded key-events,
+      // using this device's per-circle sealing opener. The events are read lazily at open time (later fans land
+      // after this strategy is cached). Additive — a circle with no key-events behaves exactly as before.
+      if (strat && idKey?.privateKey) {
+        strat = wrapStrategyWithKeyEventFold(strat, circleId, idKey.privateKey);
+      }
     }
   } catch { strat = null; }
   circleSealStrategies.set(circleId, strat);
   return strat;
+}
+
+/**
+ * Compose a sealed-content strategy's `open` with the no-pod folded key chain: try the given (pod) `open` first;
+ * on any miss, fold the recorded key-events for this circle and open across them with this device's per-circle
+ * sealing opener. `seal` and every other field pass through untouched. The key-events are resolved at CALL time,
+ * so events that arrive after the strategy is cached are still seen.
+ */
+function wrapStrategyWithKeyEventFold(strat, circleId, privateKey) {
+  const opener = podMakeOpener(privateKey);
+  return {
+    ...strat,
+    open: (text) => {
+      try { return strat.open(text); }
+      catch (podErr) {
+        try { return openViaKeyEvents(text, { events: circleKeyEventStore.list(circleId), groupId: circleId, opener }); }
+        catch { throw podErr; }   // neither reader opens it — surface the original (pod) denial
+      }
+    },
+  };
 }
 
 // media — one DEV bucket per app session (in-memory: uploads don't survive a reload
@@ -1270,10 +1308,13 @@ async function ensureCirclePod(circleId, policy) {
     // SAME peer channel content rides — sealed to them only, so the departed cannot open post-removal
     // content with no shared pod. The pod key resource is still written (defense-in-depth); the log is the
     // source for a no-pod circle. Lazy refs (rawCallSkill / _peerAgent are set at boot; the sink only fires
-    // on a later membership change). Recording into a local no-pod log + the receive/read side is the
-    // separate next step, so `recordLocal` is omitted here (the fan is forward-additive today).
+    // on a later membership change).
     const keyEventLog = makeKeyEventLogSink({
       groupId: circleId,
+      // RECEIVE/READ side (now wired): record this device's OWN emitted key-events into the local per-circle
+      // log so its key chain advances (it can seal + open the new version with no pod). Inbound events from
+      // other members land in the SAME store via the `group-key-event` peer handler; a content read folds both.
+      recordLocal: (event) => circleKeyEventStore.record(circleId, event),
       sendPeer: (addr, payload, opts) => (typeof _peerAgent?.sendPeerMessage === 'function'
         ? _peerAgent.sendPeerMessage(addr, payload, opts)
         : Promise.resolve()),
@@ -5783,6 +5824,11 @@ async function boot() {
           // admin verifies an incoming redeem + replies; joiner resolves the pending request on response.
           'group-redeem-request':    makeHandleGroupRedeemRequest({ callSkill: rawCallSkill, sendPeer: (addr, payload) => agent.sendPeerMessage(addr, payload), publishEvent: publishEventToLog }),
           'group-redeem-response':   makeHandleGroupRedeemResponse({ pendingMap: circlePendingRedeems }),
+          // No-pod group-key rotation — RECEIVE side: a key-event fanned by the circle's key-event log sink
+          // (establish/grant/rotation) lands in this device's local per-circle key-event log. A removed member
+          // is never a recipient of the rotation fan → never records the new version → cannot open post-removal
+          // content (backward secrecy, no pod). Folding into the key chain happens on a content read.
+          'group-key-event':         makeHandleGroupKeyEvent({ recordKeyEvent: (gid, event) => circleKeyEventStore.record(gid, event) }),
           // personas#2 — post-join persona-property push: admin records the member's disclosure onto
           // the roster + acks; the member resolves the pending push on the ack.
           'persona-props-update':    makeHandlePersonaPropsUpdate({ callSkill: rawCallSkill, sendPeer: (addr, payload) => agent.sendPeerMessage(addr, payload), publishEvent: publishEventToLog }),

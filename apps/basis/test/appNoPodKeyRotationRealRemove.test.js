@@ -15,6 +15,11 @@
  * `makeKeyEventLogSink` the web shell (circleApp.js) wires; the harness only supplies node equivalents of
  * the transport addressing (member nodes) and the in-memory pod — exactly the seams the browser supplies too.
  *
+ * No stand-in on the RECEIVE path either: the fanned key-event reaches B through the REAL `makePeerRouter`
+ * dispatch → the REAL `makeHandleGroupKeyEvent` handler → the REAL `createKeyEventStore` (the exact modules
+ * circleApp.js wires). Nothing in the harness records the key-event on B's behalf — the production receive is
+ * what makes B hold v2 and read post-removal content, and what keeps C (never a recipient) unable to.
+ *
  * Asserts, over THREE real agents on one shared bus (A admin + B + C), no pod / no browser / no relay:
  *   - the sealed circle is established through the producer; A seals content B and C both read;
  *   - A removes C via the REAL op → the control agent rotates + the sink fans the v2 key-event to B ALONE;
@@ -66,10 +71,11 @@ describe('no-pod key rotation fired by the REAL removeMember op (three real agen
     const res = await A.agent.callSkill('stoop', 'removeMember', { groupId: GID, memberWebid: C.pubKey });
     expect(res?.error, `removeMember refused: ${res?.error}`).toBeFalsy();
 
-    // The rotation key-event (v2) reached B (a remaining member) and NOT C (the departed).
-    const gotV2 = await until(() => B.keyEvents.some((e) => e.version === 2));
-    expect(gotV2, 'B received the rotation key-event fanned by the live remove').toBeTruthy();
-    expect(C.keyEvents.some((e) => e.version === 2)).toBe(false);   // C was excluded from the fan
+    // The rotation key-event (v2) reached B (a remaining member) and NOT C (the departed). B holds it because
+    // the PRODUCTION receive handler recorded it into B's PRODUCTION key-event store — no harness stand-in.
+    const gotV2 = await until(() => B.keyEventStore.has(GID, 2));
+    expect(gotV2, 'B received + recorded the rotation key-event via the production peer-router receive').toBeTruthy();
+    expect(C.keyEventStore.has(GID, 2)).toBe(false);   // C was excluded from the fan → never recorded v2
 
     // ── A posts NEW content under the new version. ──
     const after = `after removal ${Date.now().toString(36)}`;

@@ -35,7 +35,7 @@
 import { InternalBus, InternalTransport } from '@onderling/core';
 import {
   sealingPublicKeyFromNetworkKey,
-  establishKeyEvent, rotateKeyEvent, readKeyChain, currentGroupKey, openAcrossKeyChain,
+  establishKeyEvent, rotateKeyEvent, readKeyChain, currentGroupKey,
   sealForAudience,
   PodClient, generateKeypair as podGenerateKeypair,
 } from '@onderling/pod-client';
@@ -46,7 +46,9 @@ import { makeKeyEventLogSink } from '@onderling/kring-host/keyEventLogSink';
 import { createRealHouseholdAgent } from '../../src/web/realAgent.js';
 import { createCirclePodProducer, createCircleControlAgentRouter } from '../../src/v2/circlePodProducer.js';
 import { openerForIdentity } from '../../src/v2/sharedCopyOpener.js';
+import { createKeyEventStore, openViaKeyEvents } from '../../src/v2/keyEventStore.js';
 import { makePeerRouter } from '../../src/core/handlers/peerRouter.js';
+import { makeHandleGroupKeyEvent } from '../../src/core/handlers/groupKeyEvent.js';
 import {
   makeHandleGroupRedeemRequest,
   makeSendGroupRedeemRequest,
@@ -94,9 +96,12 @@ export async function until(pred, { timeout = 4000, step = 10 } = {}) {
 export async function bootRealAgentNode(label = 'agent') {
   const routerRef = { fn: null };
   const received = [];
-  // A sealed circle's log carries key-events + sealed content over the real transport; a node records what
-  // it receives here (inert for the unsealed default harness — these stay empty unless a sealed circle boots).
-  const keyEvents = [];
+  // A sealed circle's log carries key-events + sealed content over the real transport. Key-events are recorded
+  // by the PRODUCTION receive handler (`makeHandleGroupKeyEvent`) into the PRODUCTION per-circle key-event log
+  // (`createKeyEventStore`) — the exact modules circleApp.js wires. No harness stand-in records the key-event:
+  // the real peer-router → real handler → real store is what makes the removed-member scenario pass. (Sealed
+  // CONTENT delivery still lands in a plain list here — that is transport/hold-forward, a separate concern.)
+  const keyEventStore = createKeyEventStore();
   const sealedContent = [];
 
   // S4 — a per-node control-agent router over this node's own circle-producer map, wired as the stoop
@@ -132,9 +137,11 @@ export async function bootRealAgentNode(label = 'agent') {
     'group-redeem-response': makeHandleGroupRedeemResponse({ pendingMap, logger: QUIET }),
     // Both sides: record a mesh-introduced peer into the local roster.
     'buurt-peer-intro': makeHandleBuurtPeerIntro({ callSkill, logger: QUIET }),
-    // Sealed circle: a fanned key-event lands in this node's key-event log (the no-pod key-chain carrier);
-    // sealed content lands in its content log. Recording is all a member does — folding happens on read.
-    'group-key-event': (_from, payload) => { if (payload?.event) keyEvents.push(payload.event); },
+    // Sealed circle — the PRODUCTION receive handler records a fanned key-event into the PRODUCTION per-circle
+    // key-event log (the no-pod key-chain carrier), de-duped by version. This is the real app's receive path,
+    // dispatched by the real `makePeerRouter` — not a harness stand-in. Folding happens on read (`readSealed`).
+    'group-key-event': makeHandleGroupKeyEvent({ recordKeyEvent: (gid, event) => keyEventStore.record(gid, event), logger: QUIET }),
+    // Sealed content still lands in a plain list (transport/hold-forward — out of scope for the key-event work).
     'sealed-content':  (_from, payload) => { if (payload?.env) sealedContent.push(payload); },
   };
   const sendPeerRedeem = makeSendGroupRedeemRequest({
@@ -152,7 +159,11 @@ export async function bootRealAgentNode(label = 'agent') {
     logger: QUIET,
   });
 
-  return { agent, pubKey, received, sendPeerRedeem, pendingMap, label, keyEvents, sealedContent, circlePods, circleControlAgentRouter };
+  const node = { agent, pubKey, received, sendPeerRedeem, pendingMap, label, keyEventStore, sealedContent, circlePods, circleControlAgentRouter };
+  // `keyEvents` is a LIVE VIEW of the production store (all circles this node holds), so assertions like
+  // `B.keyEvents.some(e => e.version === 2)` reflect exactly what the production receive handler recorded.
+  Object.defineProperty(node, 'keyEvents', { enumerable: true, get: () => keyEventStore.all() });
+  return node;
 }
 
 /**
@@ -311,7 +322,7 @@ async function fanKeyEvent(from, toNodes, groupId, event) {
 export async function bootSealedCircle({ admin, members = [], groupId }) {
   const recipients = [memberSealingPubKey(admin), ...members.map(memberSealingPubKey)];
   const { event } = establishKeyEvent({ groupId, recipients });
-  admin.keyEvents.push(event);
+  admin.keyEventStore.record(groupId, event);
   await fanKeyEvent(admin, members, groupId, event);
   return { groupId, recipients };
 }
@@ -321,7 +332,7 @@ export async function bootSealedCircle({ admin, members = [], groupId }) {
  * resolver, then fans the sealed envelope to `members`. Returns the tagged envelope (also recorded on receipt).
  */
 export async function postSealed({ admin, members = [], groupId, text }) {
-  const chain = readKeyChain(admin.keyEvents, { groupId, opener: memberOpener(admin) });
+  const chain = readKeyChain(admin.keyEventStore.list(groupId), { groupId, opener: memberOpener(admin) });
   const groupKey = currentGroupKey(chain);
   if (!groupKey) throw new Error('postSealed: the admin holds no current group key to seal with');
   const env = sealForAudience(text, { groupKey }, { audience: 'circle' });
@@ -361,7 +372,7 @@ export async function sealCircleViaProducer({ admin, members = [], groupId }) {
   // key is among the event's recipients (a removed member is absent from a rotation → not fanned).
   const keyEventLog = makeKeyEventLogSink({
     groupId,
-    recordLocal: (event) => { admin.keyEvents.push(event); },
+    recordLocal: (event) => { admin.keyEventStore.record(groupId, event); },
     sendPeer: (addr, payload, opts) => admin.agent.sendPeerMessage(addr, payload, opts),
     sendOptions: SEALED_SEND,
     resolveRecipientAddrs: (event) => {
@@ -393,16 +404,16 @@ export async function sealCircleViaProducer({ admin, members = [], groupId }) {
  */
 export async function removeAndRotate({ admin, keep = [], groupId }) {
   const recipients = [memberSealingPubKey(admin), ...keep.map(memberSealingPubKey)];
-  const { event } = rotateKeyEvent({ groupId, priorEvents: admin.keyEvents, recipients });
-  admin.keyEvents.push(event);
+  const { event } = rotateKeyEvent({ groupId, priorEvents: admin.keyEventStore.list(groupId), recipients });
+  admin.keyEventStore.record(groupId, event);
   await fanKeyEvent(admin, keep, groupId, event);   // the removed member is NOT among the recipients of this fan
   return { event };
 }
 
-/** A member reads a sealed envelope across the versions it holds (folds its key-event log, opens by trial). */
+/** A member reads a sealed envelope across the versions it holds: the PRODUCTION no-pod reader folds its
+ *  per-circle key-event log (`keyEventStore`) into the key chain and opens by authenticated trial. */
 export function readSealed(node, env, groupId) {
-  const chain = readKeyChain(node.keyEvents, { groupId, opener: memberOpener(node) });
-  return openAcrossKeyChain(env, chain);
+  return openViaKeyEvents(env, { events: node.keyEventStore.list(groupId), groupId, opener: memberOpener(node) });
 }
 
 /** Read a circle roster via the real listGroupMembers op. */
