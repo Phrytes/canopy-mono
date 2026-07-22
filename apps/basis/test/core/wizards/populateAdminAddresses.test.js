@@ -1,7 +1,7 @@
 /**
- * Connectivity Phase-2 · slice 2b (population) — unit proof.
+ * Connectivity Phase 2 — PeerGraph population (unit proof).
  *
- * Slice 2 attached the app's PeerGraph to the shared secure router so
+ * The address-resolution step attached the app's PeerGraph to the shared secure router so
  * `route → addressFor → PeerGraph.addressesOf` COULD resolve a peer's
  * per-transport wire address — but nothing populated the graph, so on the
  * real join path `addressesOf(adminPubKey)` returned nothing and the redeem

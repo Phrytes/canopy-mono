@@ -1,12 +1,12 @@
 /**
- * @onderling/secure-agent — Phase-2 · slice 2b (population) integration test.
+ * @onderling/secure-agent — Phase 2 PeerGraph population integration test.
  *
- * Slice 2 attached a PeerGraph to the shared secure router and proved the send
+ * The address-resolution step attached a PeerGraph to the shared secure router and proved the send
  * path CONSULTS it (`route → addressFor → addressesOf`). But on the live path
  * nothing WROTE peers' per-transport addresses INTO that graph, so
  * `addressesOf` stayed empty and the redeem degraded to (and failed over) NKN.
  *
- * Slice 2b closes the write side. Two population points:
+ * This population step closes the write side. Two population points:
  *   - on join: the invite's admin addresses are upserted before the redeem
  *     (covered by the basis unit test `populateAdminAddresses.test.js`);
  *   - on connect: once a first-contact HI resolves a live route to a peer, the
