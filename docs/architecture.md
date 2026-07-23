@@ -281,6 +281,12 @@ the gate: a member proves they belong by unwrapping the current version; a revok
 they're denied (`readGroupKey` throws — they never see ciphertext, let alone plaintext). Every kind of sharing
 is a move over this one resource, so it never copies data it needn't and revocation is real.
 
+The same group-key seal also gates a circle's **chat history at rest**: under the `pod-signal`/`pod-only`
+data-move (Part 4), each message is sealed with this exact `{seal, open}` and written to a range-queryable
+per-circle log (`@onderling/pod-client` `sealedMessageLog`, over the blind `StorageBackend` port) — the store
+moves opaque ciphertext, the seal is the gate, and a circle whose key can't be resolved is refused rather than
+written in plaintext (invariant #7).
+
 - **Canonical (in-place) sharing.** To share an item to another *circle* without minting a copy, the origin
   re-wraps the item's group key to the recipient and grants ACP read on the canonical resource; the recipient
   reads the single copy in place through a `shared-ref` pointer. **Revoke = rotate**: a fresh group-key version
@@ -328,7 +334,9 @@ packages/core                the KERNEL — a lean set of PORTS + kernel logic
 
 - **The kernel (`packages/core`) is lean.** It holds the `Agent`, envelope/parts, the skill registry, the
   inbound-permission gate (`PolicyEngine`), the inter-agent invoke (`invokeAgentSkill`), `InternalTransport`, and
-  the **ports** — `Transport` · `DataSource` · `ActorResolver`.
+  the **ports** — `Transport` · `DataSource` · `ActorResolver`, plus the narrower `StorageBackend` (a **blind
+  ciphertext store**: opaque `put`/`get`/`list`, no plaintext read — see *Sharing* below for why the seal, not
+  the store's access control, is the gate).
   The ports are the **named compatibility contract**: *implement the port + pass its conformance harness =
   compatible with the kernel* ([`conventions/ports.md`](./conventions/ports.md)). The concrete **adapters** live
   OUTSIDE the kernel — network transports in **`@onderling/transports`**, Solid-pod storage + on-pod identity in
@@ -377,15 +385,77 @@ it carries **direct exchanges** (offer→claim, request→respond), and it enabl
 agent authenticates into *another* agent's gated skill surface over a transport, with identity, permission, and
 validation travelling **in the envelope**. This is what lets functionality resolve on an external agent
 (consequence #2 above), and it's the substrate the developer-integration on-ramps (a connected bot, a remote
-handler) build on. The paths that carry it are below.
+handler) build on.
+
+**One send waist (`deliver`).** Every message a circle emits — a chat line, a broadcast, a 1:1 DM — funnels
+through one primitive rather than the parallel send paths that used to exist. There is **one canonical chat
+`Envelope`** (`@onderling/item-store/chatEnvelope.js`) with declared, pure projections — `toEventLogItem`
+(the in-memory render event), `toWireEnvelope` (the peer fan-out shape), and `chatEnvelopeFromStoreItem` (the
+durable stored item) — so the three shapes that used to be hand-reshaped (and drift) are now views of one datum,
+proven byte-identical to their old producers by round-trip tests. Over that envelope: **one circle-broadcast**
+(`broadcastToCircle`) fans to a circle's members, and **one addressed send** (`addressedDeliver.js`) folds the
+two former 1:1 DM paths (the ephemeral contact-thread channel and wireChat's persisted `chat.send`) into a
+single `deliver` — a DM is just `deliver` to an audience-of-one. That fold also made the contact/bot thread
+**durable** (it was in-memory only, lost on reload): each turn persists to a durable thread keyed by the
+envelope id, which doubles as the DM dedup nonce. `wireChat` now routes through the same core. Membership is
+**proof-derived** from a per-circle signed log — a member is targeted for fan-out because the log proves they
+belong, not because an ambient list names them.
+
+**Where a message moves is a policy branch.** A circle's data-policy (`policy.pod`) selects one of three
+send-path branches, resolved in one place (`circleDataPolicy.js`, which derives the store mode and catch-up
+strategy off the same posture):
+
+- **`fan-out-full`** (no-pod) — the full-body envelope fans to every member. This is also the **honest degrade
+  target** for the other two.
+- **`pod-signal`** (shared / hybrid pod) — the body is written once to the circle's shared pod as a sealed row,
+  and members receive a lightweight **ref** envelope pointing at that row.
+- **`pod-only`** (pod-only) — the row is written and *no* fan happens; members read the pod on catch-up.
+
+**Honest degrade — read this before assuming pod-signal is on.** `pod-signal`/`pod-only` take effect only when
+a real shared-pod writer is wired *and* the write succeeds. That writer is wired in the **web** shell today
+(`circleApp.js`, over a per-circle `podStorageBackend` with **live member-side key custody** — this device's
+vault-backed X25519 identity unwraps the circle group key); **mobile is not wired and stays on `fan-out-full`**.
+The write is **seal-or-refuse**: a sealed circle whose group key can't be resolved *throws* rather than write
+plaintext (invariant #7). Whenever the writer is absent, the pod has no backend, or the seal is unavailable, the
+branch **degrades loudly to `fan-out-full`** (logged, never silent) so the message still reaches every member.
+The pod round-trip is proven against a MockPod and with live member keys in tests; on-device verification against
+a live running pod is still forward work.
+
+The paths that carry the envelope are below.
 
 ### Reachability
 
-Two peers exchange messages over whichever path is currently usable; a per-peer picker chooses, no app code
-does. Paths: **direct** (mDNS/TCP, BLE, or relay-signalled WebRTC), **relay** (`@onderling/relay`, rendezvous or
-sealed proxy-fallback), **NKN** (the public messaging network, no operator to run), and **hop** (a third agent
-relays, plaintext or sealed-forward, with hop-count + policy gating). Details:
-[project overview → Reachability](../README.md#reachability--transports).
+Two peers exchange over whichever path is currently usable; a **per-peer picker** chooses
+(`RoutingStrategy.selectTransport`), no app code does. A peer is **one `Peer` with an address map**, not a scatter
+of per-transport handles: `PeerGraph` holds each peer's `transports` (name → config), and
+`PeerGraph.addressesOf(peerId)` flattens it to `{ transport → wire address }`, so the picker resolves the
+transport-appropriate address for the peer it already knows.
+
+The picker classifies its choice into **reachability tiers** (`ReachabilityTier`), an ordered ladder from
+closest to most indirect:
+
+- **direct** — WebRTC / BLE / mDNS / Local / Internal: no third party between the two agents once the link is up.
+- **mesh** — relay (`@onderling/relay`) / NKN (the public messaging network, no operator to run) / MQTT /
+  offline store-and-forward: an indirect, third-party-mediated link.
+- **hop** — peer-as-relay (a third agent forwards a sealed or plaintext payload, hop-count + policy gated); a
+  *routing* decision, not a transport class.
+- **companion** — a user-hostable node that consent-grants "route through me"; the last-resort carry when no
+  closer rung reaches the peer.
+
+`RoutingStrategy.routeLadder(peer)` exposes the full `direct → mesh → hop → companion` ladder. **Built vs.
+forward:** direct + mesh resolve from real transports (NKN end-to-end, relay, `InternalTransport`); the **hop**
+rung resolves only when a peer-as-relay bridge resolver is wired, else it reports itself unavailable; the
+**companion** rung is a declared **seam — its adapter is not built**, so it degrades honestly rather than
+pretending to carry. Offline **hold-and-forward** exists today as a send *guarantee* (`sendTo(…,
+{guarantee:'hold-forward'})` — a briefly-offline member has the message held and flushed on reconnect); a
+*dedicated* hold-and-forward port is forward work.
+
+**Two unrelated "hop"s — don't conflate them.** The **transport-hop** above (the `hop` rung) is peer-as-relay
+*routing*: forwarding a payload through an intermediary peer to reach a target. The **social match-hop**
+(`@onderling/kring-host` `circleHop.js`) is *discovery*: relaying a skill query one degree further through a
+contact who allows it — it never appears in this reachability ladder.
+
+Transport details: [project overview → Reachability](../README.md#reachability--transports).
 
 ---
 

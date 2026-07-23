@@ -13,7 +13,8 @@ SDK" means exactly "satisfies the port."** Two things make that concrete and che
 
 > Implement the port **and** pass its conformance harness = your adapter is compatible.
 
-There are three ports today.
+There are four ports today — three general adapters (`Transport`, `DataSource`, `ActorResolver`) and one
+narrower store port (`StorageBackend`).
 
 ## `Transport` — the network adapter port
 
@@ -61,6 +62,29 @@ primitives (`sendOneWay`, `sendAck`, `request`, `respond`, plus `sendHello`, `pu
 **Reference adapters:** `MemorySource` / `IndexedDBSource` / `FileSystemSource` (in `@onderling/core`) and
 `SolidPodSource` (in `@onderling/pod-client`).
 
+## `StorageBackend` — the blind-ciphertext store port
+
+**Shape:** a base class, `packages/core/src/storage/StorageBackend.js`, exported as `StorageBackend`. An adapter
+`extends StorageBackend`. It is **deliberately narrower than `DataSource`**: three methods, ciphertext only.
+
+**Why a separate, narrower port.** The whole point is that the *store* is a free choice, because the **seal** —
+not the store's access control — gates who can read content. A caller seals a datum *above* this port (via the
+seal resolver in `@onderling/pod-client`) and hands the resulting ciphertext down; the backend moves opaque bytes
+it can never open. Keeping it separate from `DataSource` makes "the backend never sees plaintext" a property of
+the **type**, not of discipline — there is no `read` that decodes and no `query` over cleartext.
+
+**Contract:**
+
+- `put(ref, ciphertext)` → store the opaque ciphertext under `ref` (create-or-overwrite); resolves when durable.
+- `get(ref)` → the stored ciphertext, or `null` when `ref` is absent.
+- `list(prefix='')` → every stored `ref` that starts with `prefix`.
+
+`ref` is an opaque forward-slash key; `ciphertext` is an opaque string (a sealed envelope). It backs the sealed
+per-circle chat log (`sealedMessageLog`, the `pod-signal`/`pod-only` data-move at rest — see `architecture.md`).
+
+**Reference adapters:** `MemoryStorageBackend` (in `@onderling/core`) and `podStorageBackend` (in
+`@onderling/pod-client`).
+
 ## `ActorResolver` — the actor-registry adapter port
 
 **Shape:** a **structural (duck-typed) interface**, not a base class — a `@typedef` in
@@ -92,6 +116,7 @@ actually hold:
 |---|---|---|
 | `Transport` | `assertTransportConformance(makePair, {label})` | `InternalTransport`, `RendezvousTransport` |
 | `DataSource` | `assertDataSourceConformance(makeSource, {label, supportsQuery})` | `MemorySource` |
+| `StorageBackend` | `assertStorageBackendConformance(makeBackend, {label})` | `MemoryStorageBackend` |
 | `ActorResolver` | `assertActorResolverConformance(makeResolver, {label})` | `createInMemoryActorResolver` |
 
 `assertTransportConformance` takes a factory that returns a *connected pair* `{ a, b, addrA, addrB, teardown }`
