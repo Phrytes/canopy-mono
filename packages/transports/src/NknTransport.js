@@ -12,8 +12,28 @@
  *   - Soft warn at 20 s if still connecting
  *   - Hard timeout at 90 s → seedless retry (different node pool)
  */
-import { Transport, b64encode } from '@onderling/core';
+import { Transport, b64encode, b64decode } from '@onderling/core';
 import { log } from '@onderling/logger';
+import nacl from 'tweetnacl';
+
+/**
+ * Derive a peer's NKN address from its base64url chat pubKey. NKN uses the agent's
+ * ed25519 pubKey BYTES as the client seed, so a peer's NKN address is
+ * `hex( fromSeed(pubKeyBytes).publicKey )` (=== nkn-sdk's own MultiClient(seed).addr).
+ * A peer MUST be addressed by that derived form; NKN rejects the raw base64url pubKey
+ * ("neither a valid public key nor a registered name"). Idempotent: an address that is
+ * already NKN-native (64-hex, optionally `identifier.`-prefixed) passes through unchanged.
+ */
+export function nknAddressFromChatPubKey(to) {
+  if (typeof to !== 'string' || !to) return to;
+  const bare = to.includes('.') ? to.slice(to.lastIndexOf('.') + 1) : to;
+  if (/^[0-9a-f]{64}$/i.test(bare)) return to;   // already an NKN address
+  let bytes;
+  try { bytes = b64decode(to); } catch { return to; }
+  if (!bytes || bytes.length !== 32) return to;
+  const pub = nacl.sign.keyPair.fromSeed(bytes).publicKey;
+  return Array.from(pub).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 /**
  * NKN network `Transport` wrapping `nkn-sdk`'s Client. The NKN address is derived from the
@@ -93,7 +113,7 @@ export class NknTransport extends Transport {
 
     while (true) {
       try {
-        await this.#client.send(to, payload, { noReply: true });
+        await this.#client.send(nknAddressFromChatPubKey(to), payload, { noReply: true });
         // PII-SAFE: byte COUNT of the wire payload only — never `to` (the peer
         // address) nor the payload/envelope contents.
         log.info('transport', 'transport.send', { bytes: payload.length });
