@@ -110,6 +110,10 @@ export const DEFAULT_CIRCLE_POLICY = {
   catchUpChooserMode: 'auto',
   admins:           [],
   consensusRequired: false,
+  // Connectivity Phase 4 §7/§9 — member↔member private chat (prikbord/DM). Off by default
+  // (conservative); the settings surface only lets an admin enable it when the circle's route
+  // supports a peer pairwise key (relay/rendezvous available), greyed under pod-only (no relay).
+  privateDm:        false,
   // S6.C deep — which whole apps the circle composes; null = all DEFAULT_CIRCLE_ORIGINS.
   apps:             null,
   // B · (ruling) — the admin FREEDOM TEMPLATE: a partial map keyed by
@@ -203,6 +207,9 @@ export function normalizeCirclePolicy(stored = {}) {
     admins:             Array.isArray(p.admins) ? p.admins.filter((x) => typeof x === 'string') : [],
     consensusRequired:
       typeof p.consensusRequired === 'boolean' ? p.consensusRequired : DEFAULT_CIRCLE_POLICY.consensusRequired,
+    // Phase 4 §7/§9 — member↔member private chat toggle (route-gated in the settings surface).
+    privateDm:
+      typeof p.privateDm === 'boolean' ? p.privateDm : DEFAULT_CIRCLE_POLICY.privateDm,
     // S6.C deep — which whole apps this circle composes into its catalog (the bot's
     // tools + slash-suggest). null/absent = all DEFAULT_CIRCLE_ORIGINS; a list
     // narrows (e.g. ['stoop'] for a buurt-only circle). Validation is loose here —

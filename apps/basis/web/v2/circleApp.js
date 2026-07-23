@@ -664,6 +664,11 @@ import { normalizeCircleMembers, recipientSealKeyFromMembers } from '@onderling/
 import { buildFindExtras } from '@onderling/kring-host/findExtras';
 import { executeBulkDispatch } from '../../src/bulkOps.js';
 import { mergeCirclePolicy, mergeMemberOverride, normalizeCirclePolicy } from '../../src/v2/circlePolicy.js';
+// Phase 4 §9 — the manifest-declared settings controls (transport-mode · relay endpoint · private-DM).
+import { settingsControlsFromManifest } from '../../src/v2/circleSettingsControls.js';
+// Phase 4 §10 / G17 — the shared composer built-in classifier (circle/transport slash commands
+// dispatch as built-ins, not to the bot/LLM).
+import { parseCircleBuiltin } from '../../src/v2/circleComposerBuiltins.js';
 import { makeProposal, pendingApprovers } from '../../src/v2/circleConsensus.js';
 import { createProposalStore, localStorageProposalIo } from '../../src/v2/circleProposalStore.js';
 // agent-add admin approval store.
@@ -1080,6 +1085,29 @@ const relayPrefStore       = createRelayPrefStore(localStorageRelayIo());
 let   CIRCLE_RELAY_URL      = resolveRelayUrl(localStorageRelayIo().load(), CIRCLE_RELAY_ENV);
 let   _peerAgent           = null;   // captured at boot so a relay-setting change can reconnect live
 let   _peerRouter          = null;
+// Phase 4 §9 — device transport-mode preference (nkn|relay|both), persisted so the settings
+// surface reflects it + the enabledWhen fold reads it. Shares the vault key the classic shell's
+// /transport-mode built-in uses (localBuiltins TRANSPORT_VAULT_KEY = 'cc-transport-mode').
+const TRANSPORT_MODE_KEY = 'cc-transport-mode';
+function readTransportMode() {
+  try { const v = localStorage.getItem(TRANSPORT_MODE_KEY); return (v === 'nkn' || v === 'relay' || v === 'both') ? v : null; }
+  catch { return null; }
+}
+function applyTransportMode(mode) {
+  if (!['nkn', 'relay', 'both'].includes(String(mode))) return { ok: false, error: 'bad_mode' };
+  try { localStorage.setItem(TRANSPORT_MODE_KEY, mode); } catch { /* best-effort */ }
+  // Take effect live when the peer agent supports it (parity with the classic shell's built-in);
+  // absent ⇒ the persisted preference still drives the fold + next connect.
+  try { _peerAgent?.setTransportMode?.(mode); } catch { /* best-effort */ }
+  return { ok: true, mode };
+}
+// Phase 4 §9 — the current device transport state the settings fold reads (relay availability
+// drives the route × capability grey-out). transportKnown is always true here (we can read relay
+// + mode), so the private-DM grey-out is a REAL disable, not the missing-data seam.
+function currentTransportState() {
+  const relayUrl = resolveRelayUrl(localStorageRelayIo().load(), CIRCLE_RELAY_ENV) || '';
+  return { mode: readTransportMode(), relayUrl, relayConnected: !!CIRCLE_RELAY_URL };
+}
 // media P-live — the DEPLOYED blob-gate edge URL (e.g. `https://relay.example/blob-gate`).
 // EXPLICIT opt-in: only when this is configured do full-size photos go to a real bucket
 // behind the edge with roster read-grants (live-peer reads). Unset ⇒ the in-memory dev
@@ -4764,6 +4792,36 @@ function showKring(id, circle, policy) {
           eventLog.append(kringChatMessageEvent({ msgId: mid, ts: Date.now(), circleId: id, actor: 'bot', text }));
           rerender();
         };
+        // G17 — circle/transport slash commands (`/set-relay`, `/transport-mode`, `/settings`,
+        // `/transports`) dispatch as BUILT-INS (the settings/transport handlers) instead of routing to
+        // the bot/LLM. Same shared classifier the mobile composer uses (invariants #1/#2).
+        const builtin = parseCircleBuiltin(line);
+        if (builtin) {
+          if (builtin.opId === 'settings') { showSettings(id); return; }
+          if (builtin.opId === 'set-relay') {
+            const r = await applyRelayUrl(builtin.args?.clear ? '' : String(builtin.args?.url ?? ''));
+            kringNote(r?.ok
+              ? t('circle.settings.relay_applied', { url: r.effective || '—' })
+              : t('circle.settings.relay_failed', { error: r?.error ?? 'unknown' }));
+            return;
+          }
+          if (builtin.opId === 'transport-mode') {
+            const mode = builtin.args?.mode;
+            const r = applyTransportMode(mode);
+            kringNote(r?.ok
+              ? t('circle.settings.transport_set', { mode: r.mode })
+              : t('circle.settings.transport_bad', { mode: mode ?? '—' }));
+            return;
+          }
+          if (builtin.opId === 'transports') {
+            const ts = currentTransportState();
+            kringNote(t('circle.settings.transports_status', {
+              mode: ts.mode ?? 'nkn',
+              relay: ts.relayUrl || t('circle.settings.transports_none'),
+            }));
+            return;
+          }
+        }
         const shareCmd = line.match(/^\/shareitem\s+(\S+)\s+(?:to\s+)?(\S+)\s*$/i);
         if (shareCmd) {
           const [, itemId, toCircleId] = shareCmd;
@@ -5542,6 +5600,20 @@ async function showSettings(id) {
     t,
     // the projected PAGE surface drives the header label (labelKey via t).
     settingsPage,
+    // Phase 4 §9 — the manifest-declared Connection & transport controls + the device transport
+    // state the `enabledWhen` fold reads (relay availability greys the private-DM toggle under
+    // pod-only). Device-scoped controls dispatch as built-ins via onControl (the settings/relay ops).
+    controls: settingsControlsFromManifest(basisManifest),
+    transport: currentTransportState(),
+    onControl: async (opId, args) => {
+      if (opId === 'set-relay') {
+        const r = await applyRelayUrl(args?.clear ? '' : String(args?.url ?? ''));
+        if (!r?.ok) storageNote = t('circle.settings.relayEndpoint_hint');
+      } else if (opId === 'transport-mode') {
+        applyTransportMode(args?.mode);
+      }
+      rerender();
+    },
     // the merged manifest sources drive the settings form + the per-skill freedom matrix.
     sources: circleBaseSources,
     saveLabel: consensusActive() ? t('circle.settings.send_proposal') : undefined,

@@ -581,6 +581,43 @@ export const basisManifest = {
           required: false,
         },
       ],
+      /**
+       * Connectivity Phase 4 §9 — circle/admin transport + route + policy controls, ADDED to
+       * the existing settings op as MANIFEST controls (invariant #4 — declared here, never a
+       * per-shell switch). Both shells (web `circleSettings.js` + RN `CircleSettingsScreen.js`)
+       * render this list; the ONE new mechanism is `enabledWhen` — a predicate folded over the
+       * circle's route + data-policy (`src/v2/circleSettingsControls.js`, reusing C9's
+       * `resolveCircleDataPolicy`) that greys out incompatible options per the §7 route ×
+       * capability matrix. `scope` marks a control device-applied (dispatches the transport/relay
+       * op) vs circle-policy (`policyField`, saved with the rest of the policy).
+       */
+      controls: [
+        // Transport-mode picker — device-scoped; dispatches the `transport-mode` op. `nkn` is the
+        // default transport (always available); `relay`/`both` grey out with no relay endpoint
+        // (optionEnabledWhen: 'transportAvailable').
+        {
+          id: 'transport-mode', kind: 'choice', scope: 'device',
+          opId: 'transport-mode', arg: 'mode', of: ['nkn', 'relay', 'both'],
+          labelKey: 'circle.settings.transportMode', hintKey: 'circle.settings.transportMode_hint',
+          optLabelPrefix: 'circle.settings.transportMode_opt',
+          enabledWhen: 'always', optionEnabledWhen: 'transportAvailable',
+        },
+        // Relay endpoint — device-scoped; dispatches the `set-relay` op (blank clears).
+        {
+          id: 'relay-endpoint', kind: 'text', scope: 'device',
+          opId: 'set-relay', arg: 'url',
+          labelKey: 'circle.settings.relayEndpoint', hintKey: 'circle.settings.relayEndpoint_hint',
+          enabledWhen: 'always',
+        },
+        // Member↔member private chat — circle-policy field; enabled only when a relay/rendezvous
+        // route can carry the peer pairwise key (§7). Greys out under pod-only (no relay).
+        {
+          id: 'private-dm', kind: 'toggle', scope: 'circle', policyField: 'privateDm',
+          labelKey: 'circle.settings.privateDm', hintKey: 'circle.settings.privateDm_hint',
+          disabledHintKey: 'circle.settings.privateDm_disabled',
+          enabledWhen: 'relayRoute',
+        },
+      ],
       surfaces: {
         slash: { command: '/settings' },
         chat:  { hint: 'open Settings in a side panel' },

@@ -1288,6 +1288,88 @@
       "text": "Require co-admin approval for changes",
       "doc": "consensusRequired toggle label."
     },
+    "connection": {
+      "text": "Connection & transport",
+      "doc": "Phase 4 §9 — settings section: circle route + transport controls (transport-mode, relay endpoint, private chat)."
+    },
+    "transportMode": {
+      "text": "Transport",
+      "doc": "Phase 4 §9 — transport-mode picker label (which transport carries peer sends)."
+    },
+    "transportMode_hint": {
+      "text": "Which network carries messages to other members.",
+      "doc": "Phase 4 §9 — transport-mode hint."
+    },
+    "transportMode_opt": {
+      "nkn": {
+        "text": "NKN (default)",
+        "doc": "transport-mode option: the built-in NKN transport."
+      },
+      "relay": {
+        "text": "Relay",
+        "doc": "transport-mode option: a WebSocket relay."
+      },
+      "both": {
+        "text": "Both",
+        "doc": "transport-mode option: NKN and relay together."
+      }
+    },
+    "relayEndpoint": {
+      "text": "Relay server",
+      "doc": "Phase 4 §9 — relay endpoint control label (dispatches /set-relay)."
+    },
+    "relayEndpoint_hint": {
+      "text": "Add a WebSocket relay (ws:// or wss://). Leave blank to use the default.",
+      "doc": "Phase 4 §9 — relay endpoint hint."
+    },
+    "relayEndpoint_placeholder": {
+      "text": "wss://relay.example.org",
+      "doc": "Phase 4 §9 — relay endpoint input placeholder."
+    },
+    "relayEndpoint_apply": {
+      "text": "Apply",
+      "doc": "Phase 4 §9 — relay endpoint apply button."
+    },
+    "relayEndpoint_clear": {
+      "text": "Clear",
+      "doc": "Phase 4 §9 — relay endpoint clear button."
+    },
+    "privateDm": {
+      "text": "Private member-to-member chat",
+      "doc": "Phase 4 §7/§9 — the member↔member private chat (prikbord/DM) toggle."
+    },
+    "privateDm_hint": {
+      "text": "Let members message each other directly, not only the whole circle.",
+      "doc": "Phase 4 §9 — private-chat toggle hint."
+    },
+    "privateDm_disabled": {
+      "text": "Needs a relay: pod-only circles can't set up a private channel between members.",
+      "doc": "Phase 4 §7 — shown when the private-chat toggle greys out under pod-only (no relay)."
+    },
+    "relay_applied": {
+      "text": "Relay set: {{url}}",
+      "doc": "G17 — /set-relay built-in confirmation bubble."
+    },
+    "relay_failed": {
+      "text": "Couldn't set relay: {{error}}",
+      "doc": "G17 — /set-relay built-in failure bubble."
+    },
+    "transport_set": {
+      "text": "Transport: {{mode}}",
+      "doc": "G17 — /transport-mode built-in confirmation bubble."
+    },
+    "transport_bad": {
+      "text": "Unknown transport: {{mode}} (use nkn, relay or both)",
+      "doc": "G17 — /transport-mode built-in bad-mode bubble."
+    },
+    "transports_status": {
+      "text": "Transport {{mode}} · relay {{relay}}",
+      "doc": "G17 — /transports built-in status bubble."
+    },
+    "transports_none": {
+      "text": "none",
+      "doc": "G17 — /transports built-in: no relay configured."
+    },
     "consequence_aria": {
       "text": "What this choice means",
       "doc": "Accessible label for the per-option ⓘ consequence toggle."

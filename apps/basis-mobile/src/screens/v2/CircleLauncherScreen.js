@@ -93,6 +93,9 @@ import { surfacePrefStore } from '../../core/surfacePrefStore.js';
 import MultiFieldFormBubble from '../../rn/MultiFieldFormBubble.js';   // 2+-field inline form (parity with web)
 import { createCircleDispatch, addressesBot, stripBotTag } from '../../../../basis/src/v2/circleDispatch.js';
 import { resolveCircleLlm } from '../../../../basis/src/v2/llmPicker.js';
+// Phase 4 §9/§10 — the settings-surface transport state (relayPref) + the shared composer built-in classifier (G17).
+import { resolveRelayUrl, asyncStorageRelayIo } from '../../../../basis/src/v2/relayPref.js';
+import { parseCircleBuiltin } from '../../../../basis/src/v2/circleComposerBuiltins.js';
 // Task #13 — the onboarding + standing help-bot flow, all logic shared with web (circleApp.js). The mobile
 // shell wires the SAME thin seams: provision the help circle, drive onboarding as the bot's chat, and run
 // the standing Q&A router with the honest (#37) route-conditional wording.
@@ -365,6 +368,32 @@ export default function CircleLauncherScreen({
     setUserLlmCfg(saved);
     return null;
   }, []);
+  // Phase 4 §9 — device transport state for the circle settings fold (relay availability greys the
+  // private-DM toggle per the §7 route × capability matrix). Loaded from AsyncStorage (relay URL +
+  // transport-mode); the settings controls apply changes live via onCircleControl. When it can't be
+  // read the fold defaults ENABLED + logs a seam (never a faked disable).
+  const [circleTransport, setCircleTransport] = useState(null);
+  const loadCircleTransport = useCallback(async () => {
+    try {
+      const relayUrl = resolveRelayUrl(await asyncStorageRelayIo(AsyncStorage).load(), process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL) || '';
+      let mode = null;
+      try { const m = await AsyncStorage.getItem('cc-transport-mode'); if (m === 'nkn' || m === 'relay' || m === 'both') mode = m; } catch { /* best-effort */ }
+      setCircleTransport({ mode, relayUrl, relayConnected: !!relayUrl });
+    } catch { setCircleTransport(null); }
+  }, []);
+  useEffect(() => { loadCircleTransport(); }, [loadCircleTransport]);
+  // Device-scoped settings controls (transport-mode · relay endpoint) dispatch as built-ins here —
+  // the SAME handlers the /set-relay + /transport-mode composer built-ins use (invariants #1/#2).
+  const onCircleControl = useCallback(async (opId, args) => {
+    if (opId === 'set-relay') {
+      try { await asyncStorageRelayIo(AsyncStorage).set(args?.clear ? '' : String(args?.url ?? '')); } catch { /* best-effort */ }
+      try { await bundle?.reconnectPeer?.(); } catch { /* best-effort */ }
+    } else if (opId === 'transport-mode' && ['nkn', 'relay', 'both'].includes(String(args?.mode))) {
+      try { await AsyncStorage.setItem('cc-transport-mode', args.mode); } catch { /* best-effort */ }
+      try { bundle?.agent?.setTransportMode?.(args.mode); } catch { /* best-effort */ }
+    }
+    loadCircleTransport();
+  }, [bundle, loadCircleTransport]);
   // the contact (bot/peer) whose DM thread is open under the Contacten tab.
   const [contactThread, setContactThread] = useState(null);
   // cluster J — persisted registry of added feedback bots (AsyncStorage), shared with the Contacten roster
@@ -1346,6 +1375,10 @@ export default function CircleLauncherScreen({
         householdPeers={bundle?.agent?.listHouseholdPeers?.(selected.id) ?? []}
         onAddHouseholdPeer={(addr) => (bundle?.agent?.pairWithPeer ?? bundle?.agent?.addHouseholdPeer)?.(selected.id, addr)}
         onRemoveHouseholdPeer={(addr) => bundle?.agent?.removeHouseholdPeer?.(selected.id, addr)}
+        // Phase 4 §9 — the device transport state the enabledWhen fold reads + the built-in dispatcher
+        // for device-scoped controls (transport-mode · relay endpoint). web parity with circleApp.js.
+        transport={circleTransport}
+        onControl={onCircleControl}
         // #80 — re-read the just-saved policy so CircleDetail's gate/tabs/catalog update live
         // (the settings onSave awaits store.update before calling onBack, so this sees the new value).
         onBack={() => { refreshProposals(); reloadSelectedPolicy(); setView('detail'); }}
@@ -2895,6 +2928,38 @@ function CircleDetail({
     // a slash command opens a declared list-screen (the CHAT entry; web≡mobile).
     const scr = text.match(/^\/(contacts|prikbord)\b/i);
     if (scr && sectionForScreen(manifestsByOrigin, scr[1].toLowerCase())) { setComposerText(''); setScreenPanel({ screen: scr[1].toLowerCase() }); return; }
+    // G17 — circle/transport slash commands (`/set-relay`, `/transport-mode`, `/settings`, `/transports`)
+    // dispatch as BUILT-INS (settings/transport handlers) instead of routing to the bot/LLM. Same shared
+    // classifier the web composer uses (invariants #1/#2).
+    const builtin = parseCircleBuiltin(text);
+    if (builtin) {
+      setComposerText('');
+      if (builtin.opId === 'settings') { setView('settings'); return; }
+      if (builtin.opId === 'set-relay') {
+        await onCircleControl('set-relay', builtin.args);
+        appendKringMessage({ actor: 'bot', text: builtin.args?.clear
+          ? t('circle.settings.relay_applied', { url: t('circle.settings.transports_none') })
+          : t('circle.settings.relay_applied', { url: builtin.args?.url || '—' }) });
+        return;
+      }
+      if (builtin.opId === 'transport-mode') {
+        const mode = builtin.args?.mode;
+        if (['nkn', 'relay', 'both'].includes(String(mode))) {
+          await onCircleControl('transport-mode', builtin.args);
+          appendKringMessage({ actor: 'bot', text: t('circle.settings.transport_set', { mode }) });
+        } else {
+          appendKringMessage({ actor: 'bot', text: t('circle.settings.transport_bad', { mode: mode ?? '—' }) });
+        }
+        return;
+      }
+      if (builtin.opId === 'transports') {
+        const ts = circleTransport || {};
+        appendKringMessage({ actor: 'bot', text: t('circle.settings.transports_status', {
+          mode: ts.mode ?? 'nkn', relay: ts.relayUrl || t('circle.settings.transports_none'),
+        }) });
+        return;
+      }
+    }
     setComposerText('');
     // Feedback review-card edit: the ✏ prefilled the composer with a point's text; this send is the EDIT.
     // Route it as an `fp:edit:<id>:<text>` control to the feedback surface (its dispatcher re-curates + shows
@@ -2988,7 +3053,7 @@ function CircleDetail({
       // so a newly-created task appears there without a manual reload.
       if (activeTab === 'taken') setTasksReloadTick((n) => n + 1);
     }).catch(() => {});
-  }, [composerText, eventLog, circle?.id, appendKringMessage, circleBot, pendingFollowUp, runCircleCommandResolved, awaitingBotReply, noteBotTurn, manifestsByOrigin, buildFeedbackMount, emitFeedbackLangOptions, postHelpTopicChips, answerHelpMessage, activeTab]);
+  }, [composerText, eventLog, circle?.id, appendKringMessage, circleBot, pendingFollowUp, runCircleCommandResolved, awaitingBotReply, noteBotTurn, manifestsByOrigin, buildFeedbackMount, emitFeedbackLangOptions, postHelpTopicChips, answerHelpMessage, activeTab, onCircleControl, circleTransport, setView, t]);
 
   // δ.2 — tap-to-retry on the failed icon.  Looks up the original
   // text from the eventLog so we don't have to remember it elsewhere.

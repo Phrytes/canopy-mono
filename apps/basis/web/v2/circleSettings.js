@@ -19,6 +19,8 @@
  * `title` opt).
  */
 import { CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS } from '../../src/v2/circlePolicy.js';
+// Phase 4 §9 — the settings-surface CONTROLS + the `enabledWhen` fold (route × capability).
+import { resolveControlEnablement } from '../../src/v2/circleSettingsControls.js';
 import { DEFAULT_CIRCLE_ORIGINS } from '../../src/v2/circleSources.js';   // S6.C — composable apps
 // the manifest-driven settings form + the per-skill freedom matrix (rulings).
 import { buildSettingsForm, buildCapabilityMatrix, FREEDOM_LEVELS, OPT_OUT_CONSEQUENCES } from '@onderling/app-manifest';
@@ -92,6 +94,13 @@ export function renderCircleSettings(container, {
   // (older callers / tests) ⇒ the header falls back to tr('circle.settings.title')
   // bit-for-bit, so nothing regresses.
   settingsPage = null,
+  // Phase 4 §9 — the manifest `settings` op controls (transport-mode · relay endpoint ·
+  // private-DM) + the device transport state the `enabledWhen` fold reads. Absent (older
+  // callers / tests) ⇒ the Connection section doesn't render (nothing regresses). Device-scoped
+  // controls dispatch through `onControl(opId, args)`; the circle-policy toggle emits like the rest.
+  controls = [],
+  transport = null,
+  onControl,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   const emit = (patch) => { if (typeof onChange === 'function') onChange(patch); };
@@ -266,6 +275,12 @@ export function renderCircleSettings(container, {
   consSec.appendChild(consRow);
   container.appendChild(consSec);
 
+  // Phase 4 §9 — the Connection & transport controls (manifest-declared). Rendered only when
+  // the host wires them; the `enabledWhen` fold greys out incompatible options (route × capability).
+  if (Array.isArray(controls) && controls.length) {
+    renderConnectionControls(container, { controls, policy, transport, tr, emit, onControl });
+  }
+
   // manifest-driven per-app SETTINGS form. Values live in policy.settings keyed
   // "<app>.<key>"; emit writes them back. Only apps that declare circle-scope settings render a block.
   if (Array.isArray(sources) && sources.length) {
@@ -425,6 +440,107 @@ function section(title) {
   h.textContent = title;
   sec.appendChild(h);
   return sec;
+}
+
+/**
+ * Phase 4 §9 — render the manifest `settings` controls (transport-mode · relay endpoint ·
+ * private-DM) under one "Connection & transport" section. The `enabledWhen` fold
+ * (`resolveControlEnablement`, reusing C9's data-policy) decides which controls/options grey
+ * out per the §7 route × capability matrix — pod-only greys the private-DM toggle; a relay-less
+ * route greys the relay/both transport options. Device-scoped controls dispatch through
+ * `onControl(opId, args)`; the circle-policy toggle emits like the rest of the panel.
+ */
+function renderConnectionControls(container, { controls, policy, transport, tr, emit, onControl }) {
+  const enable = resolveControlEnablement(controls, { policy, transport });
+  const dispatch = typeof onControl === 'function' ? onControl : () => {};
+  const sec = section(tr('circle.settings.connection'));
+  sec.classList.add('circle-settings__connection');
+
+  for (const ctl of controls) {
+    const state = enable[ctl.id] || { enabled: true };
+    const row = document.createElement('div');
+    row.className = 'circle-settings__control';
+    row.dataset.control = ctl.id;
+    if (!state.enabled) row.dataset.disabled = 'true';
+
+    if (ctl.kind === 'choice') {
+      const lab = document.createElement('div');
+      lab.className = 'circle-settings__control-label';
+      lab.textContent = tr(ctl.labelKey);
+      row.appendChild(lab);
+      const current = transport && transport.mode ? transport.mode : (ctl.of && ctl.of[0]);
+      for (const opt of (ctl.of || [])) {
+        const optState = (state.options && state.options[opt]) || { enabled: true };
+        const orow = document.createElement('label');
+        orow.className = 'circle-settings__control-opt';
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = `ctl-${ctl.id}`;
+        radio.value = opt;
+        radio.checked = current === opt;
+        radio.disabled = !state.enabled || !optState.enabled;
+        if (radio.disabled) orow.dataset.disabled = 'true';
+        radio.addEventListener('change', () => { if (radio.checked) dispatch(ctl.opId, { [ctl.arg]: opt }); });
+        const span = document.createElement('span');
+        span.textContent = ctl.optLabelPrefix ? tr(`${ctl.optLabelPrefix}.${opt}`) : opt;
+        orow.append(radio, span);
+        row.appendChild(orow);
+      }
+    } else if (ctl.kind === 'text') {
+      const lab = document.createElement('label');
+      lab.className = 'circle-settings__control-label';
+      lab.textContent = tr(ctl.labelKey);
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'circle-settings__control-input';
+      input.dataset.role = 'control-input';
+      input.placeholder = tr('circle.settings.relayEndpoint_placeholder');
+      input.value = (transport && typeof transport.relayUrl === 'string') ? transport.relayUrl : '';
+      input.disabled = !state.enabled;
+      const apply = document.createElement('button');
+      apply.type = 'button';
+      apply.className = 'circle-settings__control-apply';
+      apply.textContent = tr('circle.settings.relayEndpoint_apply');
+      apply.disabled = !state.enabled;
+      apply.addEventListener('click', () => dispatch(ctl.opId, { [ctl.arg]: input.value.trim() }));
+      const clear = document.createElement('button');
+      clear.type = 'button';
+      clear.className = 'circle-settings__control-clear';
+      clear.textContent = tr('circle.settings.relayEndpoint_clear');
+      clear.disabled = !state.enabled;
+      clear.addEventListener('click', () => { input.value = ''; dispatch(ctl.opId, { clear: true }); });
+      row.append(lab, input, apply, clear);
+    } else {   // toggle → a circle-policy field (emit), route-gated by enabledWhen.
+      const wrap = document.createElement('label');
+      wrap.className = 'circle-settings__control-toggle';
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.dataset.field = ctl.policyField;
+      box.checked = !!(policy && policy[ctl.policyField]);
+      box.disabled = !state.enabled;
+      box.addEventListener('change', () => emit({ [ctl.policyField]: box.checked }));
+      const span = document.createElement('span');
+      span.textContent = tr(ctl.labelKey);
+      wrap.append(box, span);
+      row.appendChild(wrap);
+      // When route-disabled, surface WHY (the §7 rule) instead of a silent grey checkbox.
+      if (!state.enabled && ctl.disabledHintKey) {
+        const why = document.createElement('div');
+        why.className = 'circle-settings__control-why';
+        why.textContent = tr(ctl.disabledHintKey);
+        row.appendChild(why);
+      }
+    }
+
+    if (ctl.hintKey) {
+      const hint = document.createElement('div');
+      hint.className = 'circle-settings__control-hint';
+      hint.textContent = tr(ctl.hintKey);
+      row.appendChild(hint);
+    }
+    sec.appendChild(row);
+  }
+  container.appendChild(sec);
 }
 
 /** The `policy.settings` values for one app: entries keyed "<app>.<key>" → `{ key: value }`. */

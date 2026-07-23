@@ -15,6 +15,11 @@ import { fileURLToPath } from 'node:url';
 import { ENUM_AXES } from '../../web/v2/circleSettings.js';
 import { CIRCLE_POLICY_ENUMS } from '../../src/v2/circlePolicy.js';
 import { DEFAULT_CIRCLE_ORIGINS } from '../../src/v2/circleSources.js';
+// Phase 4 §9 — the manifest-declared Connection & transport controls (source of truth, invariant #4).
+import { settingsControlsFromManifest } from '../../src/v2/circleSettingsControls.js';
+import { basisManifest } from '../../src/index.js';
+
+const SETTINGS_CONTROLS = settingsControlsFromManifest(basisManifest);
 
 const LOCALES = ['en', 'nl'];
 const load = (lang) =>
@@ -70,6 +75,24 @@ describe('circle settings/screen locale coverage', () => {
     it(`[${lang}] the SP-5b audience-scope caption resolves`, () => {
       // Non-dismissible caption a scoped list renders under its title.
       expect(resolve(tree, 'circle.screen.audience_scope'), 'circle.screen.audience_scope').toBeTypeOf('string');
+    });
+
+    it(`[${lang}] every §9 Connection control label/hint (+ option + disabled-hint) resolves`, () => {
+      // Adding a manifest settings control (or an option) without its locale entry now FAILS CI
+      // instead of shipping a raw key onto the settings surface.
+      const missing = [];
+      expect(resolve(tree, 'circle.settings.connection'), 'circle.settings.connection').toBeTypeOf('string');
+      for (const c of SETTINGS_CONTROLS) {
+        for (const key of [c.labelKey, c.hintKey, c.disabledHintKey].filter(Boolean)) {
+          if (typeof resolve(tree, key) !== 'string') missing.push(key);
+        }
+        if (c.optLabelPrefix && Array.isArray(c.of)) {
+          for (const opt of c.of) {
+            if (typeof resolve(tree, `${c.optLabelPrefix}.${opt}`) !== 'string') missing.push(`${c.optLabelPrefix}.${opt}`);
+          }
+        }
+      }
+      expect(missing, `missing settings-control locale keys: ${missing.join(', ')}`).toEqual([]);
     });
   }
 });

@@ -45,6 +45,12 @@ import { pushCircleStoragePolicy } from '../../../../basis/src/v2/circleStorageP
 // #1/#2: ONE pure module, no per-shell logic). Mirrors web circleSettings.js.
 import { pageForOpMobile, pageLabel } from '../../../../basis/src/v2/pageProjection.js';
 import { basisManifest } from '../../../../basis/src/index.js';
+// Phase 4 §9 — the manifest-declared settings controls + the `enabledWhen` fold (route × capability).
+// Same shared source the web renderer uses (invariants #1/#2).
+import { resolveControlEnablement, settingsControlsFromManifest } from '../../../../basis/src/v2/circleSettingsControls.js';
+
+// Phase 4 §9 — the Connection & transport controls, read once from the static basisManifest.
+const SETTINGS_CONTROLS = settingsControlsFromManifest(basisManifest);
 
 // Theme B — the guided-setup chatbot template can be HQ-updated remotely; unset
 // → the bundled DEFAULT_SETTINGS_TEMPLATE fallback (web's SETTINGS_TEMPLATE_URL).
@@ -85,6 +91,11 @@ export default function CircleSettingsScreen({
   householdPeers = [],
   onAddHouseholdPeer,
   onRemoveHouseholdPeer,
+  // Phase 4 §9 — the device transport state the `enabledWhen` fold reads (relay availability greys
+  // the private-DM toggle under pod-only) + the built-in dispatcher for device-scoped controls
+  // (transport-mode · relay endpoint). Absent (older callers) ⇒ the fold seams to ENABLED + logs.
+  transport = null,
+  onControl,
 }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -104,6 +115,14 @@ export default function CircleSettingsScreen({
   // γ.4 — conflict resolver state (parallel to recipe-editor pattern).
   const [conflictReport, setConflictReport] = useState(null);
   const [localForCompare, setLocalForCompare] = useState(null);
+
+  // Phase 4 §9 — relay endpoint input buffer (seeded from the current transport state).
+  const [relayInput, setRelayInput] = useState(typeof transport?.relayUrl === 'string' ? transport.relayUrl : '');
+  const controlEnable = useMemo(
+    () => resolveControlEnablement(SETTINGS_CONTROLS, { policy: working, transport }),
+    [working, transport],
+  );
+  const runControl = useCallback((opId, args) => { if (typeof onControl === 'function') onControl(opId, args); }, [onControl]);
 
   useEffect(() => {
     let live = true;
@@ -440,6 +459,73 @@ export default function CircleSettingsScreen({
         {consensusActive ? <Text style={styles.note}>{t('circle.settings.pending')}</Text> : null}
         {storageNote ? <Text style={styles.note} testID="circle-settings-storage-note">{storageNote}</Text> : null}
 
+        {/* Phase 4 §9 — Connection & transport controls (manifest-declared). The enabledWhen fold
+            greys out incompatible options (route × capability); web parity with circleSettings.js. */}
+        {SETTINGS_CONTROLS.length ? (
+          <View testID="circle-settings-connection">
+            <Text style={styles.section}>{t('circle.settings.connection')}</Text>
+            {SETTINGS_CONTROLS.map((ctl) => {
+              const cs = controlEnable[ctl.id] || { enabled: true };
+              if (ctl.kind === 'choice') {
+                const current = transport?.mode || (ctl.of && ctl.of[0]);
+                return (
+                  <View key={ctl.id} style={styles.controlRow} testID={`control-${ctl.id}`}>
+                    <Text style={styles.rowLabel}>{t(ctl.labelKey)}</Text>
+                    <View style={styles.chipRow}>
+                      {(ctl.of || []).map((opt) => {
+                        const os = (cs.options && cs.options[opt]) || { enabled: true };
+                        const off = !cs.enabled || !os.enabled;
+                        return (
+                          <Pressable key={opt} disabled={off} onPress={() => runControl(ctl.opId, { [ctl.arg]: opt })}
+                            style={[styles.chip, current === opt && styles.chipOn, off && styles.chipDisabled]}
+                            testID={`control-${ctl.id}-${opt}${off ? '-disabled' : ''}`}>
+                            <Text style={styles.chipText}>{ctl.optLabelPrefix ? t(`${ctl.optLabelPrefix}.${opt}`) : opt}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                    {ctl.hintKey ? <Text style={styles.hintText}>{t(ctl.hintKey)}</Text> : null}
+                  </View>
+                );
+              }
+              if (ctl.kind === 'text') {
+                return (
+                  <View key={ctl.id} style={styles.controlRow} testID={`control-${ctl.id}`}>
+                    <Text style={styles.rowLabel}>{t(ctl.labelKey)}</Text>
+                    <TextInput style={styles.input} value={relayInput} editable={cs.enabled}
+                      placeholder={t('circle.settings.relayEndpoint_placeholder')} autoCapitalize="none"
+                      onChangeText={setRelayInput} testID={`control-${ctl.id}-input`} />
+                    <View style={styles.chipRow}>
+                      <Pressable disabled={!cs.enabled} onPress={() => runControl(ctl.opId, { [ctl.arg]: relayInput.trim() })}
+                        style={[styles.chip, !cs.enabled && styles.chipDisabled]} testID={`control-${ctl.id}-apply`}>
+                        <Text style={styles.chipText}>{t('circle.settings.relayEndpoint_apply')}</Text>
+                      </Pressable>
+                      <Pressable disabled={!cs.enabled} onPress={() => { setRelayInput(''); runControl(ctl.opId, { clear: true }); }}
+                        style={[styles.chip, !cs.enabled && styles.chipDisabled]} testID={`control-${ctl.id}-clear`}>
+                        <Text style={styles.chipText}>{t('circle.settings.relayEndpoint_clear')}</Text>
+                      </Pressable>
+                    </View>
+                    {ctl.hintKey ? <Text style={styles.hintText}>{t(ctl.hintKey)}</Text> : null}
+                  </View>
+                );
+              }
+              // toggle → circle-policy field (patch), route-gated by enabledWhen.
+              return (
+                <View key={ctl.id} style={styles.controlRow} testID={`control-${ctl.id}${cs.enabled ? '' : '-disabled'}`}>
+                  <View style={styles.row}>
+                    <Text style={styles.rowLabel}>{t(ctl.labelKey)}</Text>
+                    <Switch trackColor={{ true: theme.color.accent, false: theme.color.trackOff }} thumbColor={theme.color.white}
+                      disabled={!cs.enabled} value={!!working[ctl.policyField]}
+                      onValueChange={(v) => patch({ [ctl.policyField]: v })} testID={`control-${ctl.id}-switch`} />
+                  </View>
+                  {ctl.hintKey ? <Text style={styles.hintText}>{t(ctl.hintKey)}</Text> : null}
+                  {!cs.enabled && ctl.disabledHintKey ? <Text style={styles.note}>{t(ctl.disabledHintKey)}</Text> : null}
+                </View>
+              );
+            })}
+          </View>
+        ) : null}
+
         {/* manifest-driven per-app settings form */}
         {settingsForms.length ? (
           <>
@@ -606,6 +692,9 @@ const makeStyles = (theme) => StyleSheet.create({
   info:        { fontSize: 16, color: theme.color.accent, paddingHorizontal: 6 },
   consequence: { fontSize: 12, color: theme.color.inkSoft, backgroundColor: theme.color.paper2, borderLeftWidth: 3, borderLeftColor: theme.color.accent, borderRadius: 6, padding: 8, marginBottom: 10 },
   note:        { fontSize: 12, color: theme.color.inkSoft, fontStyle: 'italic', marginTop: 8 },
+  // Phase 4 §9 — Connection & transport controls.
+  controlRow:  { marginBottom: 12 },
+  hintText:    { fontSize: 11, color: theme.color.inkSoft, marginTop: 2 },
   muted:       { color: theme.color.inkSoft, fontStyle: 'italic', paddingVertical: 10 },
   save:        { marginTop: 8, marginBottom: 12, padding: 13, borderRadius: 8, backgroundColor: theme.color.accent, alignItems: 'center' },
   saveText:    { color: theme.color.white, fontSize: 15, fontWeight: '700' },
