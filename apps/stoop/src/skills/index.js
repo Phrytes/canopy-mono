@@ -855,6 +855,43 @@ export function buildSkills({
     return defineSkill(id, wireSkill(coreFn, op(id), { storeFor }), opts);
   };
 
+  /**
+   * Connectivity Phase 2 (C4) — the ONE circle-broadcast fan the four
+   * `broadcastKring*` skills share. They differ only by their wire subtype
+   * (`kind`) + payload; the roster-fan, transport choice, delivery-state
+   * accounting, and `{sent, attempted, errors}` return contract live here
+   * once so they can't drift across the four (invariant 3 — logic lives once).
+   *
+   * Default path fans the payload out to every OTHER trail-roster member over
+   * the bus-local `chat.send` (subtype `kind`, threadId `circleId`, body +
+   * extras). A caller that supplies a pre-projected `envelope` (the chat kind,
+   * via `toWireEnvelope`) rides the host-injected RELIABLE sender
+   * (`bundle.reliableSend`) instead when the host wired one — inheriting the
+   * offline hold-forward guarantee — and falls back to `chat.send` (body +
+   * extras) when no host wired one. Same delivery-state contract either way.
+   *
+   * @param {object} a
+   * @param {string} a.circleId          the circle/group id (chat.send threadId)
+   * @param {string} a.kind              the wire subtype (chat.send subtype)
+   * @param {string|null} a.from         sender webid, omitted from the fan-out
+   * @param {string} [a.body]            chat.send body (default '')
+   * @param {object} [a.extras]          chat.send extras payload (default {})
+   * @param {string|null} [a.metric]     UsageMetrics label to record on fan-out
+   * @param {object|null} [a.envelope]   reliable-send wire envelope (chat kind)
+   * @returns {Promise<{sent:number, attempted:number, errors:Array}|{error:string,sent:0,attempted:0,errors:Array}>}
+   */
+  async function broadcastToCircle({ circleId, kind, from, body = '', extras = {}, metric = null, envelope = null }) {
+    const reliableSend = (envelope && typeof bundle?.reliableSend === 'function') ? bundle.reliableSend : null;
+    if (!reliableSend && !chat?.send) return { error: 'chat-unavailable', sent: 0, attempted: 0, errors: [] };
+    if (!members)                     return { error: 'members-unavailable', sent: 0, attempted: 0, errors: [] };
+
+    const { sent, attempted, errors } = reliableSend
+      ? await _fanOutViaReliableSend({ members, reliableSend, selfWebid: from, envelope })
+      : await _fanOutToMembers({ members, chat, selfWebid: from, subtype: kind, threadId: circleId, body, extras });
+    if (metric) metrics?.record?.(metric);
+    return { sent, attempted, errors };
+  }
+
   return [
     /**
      * postRequest({text, intent?, kind?, requiredSkills?, dueAt?, timeoutMs?, expectClaims?})
@@ -3309,6 +3346,7 @@ export function buildSkills({
       const ts    = typeof a.ts === 'number' && Number.isFinite(a.ts) ? a.ts : Date.now();
       const media = (a.media && typeof a.media === 'object' && !Array.isArray(a.media))
         ? a.media : null;
+      const fromActor = a.fromActor ?? from ?? null;
 
       // Local mirror — store the outgoing chat as an item so it
       // survives reloads AND the kring view can read its full history
@@ -3345,36 +3383,30 @@ export function buildSkills({
         console.warn('[broadcastKringMessage] local mirror failed:', err?.message ?? err);
       }
 
-      // Prefer the host-injected RELIABLE sender (basis wires the secure-agent
-      // hold-forward choke). Falls back to the bus-local `chat.send` when no host
-      // wired one — stoop's own single-process tests exercise that path unchanged.
-      const reliableSend = (typeof bundle?.reliableSend === 'function') ? bundle.reliableSend : null;
-      if (!reliableSend && !chat?.send) return { error: 'chat-unavailable', sent: 0, errors: [], itemId: localItemId };
-      if (!members)                     return { error: 'members-unavailable', sent: 0, errors: [], itemId: localItemId };
-
-      const fromActor = a.fromActor ?? from ?? null;
-      const { sent, attempted, errors } = reliableSend
-        ? await _fanOutViaReliableSend({
-            members, reliableSend, selfWebid: from,
-            // Connectivity Phase 2 — the fan-out wire envelope is a projection
-            // of the ONE canonical chat Envelope (`toWireEnvelope`). `media` is
-            // already wire-whitelisted upstream by kring-host's
-            // `broadcastKringFanOut`; absent → byte-identical legacy wire shape.
-            envelope: toWireEnvelope({
-              circleId: _groupId, msgId: a.msgId, ts, text,
-              fromActor, fromWebid: from, media,
-            }),
-          })
-        : await _fanOutToMembers({
-            members, chat, selfWebid: from,
-            subtype: 'kring-chat-message', threadId: _groupId, body: text,
-            extras: {
-              circleId: _groupId, msgId: a.msgId, ts, fromActor,
-              ...(media ? { media } : {}),
-            },
-          });
-      metrics?.record?.('kring-chat-fanout');
-      return { sent, attempted, errors, itemId: localItemId };
+      // Fan the chat out via the ONE shared circle-broadcast core. Supplying an
+      // `envelope` opts this (chat) kind into the host-injected RELIABLE sender
+      // (`bundle.reliableSend`, the secure-agent hold-forward choke) when the
+      // host wired one — inheriting offline hold-forward — and into the
+      // bus-local `chat.send` (body + extras) fallback when it didn't; stoop's
+      // own single-process tests exercise that fallback path unchanged. The
+      // wire envelope is a projection of the ONE canonical chat Envelope
+      // (`toWireEnvelope`); `media` is already wire-whitelisted upstream by
+      // kring-host's `broadcastKringFanOut` — absent → byte-identical legacy
+      // wire shape.
+      const res = await broadcastToCircle({
+        circleId: _groupId, kind: 'kring-chat-message', from,
+        envelope: toWireEnvelope({
+          circleId: _groupId, msgId: a.msgId, ts, text,
+          fromActor, fromWebid: from, media,
+        }),
+        body: text,
+        extras: {
+          circleId: _groupId, msgId: a.msgId, ts, fromActor,
+          ...(media ? { media } : {}),
+        },
+        metric: 'kring-chat-fanout',
+      });
+      return { ...res, itemId: localItemId };
     }, {
       description: 'Fan a plain-text kring chat message out to every other member via chat.send subtype:kring-chat-message; also mirrors locally to itemStore for durable history.',
       visibility:  'authenticated',
@@ -3405,16 +3437,13 @@ export function buildSkills({
 
       const ts = typeof a.ts === 'number' && Number.isFinite(a.ts) ? a.ts : Date.now();
 
-      if (!chat?.send) return { error: 'chat-unavailable', sent: 0, attempted: 0, errors: [] };
-      if (!members)    return { error: 'members-unavailable', sent: 0, attempted: 0, errors: [] };
-
-      const { sent, attempted, errors } = await _fanOutToMembers({
-        members, chat, selfWebid: from,
-        subtype: 'kring-recipe-broadcast', threadId: _groupId,
+      // Fan the recipe out via the ONE shared circle-broadcast core (chat.send
+      // subtype `kring-recipe-broadcast`); receivers cache it as pending.
+      return broadcastToCircle({
+        circleId: _groupId, kind: 'kring-recipe-broadcast', from,
         extras: { circleId: _groupId, msgId: a.msgId, ts, recipe: a.recipe, fromActor: a.fromActor ?? from ?? null },
+        metric: 'kring-recipe-fanout',
       });
-      metrics?.record?.('kring-recipe-fanout');
-      return { sent, attempted, errors };
     }, {
       description: 'Fan a kring scherm recipe out to every other member via chat.send subtype:kring-recipe-broadcast; receivers cache as pending incomingRecipe for the γ.3 conflict resolver.',
       visibility:  'authenticated',
@@ -3445,16 +3474,13 @@ export function buildSkills({
 
       const ts = typeof a.ts === 'number' && Number.isFinite(a.ts) ? a.ts : Date.now();
 
-      if (!chat?.send) return { error: 'chat-unavailable', sent: 0, attempted: 0, errors: [] };
-      if (!members)    return { error: 'members-unavailable', sent: 0, attempted: 0, errors: [] };
-
-      const { sent, attempted, errors } = await _fanOutToMembers({
-        members, chat, selfWebid: from,
-        subtype: 'kring-rules-broadcast', threadId: _groupId,
+      // Fan the rules doc out via the ONE shared circle-broadcast core (chat.send
+      // subtype `kring-rules-broadcast`); receivers cache it as pending.
+      return broadcastToCircle({
+        circleId: _groupId, kind: 'kring-rules-broadcast', from,
         extras: { circleId: _groupId, msgId: a.msgId, ts, rulesDoc: a.rulesDoc, fromActor: a.fromActor ?? from ?? null },
+        metric: 'kring-rules-fanout',
       });
-      metrics?.record?.('kring-rules-fanout');
-      return { sent, attempted, errors };
     }, {
       description: 'Fan a kring rules document out to every other member via chat.send subtype:kring-rules-broadcast; receivers cache as pending incomingRules for the γ.4 conflict resolver.',
       visibility:  'authenticated',
@@ -3485,16 +3511,13 @@ export function buildSkills({
 
       const ts = typeof a.ts === 'number' && Number.isFinite(a.ts) ? a.ts : Date.now();
 
-      if (!chat?.send) return { error: 'chat-unavailable', sent: 0, attempted: 0, errors: [] };
-      if (!members)    return { error: 'members-unavailable', sent: 0, attempted: 0, errors: [] };
-
-      const { sent, attempted, errors } = await _fanOutToMembers({
-        members, chat, selfWebid: from,
-        subtype: 'kring-policy-broadcast', threadId: _groupId,
+      // Fan the policy doc out via the ONE shared circle-broadcast core (chat.send
+      // subtype `kring-policy-broadcast`); receivers cache it as pending.
+      return broadcastToCircle({
+        circleId: _groupId, kind: 'kring-policy-broadcast', from,
         extras: { circleId: _groupId, msgId: a.msgId, ts, policy: a.policy, fromActor: a.fromActor ?? from ?? null },
+        metric: 'kring-policy-fanout',
       });
-      metrics?.record?.('kring-policy-fanout');
-      return { sent, attempted, errors };
     }, {
       description: 'Fan a kring circlePolicy document out to every other member via chat.send subtype:kring-policy-broadcast; receivers cache as pending incomingPolicy for the γ.4 conflict resolver.',
       visibility:  'authenticated',
