@@ -1116,6 +1116,16 @@ export async function createRealHouseholdAgent(opts = {}) {
     // member has the message HELD and flushed on reconnect, exactly like a task/noticeboard fan.
     reliableSend: (to, envelope, sendOpts = {}) =>
       sa.peer.sendTo(to, envelope, { guarantee: 'hold-forward', ...sendOpts }),
+    // Connectivity Phase 3 — LIVE shared-pod key-custody seams (host-injected by circleApp over each
+    // circle's per-circle StorageBackend + its live group-key {seal,open}). All keyed by circleId so the
+    // ONE stoop agent resolves each circle's member-side custody per call (invariant #6):
+    //   • circleDataMove(circleId)          → the send-path data-move branch (policy.pod).
+    //   • podWrite(circleId, envelope)      → seal+write a chat row, return its opaque pod ref (pod-signal fan).
+    //   • podReadSince(circleId, {sinceTs}) → range-query + open the shared pod (getMessagesSince catch-up merge).
+    // Absent (opt not supplied) → the pre-Phase-3 behaviour, unchanged: fan-out-full / local-mirror reads.
+    circleDataMove: opts.stoopCircleDataMove,
+    podWrite:       opts.stoopPodWrite,
+    podReadSince:   opts.stoopPodReadSince,
     label:      'StoopAgent(cc)',
   });
   await chatAgent.hello(stoopAgent.address);
