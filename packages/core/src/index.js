@@ -151,6 +151,7 @@ export { TrustRegistry, TIER_LEVEL } from './permissions/TrustRegistry.js';
 export { PolicyEngine }     from './permissions/PolicyEngine.js';
 export { CapabilityToken, offeringMatches, skillAttenuates } from './permissions/CapabilityToken.js';
 export { PodCapabilityToken } from './permissions/PodCapabilityToken.js';
+export { pathScopeCovers } from './permissions/pathScope.js';
 export { TokenRegistry }    from './permissions/TokenRegistry.js';
 export { GroupManager }     from './permissions/GroupManager.js';
 export { verifyGroupProof } from './permissions/groupProofVerify.js';

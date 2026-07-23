@@ -46,6 +46,7 @@
 import { AgentIdentity }                            from '../identity/AgentIdentity.js';
 import { encode as b64encode, decode as b64decode } from '../crypto/b64.js';
 import { genId }                                    from '../Envelope.js';
+import { pathScopeCovers }                          from './pathScope.js';
 
 const ACTIONS = ['read', 'write', 'delete'];
 
@@ -223,13 +224,8 @@ export class PodCapabilityToken {
       if (!ACTIONS.includes(required.action)) return false;
     }
 
-    // Path coverage.
-    if (granted.path.endsWith('/')) {
-      // Container scope → prefix match.
-      return required.path.startsWith(granted.path);
-    }
-    // Resource scope → exact match only.
-    return granted.path === required.path;
+    // Path coverage — the one prefix-strict rule (shared with the pod-client key broker).
+    return pathScopeCovers(granted.path, required.path);
   }
 
   // ── Parse ─────────────────────────────────────────────────────────────────

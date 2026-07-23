@@ -27,13 +27,43 @@
 // pubkey. Deny-by-default: any failure returns `{ denied }` and never a key.
 
 import { seal, open, sealWithGroupKey, openWithGroupKey, generateGroupKey } from './envelope.js';
-import { CapabilityToken, offeringMatches } from '@onderling/core';
+import { CapabilityToken, offeringMatches, pathScopeCovers } from '@onderling/core';
 
 // A per-resource read capability is named in the token's `skill` slot as `res.read:<resourceId>`. Reusing
 // the `skill` slot means the token model's OWN matcher (`offeringMatches`) enforces per-resource isolation:
 // `res.read:A` matches `res.read:A` (exact) and nothing else — a B-token can never unwrap A. A full `'*'`
 // token still matches (an intentional super-grant); everything else is denied.
 const SCOPE_PREFIX = 'res.read:';
+
+// ── The two grains meet here (G20 list-grain container coverage) ────────────────────────────────────────
+// The ITEM grain rides `offeringMatches` (exact / dot-wildcard / `'*'` super-grant) — proven, byte-unchanged.
+// The LIST grain grants a CONTAINER scope `res.read:/list/<id>/` (trailing slash) that must cover every item
+// AT-OR-BELOW it (`res.read:/list/<id>/item-5`). `offeringMatches` is exact/dot-wildcard only, so it cannot
+// express "at-or-below"; the prefix-strict PATH rule that CAN is `PodCapabilityToken`'s — extracted into
+// `@onderling/core`'s shared `pathScopeCovers` so BOTH token models reuse the ONE rule (no second token model,
+// no new crypto). The bridge is a matcher, not a token: `CapabilityToken` keeps its `skill` slot; we route the
+// `res.read:` PATH portion of the two scope strings through the shared prefix matcher.
+//
+// This lives at the SCOPE gate (not the `checkGrant` seam) by necessity: `checkGrant` runs AFTER the scope
+// check and is an AND-restriction (issuer trust-tier / rate limits / pod ACL) — it can only NARROW, never
+// WIDEN, so it cannot rescue a container's item that the scope gate already denied. Container coverage is a
+// scope-MATCHING concern, so it belongs at the scope gate; `checkGrant` stays the further-restriction seam.
+/**
+ * Does the granted `res.read:` scope cover the required one? ITEM grain first (the PROVEN `offeringMatches`:
+ * exact / `<prefix>.*` / `'*'` super-grant — byte-identical to before). Then, only if that misses, the LIST
+ * grain: a trailing-slash container `res.read:/list/<id>/` covers any resource at-or-below it, via the shared
+ * prefix-strict `pathScopeCovers`. A non-container (`res.read:<id>`, no slash) grant gains NOTHING here —
+ * `pathScopeCovers` falls back to exact path equality, which `offeringMatches` already decided.
+ * @param {string} granted   — the token's `skill` (granted scope)
+ * @param {string} required  — `resourceScope(resourceId)` (the request's scope)
+ * @returns {boolean}
+ */
+function scopeCovers(granted, required) {
+  if (offeringMatches(granted, required)) return true;                       // item grain — unchanged
+  if (typeof granted !== 'string' || typeof required !== 'string') return false;
+  if (!granted.startsWith(SCOPE_PREFIX) || !required.startsWith(SCOPE_PREFIX)) return false;
+  return pathScopeCovers(granted.slice(SCOPE_PREFIX.length), required.slice(SCOPE_PREFIX.length));
+}
 /**
  * Build the capability `skill` string naming per-resource read access: `res.read:<resourceId>`.
  * `offeringMatches` enforces exact-match isolation — a token for resource B never covers resource A
@@ -203,8 +233,9 @@ export function createResourceKeyGrant({
           // Subject binding — the token may only be used by the peer it was issued to (no theft/forwarding).
           if (parsed.subject !== requesterPubKey) return deny('subject-mismatch');
 
-          // Resource scope — per-resource isolation via the token model's own matcher.
-          if (!offeringMatches(parsed.skill, resourceScope(resourceId))) return deny('wrong-scope');
+          // Resource scope — per-resource isolation (item grain: exact via offeringMatches) OR container
+          // coverage (list grain: `res.read:/list/<id>/` covers items at-or-below via the shared path rule).
+          if (!scopeCovers(parsed.skill, resourceScope(resourceId))) return deny('wrong-scope');
 
           // Revocation.
           if (await isRevoked(parsed.id)) return deny('revoked');
