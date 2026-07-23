@@ -22,16 +22,19 @@ import { WebSocketServer } from 'ws';
 // Transport is a peer dependency resolved from @onderling/core.
 import { Transport } from '@onderling/core';
 
+import { ForwardQueue } from './ForwardQueue.js';
+
 export class WsServerTransport extends Transport {
   #wss  = null;
   #port;
-  #offlineQueueTtl;
 
   // Map<address, WebSocket>
   #clients = new Map();
 
-  // Map<address, Array<{ envelope, expiresAt }>>
-  #queues = new Map();
+  // The single relay hold-and-forward owner (shared with server.js). This
+  // broker's shape: one bucket per address, no topics, no caps, expiry
+  // purged lazily on enqueue + filtered again at drain.
+  #forward;
 
   /**
    * @param {object} opts
@@ -42,8 +45,12 @@ export class WsServerTransport extends Transport {
   constructor({ port = 0, address, offlineQueueTtl = 300_000 } = {}) {
     if (!address) throw new Error('WsServerTransport requires address');
     super({ address });
-    this.#port             = port;
-    this.#offlineQueueTtl  = offlineQueueTtl;
+    this.#port    = port;
+    this.#forward = new ForwardQueue({
+      ttlMs:        offlineQueueTtl,
+      topicAware:   false,
+      evictOnWrite: true,
+    });
   }
 
   /** Actual bound port (available after start()). */
@@ -80,7 +87,7 @@ export class WsServerTransport extends Transport {
       this._receive(envelope);
       return;
     }
-    this.#forward(to, envelope);
+    this.#route(to, envelope);
   }
 
   // ── Private ───────────────────────────────────────────────────────────────
@@ -96,7 +103,7 @@ export class WsServerTransport extends Transport {
         peerAddress = msg.address;
         this.#clients.set(peerAddress, ws);
         ws.send(JSON.stringify({ type: 'registered' }));
-        this.#drainQueue(peerAddress, ws);
+        this.#forward.drain(peerAddress, ws, { evictFirst: true });
         this.emit('peer-connected', peerAddress);
         // Notify all other connected clients that a new peer joined
         const joined = JSON.stringify({ type: 'peer-joined', address: peerAddress });
@@ -114,7 +121,7 @@ export class WsServerTransport extends Transport {
           // Message addressed to the relay itself — dispatch to RelayAgent.
           this._receive(msg.envelope);
         } else {
-          this.#forward(to, msg.envelope, ws);
+          this.#route(to, msg.envelope, ws);
         }
         return;
       }
@@ -132,46 +139,18 @@ export class WsServerTransport extends Transport {
     });
   }
 
-  /** Forward an envelope to `to`. Buffers for offline peers. */
-  #forward(to, envelope, senderWs = null) {
-    const target = this.#clients.get(to);
-    if (target && target.readyState === 1 /* OPEN */) {
-      target.send(JSON.stringify({ type: 'message', envelope }));
-      return;
-    }
-
-    // Peer offline — queue the message.
-    this.#enqueue(to, envelope);
-
-    // Notify sender that target is unknown/offline (if we have a sender socket).
-    if (senderWs && senderWs.readyState === 1) {
+  /**
+   * Forward an envelope to `to`, buffering for offline peers via the shared
+   * ForwardQueue. On a buffered delivery, notify the sender (`{type:'queued'}`)
+   * — the one wire behaviour unique to this broker, kept here because it needs
+   * the sender socket.
+   */
+  #route(to, envelope, senderWs = null) {
+    const outcome = this.#forward.deliverOrEnqueue(to, envelope, {
+      socket: this.#clients.get(to) ?? null,
+    });
+    if (outcome === 'queued' && senderWs && senderWs.readyState === 1) {
       senderWs.send(JSON.stringify({ type: 'queued', to }));
-    }
-  }
-
-  #enqueue(address, envelope) {
-    if (!this.#queues.has(address)) this.#queues.set(address, []);
-    const queue = this.#queues.get(address);
-
-    // Purge expired entries before adding the new one.
-    const now = Date.now();
-    const live = queue.filter(e => e.expiresAt > now);
-    live.push({ envelope, expiresAt: now + this.#offlineQueueTtl });
-    this.#queues.set(address, live);
-  }
-
-  #drainQueue(address, ws) {
-    const queue = this.#queues.get(address);
-    if (!queue?.length) return;
-
-    const now  = Date.now();
-    const live = queue.filter(e => e.expiresAt > now);
-    this.#queues.delete(address);
-
-    for (const { envelope } of live) {
-      if (ws.readyState === 1) {
-        ws.send(JSON.stringify({ type: 'message', envelope }));
-      }
     }
   }
 }

@@ -10,6 +10,7 @@
 export { WsServerTransport }    from './src/WsServerTransport.js';
 export { RelayAgent }           from './src/RelayAgent.js';
 export { startRelay, getLanIp } from './src/server.js';
+export { ForwardQueue }         from './src/ForwardQueue.js';
 export { GroupAuthVerifier }    from './src/GroupAuthVerifier.js';
 export { MultiRecipientQueue }  from './src/MultiRecipientQueue.js';
 export { QueueStore }           from './src/queueStores/QueueStore.js';

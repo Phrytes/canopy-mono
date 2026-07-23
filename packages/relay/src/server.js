@@ -89,6 +89,7 @@ import { extname, join, resolve }            from 'node:path';
 import { networkInterfaces }                 from 'node:os';
 import { WebSocketServer }                   from 'ws';
 import { MultiRecipientQueue }               from './MultiRecipientQueue.js';
+import { ForwardQueue }                       from './ForwardQueue.js';
 import { GroupAuthVerifier }                 from './GroupAuthVerifier.js';
 import { PushTokenRegistry }                 from './push/PushTokenRegistry.js';
 import { mountBlobGate }                     from './blobGateMount.js';
@@ -311,8 +312,20 @@ export async function startRelay(opts = {}) {
 
   /** address → WebSocket */
   const clients = new Map();
-  /** address → [{ envelope, topic|null, at }] */
-  const queue   = new Map();
+  /**
+   * Hold-and-forward for offline recipients — the single relay forward owner
+   * shared with WsServerTransport. This broker's shape: topic-aware buckets
+   * capped at `queueCap`, a global per-address safety valve, a push-wake hook,
+   * and periodic (timer-driven) eviction rather than lazy-on-write.
+   */
+  const forwardQueue = new ForwardQueue({
+    ttlMs:         queueTtlMs,
+    topicAware:    true,
+    queueCap,
+    queueCapTotal: effectiveQueueCapTotal,
+    evictOnWrite:  false,
+    onWake:        (to) => tryWakePush(to),
+  });
   /** groupId → Set<address>  — populated at register time when groupProof is accepted (Phase 7 step 5). */
   const clientsByGroup = new Map();
   /** address → groupId  — reverse lookup used by Phase 2A msgsPerDay enforcement. */
@@ -354,30 +367,12 @@ export async function startRelay(opts = {}) {
   /**
    * Deliver to a connected recipient, otherwise enqueue with topic-aware
    * bucketing (Phase 7 step 4). Returns `'delivered'` or `'queued'` so
-   * `group-publish` (step 5) can summarise the fan-out outcome.
+   * `group-publish` (step 5) can summarise the fan-out outcome. Delegates
+   * to the shared ForwardQueue (which fires `onWake` → `tryWakePush` on a
+   * buffered delivery).
    */
-  const deliverOrEnqueue = (to, envelope, topic) => {
-    const target = clients.get(to);
-    if (target && target.readyState === 1 /* OPEN */) {
-      try {
-        target.send(JSON.stringify({ type: 'message', envelope }));
-      } catch { /* socket may have raced a close */ }
-      return 'delivered';
-    }
-    if (!queue.has(to)) queue.set(to, []);
-    const buf = queue.get(to);
-    const bucketKey = topic ?? null;
-    buf.push({ envelope, topic: bucketKey, at: Date.now() });
-    let bucketCount = 0;
-    for (const m of buf) if (m.topic === bucketKey) bucketCount += 1;
-    if (bucketCount > queueCap) {
-      const idx = buf.findIndex(m => m.topic === bucketKey);
-      if (idx >= 0) buf.splice(idx, 1);
-    }
-    while (buf.length > effectiveQueueCapTotal) buf.shift();
-    tryWakePush(to);
-    return 'queued';
-  };
+  const deliverOrEnqueue = (to, envelope, topic) =>
+    forwardQueue.deliverOrEnqueue(to, envelope, { socket: clients.get(to) ?? null, topic });
 
   const tryWakePush = (address) => {
     if (!pushSender || !tokenRegistry) return;
@@ -468,17 +463,12 @@ export async function startRelay(opts = {}) {
         socket.send(JSON.stringify({ type: 'registered' }));
         logLine(`[relay] registered   ${shortId(address)}`);
 
-        // Drain any queued messages.
-        const queued = queue.get(address) ?? [];
-        for (const { envelope } of queued) {
-          try {
-            // Verbose hop log for the drain — preserves the on-the-wire
-            // record even when the recipient was offline at send time.
-            logHop({ kind: 'send-queued', from: '?', to: address, envelope });
-            socket.send(JSON.stringify({ type: 'message', envelope }));
-          } catch {}
-        }
-        queue.delete(address);
+        // Drain any queued messages. `onEach` preserves the verbose hop log
+        // for the drain — the on-the-wire record even when the recipient was
+        // offline at send time. (Eviction is timer-driven, so no evictFirst.)
+        forwardQueue.drain(address, socket, {
+          onEach: (envelope) => logHop({ kind: 'send-queued', from: '?', to: address, envelope }),
+        });
 
         _broadcastPeerList(clients);
         return;
@@ -746,12 +736,7 @@ export async function startRelay(opts = {}) {
 
   // ── Evict stale queued messages periodically ───────────────────────────────
   const evictTimer = setInterval(() => {
-    const cutoff = Date.now() - queueTtlMs;
-    for (const [addr, buf] of queue) {
-      const fresh = buf.filter(m => m.at > cutoff);
-      if (fresh.length === 0) queue.delete(addr);
-      else queue.set(addr, fresh);
-    }
+    forwardQueue.evictExpired();
   }, 60_000);
   evictTimer.unref();
 

@@ -1,35 +1,49 @@
 /**
- * ReachabilityTier — explicit three-tier classification of how this
- * agent can reach a given peer.
+ * ReachabilityTier — how this agent can reach a given peer, as an ordered
+ * ladder of reachability rungs from closest (`direct`) to most indirect
+ * (`companion`).
  *
- * Tiers (Track G3, per `coding-plans/track-G-reachability.md` §G3):
+ * Rungs (closest → most indirect):
  *
- *   - 'direct'  WebRTC / BLE / mDNS / Local / Internal — no third
- *               party between the two agents once the link is up.
- *   - 'mesh'    Relay / NKN / MQTT / Offline store-and-forward —
- *               an indirect / third-party-mediated link.
- *   - 'hop'     peer-as-relay (sealed-tunnel or plaintext bridge);
- *               this is a routing decision, not a transport class.
+ *   - 'direct'    WebRTC / BLE / mDNS / Local / Internal — no third
+ *                 party between the two agents once the link is up.
+ *   - 'mesh'      Relay / NKN / MQTT / Offline store-and-forward —
+ *                 an indirect / third-party-mediated link.
+ *   - 'hop'       peer-as-relay (sealed-tunnel or plaintext bridge);
+ *                 a routing decision, not a transport class.
+ *   - 'companion' a user-hostable node that consent-grants "route through
+ *                 me" for its owner — the last-resort carry when no closer
+ *                 rung reaches the peer. Opt-in; see RoutingStrategy.routeLadder.
  *
- * Use `tierForTransport(transport)` to classify a chosen transport,
- * or `tierForRouteVia(via)` to detect when a route goes through a
- * peer-as-relay hop.  `compareTiers(a, b)` orders the tiers from
- * `direct` (closest) to `hop` (most indirect) — useful for surfacing
- * "how close to direct" a connection currently is.
+ * TWO UNRELATED "hop"s — do not conflate them:
+ *   - the TRANSPORT-hop (this module's `'hop'` rung + `routing/hopTunnel.js`,
+ *     `routing/callWithHop.js`, `routing/invokeWithHop.js`) is peer-as-relay
+ *     ROUTING: forwarding a sealed/plaintext payload through an intermediary
+ *     peer to reach a target.
+ *   - the SOCIAL match-hop (`@onderling/kring-host` `circleHop.js` /
+ *     `hopPrompt.js`) is DISCOVERY: relaying a skill query one degree further
+ *     through a contact who allows it. It never appears in this ladder.
+ * `tierForRouteVia` only ever means the transport-hop.
  *
- * The mapping is intentionally additive: an unknown transport
- * defaults to `'mesh'` (conservative — apps see "this peer is
- * reachable via something indirect") rather than crashing.
+ * Use `tierForTransport(transport)` to classify a chosen transport, or
+ * `tierForRouteVia(via)` to detect a peer-as-relay hop / companion carry.
+ * `compareTiers(a, b)` orders the rungs `direct` < `mesh` < `hop` <
+ * `companion` — useful for surfacing "how close to direct" a connection is.
+ *
+ * The mapping is intentionally additive: an unknown transport defaults to
+ * `'mesh'` (conservative — apps see "reachable via something indirect")
+ * rather than crashing.
  */
 
-/** Tier constants. */
+/** Reachability-rung constants (ladder order: direct → mesh → hop → companion). */
 export const TIERS = Object.freeze({
-  DIRECT: 'direct',
-  MESH:   'mesh',
-  HOP:    'hop',
+  DIRECT:    'direct',
+  MESH:      'mesh',
+  HOP:       'hop',
+  COMPANION: 'companion',
 });
 
-const ALL_TIERS = Object.freeze([TIERS.DIRECT, TIERS.MESH, TIERS.HOP]);
+const ALL_TIERS = Object.freeze([TIERS.DIRECT, TIERS.MESH, TIERS.HOP, TIERS.COMPANION]);
 
 /**
  * Map of transport class name → tier.  Class names match the
@@ -110,27 +124,32 @@ export function tierForTransport(transport) {
 }
 
 /**
- * Classify a route-via descriptor.  Currently the only "via" we
- * model explicitly is peer-as-relay (`'hop'`); other shapes pass
- * through to `tierForTransport` if they carry transport info, or
- * default to `'mesh'`.
+ * Classify a route-via descriptor. Models the two indirect rungs that
+ * are routing decisions rather than transport classes — the transport-hop
+ * (`'hop'`, peer-as-relay) and the `'companion'` carry; other shapes pass
+ * through to `tierForTransport` if they carry transport info, or default
+ * to `'mesh'`.
  *
  * Accepts either:
- *   - a string `'hop'`
+ *   - a string `'hop'` / `'companion'`
  *   - `{ kind: 'hop', through?: string }` (shape used by hopTunnel
- *     and invokeWithHop)
- *   - `{ via: 'hop' | ... }` (alternative shape)
+ *     and invokeWithHop) or `{ kind: 'companion', through?: string }`
+ *   - `{ via: 'hop' | 'companion' | ... }` (alternative shape)
  *
  * @param {object|string|null|undefined} via
- * @returns {'direct'|'mesh'|'hop'}
+ * @returns {'direct'|'mesh'|'hop'|'companion'}
  */
 export function tierForRouteVia(via) {
   if (!via) return TIERS.MESH;
   if (typeof via === 'string') {
-    if (via === TIERS.HOP) return TIERS.HOP;
+    if (via === TIERS.HOP)       return TIERS.HOP;
+    if (via === TIERS.COMPANION) return TIERS.COMPANION;
     return tierForTransport(via);
   }
   if (typeof via === 'object') {
+    if (via.kind === TIERS.COMPANION || via.via === TIERS.COMPANION || via.companion) {
+      return TIERS.COMPANION;
+    }
     if (via.kind === TIERS.HOP || via.via === TIERS.HOP || via.hop) return TIERS.HOP;
     if (via.transport) return tierForTransport(via.transport);
     if (via.name)      return tierForTransport(via.name);
@@ -139,12 +158,12 @@ export function tierForRouteVia(via) {
 }
 
 /**
- * Compare two tiers.  Returns a negative number when `a` is closer
+ * Compare two rungs.  Returns a negative number when `a` is closer
  * to direct than `b`, positive when farther, zero when equal.
- * Ordering: `direct` < `mesh` < `hop`.
+ * Ordering: `direct` < `mesh` < `hop` < `companion`.
  *
- * @param {'direct'|'mesh'|'hop'} a
- * @param {'direct'|'mesh'|'hop'} b
+ * @param {'direct'|'mesh'|'hop'|'companion'} a
+ * @param {'direct'|'mesh'|'hop'|'companion'} b
  * @returns {number}
  */
 export function compareTiers(a, b) {

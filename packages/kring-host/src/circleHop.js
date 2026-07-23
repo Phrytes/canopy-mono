@@ -1,14 +1,23 @@
 /**
- * basis v2 — hopping (shared).
+ * circleHop — the SOCIAL match-hop (contact-discovery), shared web + mobile.
  *
  * "Second-degree via contacts": a skill question with no direct match may,
  * IF an intermediary allows it, relay ONE hop to their contacts — per-contact
- * permission, max one hop, anonymized. This board is UI around an existing
- * Stoop primitive: the global stance is `getHopMode`/`setHopMode`
- * (`bundle.settings.allowHopThrough`), and per-contact `hopThrough` flags
- * live in Stoop already. This module is the pure glue: normalize the hop
- * mode, model a 1-hop relay chain for the match card, and shape the
- * (anonymized) relay request. The host calls the Stoop skills + sends.
+ * permission, max one hop, anonymized. This is DISCOVERY (find someone with a
+ * skill), not routing.
+ *
+ * NOT the transport-hop. The `'hop'` in `@onderling/core`'s
+ * `routing/ReachabilityTier.js` / `routing/hopTunnel.js` is a different
+ * concept entirely: peer-as-relay message ROUTING (forward a payload through
+ * an intermediary peer to reach a target). This module never touches routing;
+ * it decides whether to ASK a contact to search one degree further.
+ *
+ * This board is UI around an existing Stoop primitive: the global stance is
+ * `getHopMode`/`setHopMode` (`bundle.settings.allowHopThrough`), and
+ * per-contact `hopThrough` flags live in Stoop already. This module is the
+ * pure glue: normalize the hop mode, model a 1-hop relay chain for the match
+ * card, and shape the (anonymized) relay request. The host calls the Stoop
+ * skills + sends.
  */
 
 /** Hard ceiling — hopping is strictly second-degree. */
