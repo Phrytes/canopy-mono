@@ -1106,8 +1106,46 @@
         "doc": "Entrust picker — grant kind resource: brokered through your device (path-scoped PodCapabilityToken)."
       },
       "resource_note": {
-        "text": "Not active yet: basis doesn't surface your shareable resources, and fetching-through-your-device isn't wired up yet. The kind is here already; you can't entrust it yet.",
-        "doc": "Entrust picker — honest 'not active yet' note for the resource kind; no working fetch is implied."
+        "text": "Not active yet: basis doesn't surface your shareable resources yet. The fetch path is wired; a resource list to pick from is the remaining step, so you can't entrust one here yet.",
+        "doc": "Entrust picker — honest 'not active yet' note for the resource kind when no resources are enumerated; the token path IS wired."
+      }
+    },
+    "resource": {
+      "entrusted": {
+        "text": "Access to {{resource}}",
+        "doc": "Legibility — an entrusted resource grant (its res.read scope shown as a resource)."
+      },
+      "broker_label": {
+        "text": "Fetch through",
+        "doc": "Entrust picker (resource) — broker-posture section label (#29)."
+      },
+      "broker_device": {
+        "text": "Your device",
+        "doc": "Entrust picker (resource) — broker posture: proxy through your device (default; key never leaves)."
+      },
+      "broker_companion": {
+        "text": "Your companion",
+        "doc": "Entrust picker (resource) — broker posture: proxy through your companion node (optional fallback)."
+      },
+      "use_label": {
+        "text": "Each use",
+        "doc": "Entrust picker (resource) — use-consent section label (consent-on-use)."
+      },
+      "use_requestable": {
+        "text": "Ask me each time",
+        "doc": "Entrust picker (resource) — use-consent: the receiver asks for a fresh yes/no on each use (default)."
+      },
+      "use_standing": {
+        "text": "Pre-authorised",
+        "doc": "Entrust picker (resource) — use-consent: standing, no per-use ask."
+      },
+      "use_hint_requestable": {
+        "text": "They get access, but are asked to check with you before each use.",
+        "doc": "Entrust picker (resource) — both-sides-legible hint for the requestable use-consent."
+      },
+      "use_hint_standing": {
+        "text": "They can use it without asking again until the task closes.",
+        "doc": "Entrust picker (resource) — both-sides-legible hint for the standing use-consent."
       }
     },
     "temporary": {

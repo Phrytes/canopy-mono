@@ -38,12 +38,18 @@ import {
   mandateConfirmEnabled,
   mandateConfirmPayload,
   mandateLegibilityRows,
+  RESOURCE_BROKERS,
+  DEFAULT_RESOURCE_BROKER,
+  RESOURCE_USE_MODES,
+  DEFAULT_RESOURCE_USE,
+  resourceUseRequiresConsent,
 } from '../../../../basis/src/v2/mandate.js';
 
 export default function CircleMandatePicker({
   visible,
   members = [],
   offerings = [],
+  resources = [],
   taskId = null,
   myWebid = null,
   existingGrants = [],
@@ -56,7 +62,7 @@ export default function CircleMandatePicker({
   const styles = useMemo(() => makeStyles(theme), [theme]);
   // Selectable roster + the grouped WAARVOOR options — the SHARED pure projections.
   const roster = useMemo(() => mandateRoster({ members, myWebid }), [members, myWebid]);
-  const whatGroups = useMemo(() => grantKindOptions({ offerings, t }), [offerings]);
+  const whatGroups = useMemo(() => grantKindOptions({ offerings, resources, t }), [offerings, resources]);
   const legibility = useMemo(
     () => mandateLegibilityRows(existingGrants, { members, offerings, t }),
     [existingGrants, members, offerings],
@@ -68,18 +74,26 @@ export default function CircleMandatePicker({
 
   const [pickedMember, setPickedMember] = useState(null);
   const [pickedWhat, setPickedWhat] = useState(null);
+  const [pickedBroker, setPickedBroker] = useState(DEFAULT_RESOURCE_BROKER);   // resource kind — broker posture (#29)
+  const [pickedUse, setPickedUse] = useState(DEFAULT_RESOURCE_USE);            // resource kind — use-consent
 
   // Default the WAARVOOR to the first issuable option ("namens jou"), and reset the
   // selection each time the picker (re)opens for a task — parity with the web paint.
   useEffect(() => {
-    if (visible) { setPickedMember(null); setPickedWhat(firstActive); }
+    if (visible) {
+      setPickedMember(null); setPickedWhat(firstActive);
+      setPickedBroker(DEFAULT_RESOURCE_BROKER); setPickedUse(DEFAULT_RESOURCE_USE);
+    }
   }, [visible, taskId, firstActive]);
 
   const enabled = mandateConfirmEnabled({ busy, pickedMember, pickedWhat });
+  // Broker/use settings show only for an issuable resource selection — keeps the
+  // actAs/offering projection byte-identical.
+  const showResourceSettings = pickedWhat?.kind === 'resource' && pickedWhat?.active;
 
   const confirm = () => {
     if (busy || typeof onConfirm !== 'function') return;
-    const payload = mandateConfirmPayload({ taskId, myWebid, pickedMember, pickedWhat });
+    const payload = mandateConfirmPayload({ taskId, myWebid, pickedMember, pickedWhat, pickedBroker, pickedUse });
     if (payload) onConfirm(payload);
   };
 
@@ -162,6 +176,53 @@ export default function CircleMandatePicker({
               <Text style={styles.whatNote} testID="mandate-what-note">{pickedWhat.note}</Text>
             ) : null}
 
+            {/* Resource settings — broker posture (#29) + use-consent. Resource kind only. */}
+            {showResourceSettings ? (
+              <View testID="mandate-resource-settings">
+                <Text style={styles.sectionLabel}>{t('circle.mandate.resource.broker_label')}</Text>
+                <View style={styles.toggleRow}>
+                  {RESOURCE_BROKERS.map((value) => {
+                    const on = pickedBroker === value;
+                    return (
+                      <Pressable
+                        key={value}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: on }}
+                        testID={`mandate-broker-${value}`}
+                        style={[styles.toggle, on && styles.optionOn]}
+                        onPress={() => setPickedBroker(value)}
+                      >
+                        <Text style={styles.toggleText}>{t(`circle.mandate.resource.broker_${value}`)}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Text style={styles.sectionLabel}>{t('circle.mandate.resource.use_label')}</Text>
+                <View style={styles.toggleRow}>
+                  {RESOURCE_USE_MODES.map((value) => {
+                    const on = pickedUse === value;
+                    return (
+                      <Pressable
+                        key={value}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: on }}
+                        testID={`mandate-use-${value}`}
+                        style={[styles.toggle, on && styles.optionOn]}
+                        onPress={() => setPickedUse(value)}
+                      >
+                        <Text style={styles.toggleText}>{t(`circle.mandate.resource.use_${value}`)}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Text style={styles.whatNote} testID="mandate-resource-hint">
+                  {t(resourceUseRequiresConsent(pickedUse)
+                    ? 'circle.mandate.resource.use_hint_requestable'
+                    : 'circle.mandate.resource.use_hint_standing')}
+                </Text>
+              </View>
+            ) : null}
+
             {/* The promise — temporary + brokered. */}
             <View style={styles.promise}>
               <Text style={styles.promiseLine}>{t('circle.mandate.temporary')}</Text>
@@ -202,6 +263,9 @@ const makeStyles = (theme) => StyleSheet.create({
   optionOn:  { borderColor: theme.color.accent, backgroundColor: theme.color.paper2 },
   optionText: { color: theme.color.ink, fontSize: 15 },
   whatNote:  { backgroundColor: theme.color.paper2, color: theme.color.inkSoft, fontSize: 13, lineHeight: 18, padding: 8, borderRadius: theme.radius?.sm ?? 8, marginTop: 2, marginBottom: 4 },
+  toggleRow: { flexDirection: 'row', gap: 6, marginBottom: 6 },
+  toggle:    { flex: 1, paddingVertical: 8, paddingHorizontal: 10, borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius?.sm ?? 8, backgroundColor: theme.color.paper, alignItems: 'center' },
+  toggleText: { color: theme.color.ink, fontSize: 13 },
   legibility: { borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius?.sm ?? 8, padding: 10, marginBottom: 4, backgroundColor: theme.color.paper },
   legibilityRow: { color: theme.color.ink, fontSize: 14, marginBottom: 2 },
   legibilityNote: { color: theme.color.inkSoft, fontSize: 12, marginTop: 4 },

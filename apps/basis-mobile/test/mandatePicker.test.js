@@ -54,9 +54,10 @@ describe('buildMandateGrant (shared with web)', () => {
     });
   });
 
-  it('kind:resource builds a path-scoped, device-brokered pod grant', () => {
+  it('kind:resource mints a per-grain res.read:<id> capability (item grain; device+requestable defaults)', () => {
     expect(buildMandateGrant({ kind: 'resource', scope: 'mem://pod/me/agenda.json' })).toEqual({
-      pod: 'mem://pod/me/agenda.json', constraints: { broker: true, via: 'device' },
+      skill: 'res.read:mem://pod/me/agenda.json',
+      constraints: { broker: true, via: 'device', use: 'requestable', grain: 'item' },
     });
   });
 });

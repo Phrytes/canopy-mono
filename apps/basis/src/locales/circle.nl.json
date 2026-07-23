@@ -1106,8 +1106,46 @@
         "doc": "Toevertrouwen-kiezer — grant-soort resource: bemiddeld via je apparaat (padgebonden PodCapabilityToken)."
       },
       "resource_note": {
-        "text": "Nog niet actief: basis toont je deelbare bronnen nog niet en het opvragen-via-je-apparaat is nog niet aangesloten. De soort staat er alvast; je kunt hem nog niet toevertrouwen.",
-        "doc": "Toevertrouwen-kiezer — eerlijke 'nog niet actief'-melding bij de resource-soort; geen werkend ophalen wordt voorgespiegeld."
+        "text": "Nog niet actief: basis toont je deelbare bronnen nog niet. Het ophalen is aangesloten; een lijst met bronnen om uit te kiezen is de laatste stap, dus je kunt hier nog niets toevertrouwen.",
+        "doc": "Toevertrouwen-kiezer — eerlijke 'nog niet actief'-melding bij de resource-soort als er geen bronnen zijn opgesomd; het token-pad IS aangesloten."
+      }
+    },
+    "resource": {
+      "entrusted": {
+        "text": "Toegang tot {{resource}}",
+        "doc": "Legibiliteit — een toevertrouwde bron (zijn res.read-scope getoond als bron)."
+      },
+      "broker_label": {
+        "text": "Ophalen via",
+        "doc": "Toevertrouwen-kiezer (bron) — label van de bemiddelaar-sectie (#29)."
+      },
+      "broker_device": {
+        "text": "Jouw apparaat",
+        "doc": "Toevertrouwen-kiezer (bron) — bemiddelaar: via je eigen apparaat (standaard; sleutel blijft bij jou)."
+      },
+      "broker_companion": {
+        "text": "Jouw metgezel",
+        "doc": "Toevertrouwen-kiezer (bron) — bemiddelaar: via je metgezel-node (optionele terugval)."
+      },
+      "use_label": {
+        "text": "Bij elk gebruik",
+        "doc": "Toevertrouwen-kiezer (bron) — label van de gebruik-toestemming (toestemming-bij-gebruik)."
+      },
+      "use_requestable": {
+        "text": "Vraag het me elke keer",
+        "doc": "Toevertrouwen-kiezer (bron) — gebruik-toestemming: de ontvanger vraagt bij elk gebruik opnieuw ja/nee (standaard)."
+      },
+      "use_standing": {
+        "text": "Vooraf toegestaan",
+        "doc": "Toevertrouwen-kiezer (bron) — gebruik-toestemming: doorlopend, geen vraag per gebruik."
+      },
+      "use_hint_requestable": {
+        "text": "Ze krijgen toegang, maar wordt gevraagd het even te checken vóór elk gebruik.",
+        "doc": "Toevertrouwen-kiezer (bron) — voor beide kanten leesbare hint bij de 'vraag elke keer'-toestemming."
+      },
+      "use_hint_standing": {
+        "text": "Ze kunnen het gebruiken zonder opnieuw te vragen tot de taak klaar is.",
+        "doc": "Toevertrouwen-kiezer (bron) — voor beide kanten leesbare hint bij de doorlopende toestemming."
       }
     },
     "temporary": {

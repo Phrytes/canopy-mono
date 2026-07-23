@@ -26,6 +26,11 @@ import {
   mandateConfirmEnabled,
   mandateConfirmPayload,
   mandateLegibilityRows,
+  RESOURCE_BROKERS,
+  DEFAULT_RESOURCE_BROKER,
+  RESOURCE_USE_MODES,
+  DEFAULT_RESOURCE_USE,
+  resourceUseRequiresConsent,
 } from '../../src/v2/mandate.js';
 
 // Re-export the shared pure core so existing importers (circleApp, circleKring)
@@ -44,6 +49,8 @@ export {
  * @param {object} o
  * @param {Array}  [o.members=[]]        the circle roster ({webid,name,…})
  * @param {Array}  [o.offerings=[]]      MY offerings ({key,text}); [] → single "namens jou"
+ * @param {Array}  [o.resources=[]]      grantable resources ({id,label,grain}); [] → resource kind
+ *                                        shows its honest "nog niet actief" placeholder
  * @param {string} o.taskId
  * @param {string} o.myWebid
  * @param {Array}  [o.existingGrants=[]] the task's `source.taskGrants` ({member,skill})
@@ -57,6 +64,7 @@ export {
 export function renderMandatePicker(container, {
   members = [],
   offerings = [],
+  resources = [],
   taskId = null,
   myWebid = null,
   existingGrants = [],
@@ -76,6 +84,8 @@ export function renderMandatePicker(container, {
 
   let pickedMember = null;      // WebID
   let pickedWhat = null;        // the selected grant-kind option (from grantKindOptions)
+  let pickedBroker = DEFAULT_RESOURCE_BROKER;   // resource kind — broker posture (#29)
+  let pickedUse = DEFAULT_RESOURCE_USE;         // resource kind — use-consent
 
   // ── Header ────────────────────────────────────────────────────────────────
   const header = document.createElement('div');
@@ -175,6 +185,12 @@ export function renderMandatePicker(container, {
   whatNote.style.cssText = 'margin:2px 0 4px;padding:8px;border-radius:var(--radius-sm);background:var(--paper-2);color:var(--ink-soft);font-size:0.85em;line-height:1.4';
   whatNote.hidden = true;
 
+  // The resource-only settings panel (broker posture + use-consent, #29 +
+  // consent-on-use). Built once below; shown only when an ISSUABLE resource option
+  // is selected, so actAs/offering paint identically to before.
+  let showResourceSettings = () => {};
+  let hideResourceSettings = () => {};
+
   const selectWhat = (opt) => {
     pickedWhat = opt;
     for (const el of whatList.querySelectorAll('.cc-mandate-picker__what-item')) {
@@ -185,12 +201,14 @@ export function renderMandatePicker(container, {
     }
     if (opt.note) { whatNote.textContent = opt.note; whatNote.hidden = false; }
     else { whatNote.hidden = true; whatNote.textContent = ''; }
+    if (opt.kind === 'resource' && opt.active) showResourceSettings();
+    else hideResourceSettings();
     syncConfirm();
   };
 
   // Expand the taxonomy → grouped, selectable option rows. Adding a grant kind is
   // a one-entry change in GRANT_KIND_SPECS; this render stays generic.
-  const whatGroups = grantKindOptions({ offerings, t: tr });
+  const whatGroups = grantKindOptions({ offerings, resources, t: tr });
   let firstActiveOpt = null;
   for (const group of whatGroups) {
     if (group.groupLabelKey) whatList.appendChild(sectionLabel(group.groupLabelKey));
@@ -212,6 +230,80 @@ export function renderMandatePicker(container, {
   }
   container.appendChild(whatList);
   container.appendChild(whatNote);
+
+  // ── Resource settings (broker posture + use-consent) — resource kind only ────
+  // A pure, shared decision surface: the broker posture (device-default /
+  // companion, #29) and the use-consent (requestable-default / standing). Hidden
+  // unless an issuable resource is selected, so the actAs/offering paint is byte-
+  // identical to before.
+  const resourceSettings = document.createElement('div');
+  resourceSettings.className = 'cc-mandate-picker__resource-settings';
+  resourceSettings.style.cssText = 'margin:6px 0 2px';
+  resourceSettings.hidden = true;
+
+  // A small radio-style toggle group builder (label + one row of options).
+  const toggleGroup = (labelKey, options, current, onPick, testKind) => {
+    const grp = document.createElement('div');
+    grp.className = `cc-mandate-picker__${testKind}`;
+    grp.style.cssText = 'margin:0 0 8px';
+    grp.appendChild(sectionLabel(labelKey));
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap';
+    row.setAttribute('role', 'radiogroup');
+    for (const value of options) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `cc-mandate-picker__${testKind}-item`;
+      b.dataset.value = value;
+      b.setAttribute('role', 'radio');
+      const on = value === current();
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+      b.style.cssText = 'flex:1 1 auto;padding:7px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--card);color:var(--ink);cursor:pointer;font-size:0.88em';
+      b.style.borderColor = on ? 'var(--accent)' : 'var(--line)';
+      b.style.background = on ? 'var(--paper-2)' : 'var(--card)';
+      b.textContent = tr(`circle.mandate.resource.${testKind}_${value}`);
+      b.addEventListener('click', () => {
+        onPick(value);
+        for (const el of row.querySelectorAll(`.cc-mandate-picker__${testKind}-item`)) {
+          const sel = el.dataset.value === value;
+          el.setAttribute('aria-checked', sel ? 'true' : 'false');
+          el.style.borderColor = sel ? 'var(--accent)' : 'var(--line)';
+          el.style.background = sel ? 'var(--paper-2)' : 'var(--card)';
+        }
+        syncResourceHint();
+      });
+      row.appendChild(b);
+    }
+    grp.appendChild(row);
+    return grp;
+  };
+
+  resourceSettings.appendChild(
+    toggleGroup('circle.mandate.resource.broker_label', RESOURCE_BROKERS,
+      () => pickedBroker, (v) => { pickedBroker = v; }, 'broker'),
+  );
+  resourceSettings.appendChild(
+    toggleGroup('circle.mandate.resource.use_label', RESOURCE_USE_MODES,
+      () => pickedUse, (v) => { pickedUse = v; }, 'use'),
+  );
+
+  // The both-sides-legible hint that follows the use-consent choice.
+  const resourceHint = document.createElement('div');
+  resourceHint.className = 'cc-mandate-picker__resource-hint';
+  resourceHint.style.cssText = 'font-size:0.82em;color:var(--ink-soft);line-height:1.4;margin-top:2px';
+  const syncResourceHint = () => {
+    resourceHint.textContent = tr(
+      resourceUseRequiresConsent(pickedUse)
+        ? 'circle.mandate.resource.use_hint_requestable'
+        : 'circle.mandate.resource.use_hint_standing',
+    );
+  };
+  syncResourceHint();
+  resourceSettings.appendChild(resourceHint);
+  container.appendChild(resourceSettings);
+
+  showResourceSettings = () => { resourceSettings.hidden = false; };
+  hideResourceSettings = () => { resourceSettings.hidden = true; };
   // (Default selection happens after syncConfirm is defined — see below.)
 
   // ── The promise (temporary + brokered) ───────────────────────────────────────
@@ -243,7 +335,7 @@ export function renderMandatePicker(container, {
     if (busy || typeof onConfirm !== 'function') return;
     // The SHARED payload builder returns null for a non-issuable selection, so an
     // inactive kind can never be dispatched even if button-gating slips.
-    const payload = mandateConfirmPayload({ taskId, myWebid, pickedMember, pickedWhat });
+    const payload = mandateConfirmPayload({ taskId, myWebid, pickedMember, pickedWhat, pickedBroker, pickedUse });
     if (payload) onConfirm(payload);
   });
   // Default the WAARVOOR to the first issuable option ("namens jou") now that

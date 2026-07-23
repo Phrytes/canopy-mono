@@ -51,14 +51,23 @@ describe('buildMandateGrant', () => {
     expect(buildMandateGrant({ kind: 'offering', myWebid: 'https://me.example/#me', offeringKey: 'off-baking' })).toEqual(expected);
   });
 
-  it('kind:resource builds a path-scoped, device-brokered pod grant', () => {
+  it('kind:resource mints a per-grain res.read:<id> capability (item grain, device+requestable defaults)', () => {
     const expected = {
-      pod: 'mem://pod/me/agenda.json',
-      constraints: { broker: true, via: 'device' },
+      skill: 'res.read:mem://pod/me/agenda.json',
+      constraints: { broker: true, via: 'device', use: 'requestable', grain: 'item' },
     };
     expect(buildMandateGrant({ kind: 'resource', scope: 'mem://pod/me/agenda.json' })).toEqual(expected);
     // Inferred from a scope with no explicit kind.
     expect(buildMandateGrant({ scope: 'mem://pod/me/agenda.json' })).toEqual(expected);
+  });
+
+  it('kind:resource honours grain (list → container scope), broker (companion) and use (standing)', () => {
+    expect(buildMandateGrant({
+      kind: 'resource', scope: 'album-2026', grain: 'list', broker: 'companion', use: 'standing',
+    })).toEqual({
+      skill: 'res.read:/list/album-2026/',
+      constraints: { broker: true, via: 'companion', use: 'standing', grain: 'list' },
+    });
   });
 });
 
@@ -125,6 +134,68 @@ describe('renderMandatePicker', () => {
     expect(confirm.disabled).toBe(true);
     confirm.click();
     expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  // ── Resource kind — ISSUABLE when the caller surfaces resources (G20/#31) ────
+  const resources = [
+    { id: 'agenda-2026', label: 'Agenda 2026', grain: 'item' },
+    { id: 'album',       label: 'Photo album', grain: 'list' },
+  ];
+
+  it('resource kind becomes ISSUABLE (a row per surfaced resource); no honest placeholder', () => {
+    const el = mount();
+    renderMandatePicker(el, {
+      members, offerings, resources, taskId: 'task-1', myWebid: 'https://me.example/#me', t,
+    });
+    const rows = [...el.querySelectorAll('[data-kind="resource"]')];
+    expect(rows).toHaveLength(2);
+    expect(rows.every((r) => r.dataset.inactive !== 'true')).toBe(true);   // all issuable
+  });
+
+  it('selecting a resource reveals the broker + use-consent settings (hidden for actAs/offering)', () => {
+    const el = mount();
+    renderMandatePicker(el, {
+      members, offerings, resources, taskId: 'task-1', myWebid: 'https://me.example/#me', t,
+    });
+    const settings = el.querySelector('.cc-mandate-picker__resource-settings');
+    expect(settings.hidden).toBe(true);                                    // hidden on actAs default
+    el.querySelector('[data-what="resource:agenda-2026"]').click();
+    expect(settings.hidden).toBe(false);                                   // shown for a resource
+    el.querySelector('[data-what="actAs"]').click();
+    expect(settings.hidden).toBe(true);                                    // hidden again for actAs
+  });
+
+  it('dispatches a res.read:<id> grant reflecting grain + chosen broker/use', () => {
+    const el = mount();
+    const onConfirm = vi.fn();
+    renderMandatePicker(el, {
+      members, offerings, resources, taskId: 'task-7', myWebid: 'https://me.example/#me', t, onConfirm,
+    });
+    el.querySelector('[data-member="https://alice.example/#me"]').click();
+    el.querySelector('[data-what="resource:agenda-2026"]').click();       // item grain
+    el.querySelector('.cc-mandate-picker__broker-item[data-value="companion"]').click();
+    el.querySelector('.cc-mandate-picker__use-item[data-value="standing"]').click();
+    el.querySelector('.cc-mandate-picker__confirm').click();
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onConfirm.mock.calls[0][0].grant).toEqual({
+      skill: 'res.read:agenda-2026',
+      constraints: { broker: true, via: 'companion', use: 'standing', grain: 'item' },
+    });
+  });
+
+  it('a list-grain resource yields a container scope (device+requestable defaults untouched)', () => {
+    const el = mount();
+    const onConfirm = vi.fn();
+    renderMandatePicker(el, {
+      members, offerings, resources, taskId: 'task-8', myWebid: 'https://me.example/#me', t, onConfirm,
+    });
+    el.querySelector('[data-member="https://bob.example/#me"]').click();
+    el.querySelector('[data-what="resource:album"]').click();             // list grain
+    el.querySelector('.cc-mandate-picker__confirm').click();
+    expect(onConfirm.mock.calls[0][0].grant).toEqual({
+      skill: 'res.read:/list/album/',
+      constraints: { broker: true, via: 'device', use: 'requestable', grain: 'list' },
+    });
   });
 
   it('does not confirm until a member is picked (owner must choose WHO)', () => {
