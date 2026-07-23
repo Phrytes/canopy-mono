@@ -80,6 +80,8 @@ export async function createBrowserStoopAgent({
   circleDataMove,
   // Connectivity Phase 3 SEAM — OPTIONAL real shared-pod writer (see Agent.js).
   podWrite,
+  // Connectivity Phase 3 SEAM — OPTIONAL real shared-pod reader (see Agent.js).
+  podReadSince,
 }) {
   if (!bus)           throw new TypeError('createBrowserStoopAgent: bus required');
   if (!identityVault) throw new TypeError('createBrowserStoopAgent: identityVault required');
@@ -109,6 +111,7 @@ export async function createBrowserStoopAgent({
     reliableSend,   // host-injected hold-forward sender for kring chat fan-out (absent → chat.send fallback)
     circleDataMove, // Phase 2 G1/G2 — host-injected data-move resolver (absent → fan-out-full)
     podWrite,       // Phase 3 seam — real shared-pod writer (absent → pod-signal/pod-only degrade)
+    podReadSince,   // Phase 3 seam — real shared-pod reader (absent → getMessagesSince = local mirror)
   });
 
   return {

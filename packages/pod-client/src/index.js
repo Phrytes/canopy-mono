@@ -85,6 +85,7 @@ export {
   foldKeyEvents, readKeyChain, currentGroupKey, openAcrossKeyChain,
   resolveCircleStorage, circleStorageClient,
   podStorageBackend,   // adapt a Solid pod to the blind StorageBackend port (ciphertext-only; seal is the gate)
+  messageRef, tsFromRef, writeSealedMessage, readSealedMessage, readSealedMessagesSince,   // Phase-3 sealed circle-log over a StorageBackend
   SEAL_SCHEMES, chooseSealScheme, resolveSealStrategy, sealForAudience, openSealedEnvelope,   // the one seal resolver
 } from './sealing/index.js';
 

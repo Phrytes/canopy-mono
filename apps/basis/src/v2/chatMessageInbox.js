@@ -38,7 +38,7 @@
  * construct one inbox per agent boot, sibling of the eventLog.
  */
 
-import { toEventLogItem } from '@onderling/item-store';
+import { toEventLogItem, isRefEnvelope } from '@onderling/item-store';
 
 const DEFAULT_DEDUP_CAP = 256;
 
@@ -52,6 +52,12 @@ const DEFAULT_DEDUP_CAP = 256;
  * @param {(payload, fromPeerAddr) => string|null} [args.resolveActor]
  *                                                 default actor projector (per-call
  *                                                 override available on `ingestChatMessage`)
+ * @param {(refEnvelope) => Promise<object|null>} [args.resolveRef]
+ *                                                 Connectivity Phase 3 — resolve a `pod-signal`
+ *                                                 REF envelope (a pod-row pointer, no body) into
+ *                                                 the full chat envelope by reading the shared pod
+ *                                                 (StorageBackend.get + unseal). Absent → ref
+ *                                                 envelopes are skipped (never crash the loop).
  * @param {number} [args.dedupCap]                 LRU cap (default 256)
  * @param {{warn?, info?, debug?}} [args.logger]
  * @returns {{ ingestChatMessage: Function, _seen: object }}  `_seen` exposed for tests.
@@ -60,6 +66,7 @@ export function createChatMessageInbox({
   eventLog,
   ingest        = null,
   resolveActor  = null,
+  resolveRef    = null,
   dedupCap      = DEFAULT_DEDUP_CAP,
   logger        = console,
 } = {}) {
@@ -82,6 +89,39 @@ export function createChatMessageInbox({
     const source       = opts.source ?? 'unknown';
     const fromPeerAddr  = opts.fromPeerAddr ?? null;
     const resolveActorFn = opts.resolveActor ?? resolveActor ?? null;
+    const resolveRefFn   = opts.resolveRef ?? resolveRef ?? null;
+
+    // Connectivity Phase 3 (receiver side) — a `pod-signal` fan carries a REF
+    // envelope: a pod-row pointer with NO `text` body, so it would fail
+    // `isValidChatEnvelope`. Resolve it against the shared pod FIRST (read the
+    // row + unseal → the full envelope), then fall through to the normal
+    // validate/dedup/ingest path. Dedupe on msgId up front so a duplicate ref
+    // never triggers a pod read. Any resolution failure logs + SKIPS — it must
+    // never throw out of the receive loop.
+    if (isRefEnvelope(envelope)) {
+      if (typeof envelope.msgId === 'string' && seen.has(envelope.msgId)) {
+        logger.debug?.('[kring-chat] duplicate ref msgId, skipping', envelope.msgId, source);
+        return { result: 'deduped' };
+      }
+      if (typeof resolveRefFn !== 'function') {
+        logger.warn?.('[kring-chat] ref envelope but no pod resolver wired — skipping', envelope.msgId, source);
+        return { result: 'deferred', reason: 'no-ref-resolver' };
+      }
+      let resolved = null;
+      try {
+        resolved = await resolveRefFn(envelope);
+      } catch (err) {
+        logger.warn?.('[kring-chat] pod ref resolution threw — skipping', err?.message ?? err, source);
+        return { result: 'deferred', reason: 'ref-error' };
+      }
+      if (!isValidChatEnvelope(resolved)) {
+        logger.warn?.('[kring-chat] pod ref resolved to nothing usable — skipping', envelope.msgId, source);
+        return { result: 'deferred', reason: 'ref-unresolved' };
+      }
+      // The pod row is authoritative for the body; carry the wire ref's `media`
+      // through when the row omitted it (media rides the wire envelope too).
+      envelope = (resolved.media || !envelope.media) ? resolved : { ...resolved, media: envelope.media };
+    }
 
     if (!isValidChatEnvelope(envelope)) {
       logger.warn?.('[kring-chat] dropping malformed envelope', { source, envelope });

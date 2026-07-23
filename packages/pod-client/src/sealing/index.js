@@ -29,6 +29,10 @@ export { createMemberSealingIdentity } from './memberIdentity.js';
 export { resolveCircleStorage, circleStorageClient } from './resolveCircleStorage.js';
 export { podStorageBackend } from './podStorageBackend.js';   // adapt a Solid pod to the blind StorageBackend port
 export {
+  messageRef, tsFromRef,   // the ONE per-message range-queryable row key convention
+  writeSealedMessage, readSealedMessage, readSealedMessagesSince,   // sealed circle-log write/read over a StorageBackend
+} from './sealedMessageLog.js';
+export {
   SEAL_SCHEMES, chooseSealScheme, resolveSealStrategy,   // the one seal resolver — scheme chosen by policy
   sealForAudience, openSealedEnvelope,
 } from './sealResolver.js';

@@ -150,19 +150,60 @@ describe('Stoop connectivity Phase 2 (G1/G2) — data-move branch', () => {
     expect(infoSpy.mock.calls.some(([m]) => typeof m === 'string' && m.includes('data-policy'))).toBe(false);
   });
 
-  it('the Phase-3 podWrite seam is honoured: a wired podWrite still degrades (ref-fan is Phase 3) and delivers', async () => {
+  it('Phase 3: a wired podWrite makes pod-signal REAL — writes the pod + fans a REF (no degrade)', async () => {
     const podWrite = vi.fn(async () => ({ ref: 'urn:pod:row:1' }));
+    const bundle = await buildBundle({ circleDataMove: () => 'pod-signal', podWrite });
+    await bundle.offeringMatch.start();
+    const calls = [];
+    bundle.chat.send = vi.fn(async (a) => { calls.push(a); return { ok: true }; });
+
+    const r = await callSkill(bundle.agent, 'broadcastKringMessage',
+      { groupId: 'oosterpoort', text: 'Hi', msgId: 'm-seam', ts: 1 });
+
+    // Phase 3 completes the branch: the pod is written and a REF envelope is
+    // fanned (body dropped; the ref rides `extras`) — not a full-body degrade.
+    expect(podWrite).toHaveBeenCalledTimes(1);
+    expect(r.sent).toBe(2);
+    expect(r.podSignal).toBe(true);
+    expect(r.ref).toBe('urn:pod:row:1');
+    // ref-fan (no reliableSend here → chat.send fallback): empty body + ref in extras.
+    expect(calls.every((c) => c.body === '')).toBe(true);
+    expect(calls.every((c) => c.extras?.ref === 'urn:pod:row:1')).toBe(true);
+    // No degrade log — the pod-signal path really ran.
+    const degraded = infoSpy.mock.calls.some(([m]) => typeof m === 'string' && m.includes('degrading to fan-out-full'));
+    expect(degraded).toBe(false);
+  });
+
+  it('Phase 3: a wired podWrite makes pod-only REAL — writes the pod + fans NOTHING', async () => {
+    const podWrite = vi.fn(async () => ({ ref: 'urn:pod:row:only' }));
+    const bundle = await buildBundle({ circleDataMove: () => 'pod-only', podWrite });
+    await bundle.offeringMatch.start();
+    const calls = [];
+    bundle.chat.send = vi.fn(async (a) => { calls.push(a); return { ok: true }; });
+
+    const r = await callSkill(bundle.agent, 'broadcastKringMessage',
+      { groupId: 'oosterpoort', text: 'Hi', msgId: 'm-only-real', ts: 1 });
+
+    expect(podWrite).toHaveBeenCalledTimes(1);
+    expect(r.podOnly).toBe(true);
+    expect(r.ref).toBe('urn:pod:row:only');
+    expect(r.sent).toBe(0);
+    expect(calls).toHaveLength(0);   // pod-only: members read the pod themselves, no fan
+  });
+
+  it('Phase 3: a podWrite that FAILS degrades to fan-out-full (message never lost)', async () => {
+    const podWrite = vi.fn(async () => { throw new Error('pod-down'); });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const bundle = await buildBundle({ circleDataMove: () => 'pod-signal', podWrite });
     await bundle.offeringMatch.start();
     bundle.chat.send = vi.fn(async () => ({ ok: true }));
 
     const r = await callSkill(bundle.agent, 'broadcastKringMessage',
-      { groupId: 'oosterpoort', text: 'Hi', msgId: 'm-seam', ts: 1 });
+      { groupId: 'oosterpoort', text: 'Hi', msgId: 'm-podfail', ts: 1 });
 
-    // Phase 2 owns the BRANCH only; the ref-fan is Phase 3, so even a wired
-    // podWrite degrades to the honest full fan (message still delivered).
-    expect(r.sent).toBe(2);
-    const line = infoSpy.mock.calls.map(([m]) => m).find((m) => typeof m === 'string' && m.includes('podWrite wired'));
-    expect(line).toBeTruthy();
+    expect(r.sent).toBe(2);            // honest degrade: full fan still reaches every member
+    expect(r.podSignal).toBeUndefined();
+    expect(warnSpy.mock.calls.some(([m]) => typeof m === 'string' && m.includes('podWrite for circle') && m.includes('degrading'))).toBe(true);
+    warnSpy.mockRestore();
   });
 });

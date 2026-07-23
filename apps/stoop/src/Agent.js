@@ -200,6 +200,16 @@ export async function createNeighborhoodAgent({
    * `pod-signal`/`pod-only` decision DEGRADES to `fan-out-full`, loudly logged.
    */
   podWrite,
+  /**
+   * Connectivity Phase 3 SEAM — OPTIONAL host-injected shared-pod READER:
+   * `(circleId, {sinceTs, max}) => Promise<envelope[] | {items}>`. Symmetric to
+   * `podWrite`: `getMessagesSince` range-queries the pod through this (the host
+   * builds it over the circle's StorageBackend + seal resolver — see
+   * @onderling/pod-client `readSealedMessagesSince`) and MERGES the result with
+   * the local mirror deduped by msgId. Absent (no-pod circle) → local-mirror
+   * behaviour, unchanged.
+   */
+  podReadSince,
   label = 'NeighborhoodAgent',
 }) {
   if (!offeringMatchOpts?.group || !offeringMatchOpts?.localActor) {
@@ -483,6 +493,7 @@ export async function createNeighborhoodAgent({
     reliableSend: (typeof reliableSend === 'function') ? reliableSend : null,  // host-injected hold-forward sender (kring chat fan-out)
     circleDataMove: (typeof circleDataMove === 'function') ? circleDataMove : null,  // Phase 2 G1/G2 — host-injected data-move resolver (absent → fan-out-full)
     podWrite:       (typeof podWrite       === 'function') ? podWrite       : null,  // Phase 3 seam — real shared-pod writer (absent → pod-signal/pod-only degrade)
+    podReadSince:   (typeof podReadSince   === 'function') ? podReadSince   : null,  // Phase 3 seam — real shared-pod reader (absent → getMessagesSince = local mirror)
     metrics,
     oidcSession: null,
     pushRegistry,                   // Phase 21 — Web-Push subscriptions per webid

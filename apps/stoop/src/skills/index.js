@@ -63,7 +63,7 @@ import { stoopManifest } from '../../manifest.js';
 import nacl from 'tweetnacl';
 import { resolve as resolveMember } from '@onderling/identity-resolver';
 import { validateCanonical } from '@onderling/item-types';
-import { treeOf, createCrossPodRefResolver, chatEnvelopeFromStoreItem, toWireEnvelope } from '@onderling/item-store';
+import { treeOf, createCrossPodRefResolver, chatEnvelopeFromStoreItem, toWireEnvelope, toWireRefEnvelope } from '@onderling/item-store';
 import { validateStoopItem, intentToCanonicalDraft } from '../lib/canonicalAdapter.js';
 
 import { validateHandle } from '../lib/handle.js';
@@ -905,32 +905,58 @@ export function buildSkills({
     if (!reliableSend && !chat?.send) return { error: 'chat-unavailable', sent: 0, attempted: 0, errors: [] };
     if (!members)                     return { error: 'members-unavailable', sent: 0, attempted: 0, errors: [] };
 
-    // ── Connectivity Phase 2 (G1/G2) — the data-move branch ────────────────
+    // ── Connectivity Phase 2/3 (G1/G2) — the data-move branch ──────────────
     // The circle's data-policy (`policy.pod`) decides HOW a message moves; we
     // consult it here, ABOVE the transport choice (reliableSend vs chat.send).
     const dataMove = await resolveCircleDataMove(circleId);
-    if (dataMove === 'pod-signal' || dataMove === 'pod-only') {
-      // A real shared pod would be written HERE — then peers signalled with a
-      // REF envelope (`pod-signal`: item-store `toWireRefEnvelope`, the body
-      // replaced by the pod-row `ref`) or left to read the pod themselves
-      // (`pod-only`, no fan). The pod write is the injected `bundle.podWrite`
-      // — the Phase-3 seam. It is NOT wired yet (the shared pod's
-      // `getMessagesSince` is still a stub — DESIGN-connectivity-phase2-deliver
-      // §2), so we DEGRADE to fan-out-full — EXPLICITLY and loudly, never
-      // silently — so the message still reaches every member.
+    if ((dataMove === 'pod-signal' || dataMove === 'pod-only') && envelope) {
+      // Phase 3: a REAL shared pod is written HERE, then peers are either
+      // signalled with a REF envelope (`pod-signal`: `toWireRefEnvelope`, the
+      // body replaced by the pod-row `ref`) or left to read the pod themselves
+      // (`pod-only`, no fan). The pod write is the host-injected `bundle.podWrite`
+      // seam — it SEALS the canonical Envelope with the circle's EXISTING
+      // sealing path (the seal resolver) and stores it under the range-queryable
+      // row key (see @onderling/pod-client `writeSealedMessage`), returning that
+      // row's opaque `ref`. Only the CHAT path carries a wire `envelope`, so the
+      // pod log is scoped to chat history; control-plane broadcasts (recipe /
+      // rules / policy) have no envelope and fan-out-full unchanged.
+      //
+      // No `podWrite` wired, or the write fails / yields no ref → DEGRADE to
+      // fan-out-full, EXPLICITLY + loudly (never silently), so the message
+      // still reaches every member.
       const podWrite = typeof bundle?.podWrite === 'function' ? bundle.podWrite : null;
       if (podWrite) {
-        // Phase 3 completes this branch: `await podWrite(circleId, envelope)`,
-        // then fan the ref envelope (pod-signal) / return without fanning
-        // (pod-only). Phase 2 owns the BRANCH only — it does not build the pod
-        // move — so until Phase 3 finishes the ref-fan we still fall through to
-        // the honest full fan below rather than half-deliver.
-        console.info(`[broadcastToCircle] data-policy for circle ${circleId} selected ${dataMove}; podWrite wired but the ref-fan is Phase 3 → degrading to fan-out-full`);
+        let ref = null;
+        try {
+          const res = await podWrite(circleId, envelope);
+          ref = (res && typeof res === 'object') ? (res.ref ?? null) : (typeof res === 'string' ? res : null);
+        } catch (err) {
+          console.warn(`[broadcastToCircle] podWrite for circle ${circleId} failed → degrading to fan-out-full:`, err?.message ?? err);
+        }
+        if (ref) {
+          if (dataMove === 'pod-only') {
+            // No fan: every member reads the pod itself (getMessagesSince / catch-up).
+            if (metric) metrics?.record?.(metric);
+            return { sent: 0, attempted: 0, errors: [], podOnly: true, ref };
+          }
+          // pod-signal: fan the REF envelope (the pod-row pointer) in place of
+          // the full-body envelope, over the SAME transport the full fan uses.
+          const refEnvelope = toWireRefEnvelope({
+            circleId, msgId: envelope.msgId, ts: envelope.ts, ref,
+            fromActor: envelope.fromActor ?? null, fromWebid: envelope.fromWebid ?? null,
+            media: envelope.media,
+          });
+          const refFan = reliableSend
+            ? await _fanOutViaReliableSend({ members, reliableSend, selfWebid: from, envelope: refEnvelope })
+            : await _fanOutToMembers({ members, chat, selfWebid: from, subtype: kind, threadId: circleId, body: '', extras: { ...extras, ref } });
+          if (metric) metrics?.record?.(metric);
+          return { sent: refFan.sent, attempted: refFan.attempted, errors: refFan.errors, podSignal: true, ref };
+        }
       } else {
-        console.info(`[broadcastToCircle] data-policy for circle ${circleId} selected ${dataMove}; shared-pod not yet real → degrading to fan-out-full`);
+        console.info(`[broadcastToCircle] data-policy for circle ${circleId} selected ${dataMove}; no podWrite wired → degrading to fan-out-full`);
       }
-      // fall through — fan-out-full is both today's only real path AND the
-      // honest degrade target for pod-signal/pod-only until Phase 3.
+      // fall through — fan-out-full is the honest degrade target when the pod
+      // write is absent or failed.
     }
 
     const { sent, attempted, errors } = reliableSend
@@ -3653,22 +3679,51 @@ export function buildSkills({
         })
         .sort((x, y) => (x?.source?.ts ?? 0) - (y?.source?.ts ?? 0));
 
-      const truncated = filtered.length > max;
-      // When over cap, keep the freshest N — same policy as
-      // listKringChats, since the receiver's caught-up state is what
-      // matters; older messages get backfilled by a follow-up call
-      // with an earlier sinceTs if needed.
-      const trimmedItems = filtered.length > max
-        ? filtered.slice(filtered.length - max)
-        : filtered;
       // Connectivity Phase 2 — reshape each stored item into the wire/inbox
       // chat envelope via the ONE canonical `chatEnvelopeFromStoreItem`
       // projection (the same reshaper `basis kringChatRehydrate` uses). This
       // is the LENIENT caller: circleId + finite ts are already guaranteed by
       // the filters above, and msgId/text fall back rather than skip — so the
       // returned shape is byte-identical to the hand-map this replaced.
-      const items = trimmedItems.map((it) =>
+      const localEnvelopes = filtered.map((it) =>
         chatEnvelopeFromStoreItem(it, { groupId, lenient: true }));
+
+      // Connectivity Phase 3 (read side) — when the circle is backed by a
+      // REAL shared pod, the host injects a `bundle.podReadSince(circleId,
+      // {sinceTs, max})` seam that range-queries + unseals the pod's
+      // authoritative rows (via the seal resolver, ABOVE the blind
+      // StorageBackend — see @onderling/pod-client `readSealedMessagesSince`).
+      // We MERGE those with the local mirror deduped by msgId: the pod holds
+      // history a device may never have received live, the mirror holds the
+      // device's own sends before they round-trip. Absent seam (no-pod
+      // circle) → today's local-mirror behaviour, byte-for-byte unchanged.
+      let merged = localEnvelopes;
+      if (typeof bundle?.podReadSince === 'function') {
+        try {
+          const podRes = await bundle.podReadSince(groupId, { sinceTs, max });
+          const podItems = Array.isArray(podRes) ? podRes : (Array.isArray(podRes?.items) ? podRes.items : []);
+          if (podItems.length) {
+            const byMsgId = new Map();
+            // Local first, then pod — dedupe by msgId (the pod row and the
+            // local mirror are the SAME message; either projection is fine).
+            for (const e of localEnvelopes) if (e?.msgId != null) byMsgId.set(e.msgId, e);
+            for (const e of podItems)       if (e?.msgId != null && !byMsgId.has(e.msgId)) byMsgId.set(e.msgId, e);
+            merged = [...byMsgId.values()]
+              .filter((e) => Number.isFinite(e?.ts) ? e.ts >= sinceTs : true)
+              .sort((x, y) => (x?.ts ?? 0) - (y?.ts ?? 0));
+          }
+        } catch (err) {
+          // A pod-read failure must never sink catch-up — fall back to the
+          // local mirror (what a no-pod circle already returns), loudly.
+          console.warn(`[getMessagesSince] pod read for circle ${groupId} failed → local mirror only:`, err?.message ?? err);
+        }
+      }
+
+      // When over cap, keep the freshest N — same policy as listKringChats,
+      // since the receiver's caught-up state is what matters; older messages
+      // get backfilled by a follow-up call with an earlier sinceTs if needed.
+      const truncated = merged.length > max;
+      const items = merged.length > max ? merged.slice(merged.length - max) : merged;
       return { items, truncated };
     }, {
       description: 'Read kring chat-message envelopes from itemStore filtered by ts >= sinceTs; returns broadcast envelope shape for ε.3 pod-range-query catch-up.  Args: groupId (required), sinceTs (default 0), max (default 200, cap 1000).',
