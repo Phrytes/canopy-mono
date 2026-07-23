@@ -42,6 +42,7 @@
  */
 
 import nacl from 'tweetnacl';
+import { createAddressedDeliver } from '@onderling/item-store';
 
 /** Default envelope type for outbound messages. */
 const DEFAULT_EMIT_ENVELOPE_TYPE = 'p2p-chat';
@@ -111,6 +112,112 @@ export function wireChat({
 
   /** Track recently-seen nonces so resends don't duplicate items. */
   const seenNonces = new Set();
+
+  // ── The shared addressed-send core (connectivity Phase 2, C3) ───────────────
+  //
+  // wireChat's outbound SEND + PERSIST + DEDUP now route through the SAME
+  // `createAddressedDeliver` primitive that `contactThreadChannel` uses, so the
+  // two 1:1 DM paths are ONE implementation. wireChat keeps only its own
+  // concerns: the exact wire shape (`buildChatWire`, so `emitEnvelopeType` and
+  // every wire field stay byte-identical), the exact persisted item
+  // (`buildChatItem`, which also owns the Phase-39 inline-attachment byte-write —
+  // the generic core never learns about attachments), and the accepted-types /
+  // subtype handling on RECEIVE (`handleIncoming`, below). The shared
+  // `seenNonces` set is injected so send-side and receive-side dedup are one set.
+
+  /** Project the outbound envelope onto wireChat's EXACT wire payload. */
+  function buildChatWire(env) {
+    const ex = (env && typeof env.extras === 'object' && env.extras) || {};
+    const payload = {
+      type:         emitEnvelopeType,
+      subtype:      env.kind,
+      threadId:     ex.threadId ?? null,
+      body:         env.body ?? null,
+      fromWebid:    env.author,
+      fromStableId: ex.fromStableId ?? null,
+      sentAt:       env.ts,
+      nonce:        env.id,
+      // Phase 24.6 / 39 — caller-supplied extra wire fields (contact-add-request
+      // metadata, `attachment` inline bytes, `attachments` fanout metadata, …).
+      ...(ex.wireExtras && typeof ex.wireExtras === 'object' ? ex.wireExtras : {}),
+    };
+    return { type: 'message', parts: [{ type: 'DataPart', data: payload }] };
+  }
+
+  /**
+   * Project the outbound envelope onto wireChat's EXACT persisted item — but
+   * ONLY for `chat-message` (other subtypes are send-only: return null so the
+   * core skips persistence, matching the pre-fold behaviour where reveal /
+   * contact-add-request stored nothing on the sender side). Runs AFTER a
+   * successful send, so the inline-attachment byte-write (Phase 39) keeps its
+   * original ordering: bytes are only written once the message is on the wire.
+   */
+  async function buildChatItem(env, { to }) {
+    if (env.kind !== 'chat-message') return null;
+    const ex = (env && typeof env.extras === 'object' && env.extras) || {};
+    // Phase 39 — sender stores its own copy of any inline attachment so its
+    // thread render shows the image immediately.
+    let senderAttachment = null;
+    const inline = ex.wireExtras?.attachment;
+    if (dataSource && attachmentPath && inline && typeof inline.dataB64 === 'string') {
+      const att = inline;
+      const time = Date.now().toString(36).padStart(9, '0');
+      const rand = Math.random().toString(36).slice(2, 10);
+      const attId = `att-${time}-${rand}`;
+      const ref = attachmentPath(env.id, attId, att.mime ?? 'image/jpeg');
+      try {
+        await dataSource.write(ref, _b64decode(att.dataB64));
+        senderAttachment = {
+          id:        attId,
+          mime:      att.mime,
+          bytes:     att.bytes ?? Math.floor(att.dataB64.length * 0.75),
+          width:     att.width  ?? 0,
+          height:    att.height ?? 0,
+          thumbnail: att.thumbnail ?? null,
+          ref,
+        };
+      } catch { /* keep the message body even if attachment fails */ }
+    }
+    return {
+      type:       'chat-message',
+      text:       env.body,
+      visibility: 'household',
+      source: {
+        threadId:     ex.threadId,
+        fromWebid:    env.author,
+        fromStableId: ex.fromStableId ?? null,
+        toWebid:      ex.toWebid,
+        toPubKey:     ex.toPubKey ?? to,
+        sentAt:       env.ts,
+        nonce:        env.id,
+        ...(senderAttachment ? { attachments: [senderAttachment] } : {}),
+      },
+    };
+  }
+
+  const deliverCore = createAddressedDeliver({
+    // The addressed send to ONE peer. Route per-peer via `agent.transportFor`
+    // (using `agent.transport` directly would pick the primary slot and never
+    // cross processes). Tag transport failures so `send()` can reproduce the
+    // legacy `{ ok:false, reason:'transport: …' }` return WITHOUT swallowing a
+    // later persist error (that still throws, as before).
+    send: async (to, wire) => {
+      try {
+        const t = await agent.transportFor(to);
+        return await t.sendOneWay(to, wire);
+      } catch (err) {
+        const e = new Error(`transport: ${err?.message ?? err}`);
+        e.__wireChatTransport = true;
+        throw e;
+      }
+    },
+    toWire:  buildChatWire,
+    toItem:  buildChatItem,
+    itemStore,
+    seenNonces,
+    localActor,
+    localStableId,
+  });
 
   async function handleIncoming({ from: fromPubKey, parts }) {
     const data = dataArgsOf(parts);
@@ -463,85 +570,43 @@ export function wireChat({
       return { ok: false, reason: 'threadId-required' };
     }
 
-    const payload = {
-      type:         emitEnvelopeType,
-      subtype,
-      threadId:     args.threadId ?? null,
-      body:         args.body ?? null,
-      fromWebid:    localActor,
-      fromStableId: localStableId ?? null,
-      sentAt:       Date.now(),
-      nonce:        freshNonce(),
-      // Phase 24.6 — extra fields for contact-add-request envelopes.
-      // Phase 39 — `extras.attachment` carries an inline-bytes
-      // chat-image; `extras.attachments` carries metadata-only on
-      // a `broadcast-post` fanout envelope.
-      ...(args.extras && typeof args.extras === 'object' ? args.extras : {}),
+    // Canonical outbound Envelope for the shared core. `id` is the dedup nonce,
+    // `ts` the send time; both are echoed byte-identically onto the wire (via
+    // `buildChatWire`) AND the persisted item (via `buildChatItem`), so wire and
+    // storage stay consistent exactly as when a single `payload` fed both.
+    const envelope = {
+      id:     freshNonce(),
+      kind:   subtype,
+      ts:     Date.now(),
+      author: localActor,
+      body:   args.body ?? null,
+      extras: {
+        threadId:     args.threadId ?? null,
+        fromStableId: localStableId ?? null,
+        toWebid,                 // persist-only routing fields
+        toPubKey,
+        // Phase 24.6 — extra fields for contact-add-request envelopes.
+        // Phase 39 — `attachment` carries inline-bytes chat-image;
+        // `attachments` carries metadata-only on a broadcast-post fanout.
+        wireExtras: (args.extras && typeof args.extras === 'object') ? args.extras : null,
+      },
     };
 
-    try {
-      // Route per-peer (mDNS / relay / WebRTC / etc.) — using
-      // `agent.transport` directly would always pick the primary slot
-      // (InternalTransport on mobile, self-loop only) and chat
-      // messages would never cross processes.
-      const t = await agent.transportFor(toPubKey);
-      await t.sendOneWay(toPubKey, {
-        type:  'message',
-        parts: [{ type: 'DataPart', data: payload }],
-      });
-    } catch (err) {
-      return { ok: false, reason: `transport: ${err?.message ?? err}` };
-    }
-
-    // Store local copy so the sender's chat-thread renders their own
-    // outgoing message immediately.
+    // The shared core sends to the one peer (per-peer transport), then persists
+    // the durable chat-message item + dedups — for `chat-message`. Other
+    // subtypes are send-only (`buildChatItem` returns null).
     let localId = null;
-    if (subtype === 'chat-message') {
-      // Phase 39 — sender stores its own copy of any inline
-      // attachment so its thread render shows the image immediately.
-      let senderAttachment = null;
-      if (dataSource && attachmentPath && args.extras?.attachment
-          && typeof args.extras.attachment.dataB64 === 'string') {
-        const att = args.extras.attachment;
-        const time = Date.now().toString(36).padStart(9, '0');
-        const rand = Math.random().toString(36).slice(2, 10);
-        const attId = `att-${time}-${rand}`;
-        const ref = attachmentPath(payload.nonce, attId, att.mime ?? 'image/jpeg');
-        try {
-          await dataSource.write(ref, _b64decode(att.dataB64));
-          senderAttachment = {
-            id:        attId,
-            mime:      att.mime,
-            bytes:     att.bytes ?? Math.floor(att.dataB64.length * 0.75),
-            width:     att.width  ?? 0,
-            height:    att.height ?? 0,
-            thumbnail: att.thumbnail ?? null,
-            ref,
-          };
-        } catch { /* keep the message body even if attachment fails */ }
-      }
-
-      const [item] = await itemStore.addItems([{
-        type:       'chat-message',
-        text:       args.body,
-        visibility: 'household',
-        source: {
-          threadId:     args.threadId,
-          fromWebid:    localActor,
-          fromStableId: localStableId ?? null,
-          toWebid,
-          toPubKey,
-          sentAt:       payload.sentAt,
-          nonce:        payload.nonce,
-          ...(senderAttachment ? { attachments: [senderAttachment] } : {}),
-        },
-      }], { actor: localActor });
-      localId = item.id;
-      metrics?.record?.('chat-sent');
-    } else {
-      metrics?.record?.(`${subtype}-sent`);
+    try {
+      const { itemId } = await deliverCore.deliver(envelope, { to: toPubKey });
+      localId = itemId ?? null;
+    } catch (err) {
+      // A tagged transport failure reproduces the legacy soft return; anything
+      // else (e.g. a persist failure) propagates, exactly as before the fold.
+      if (err && err.__wireChatTransport) return { ok: false, reason: err.message };
+      throw err;
     }
 
+    metrics?.record?.(subtype === 'chat-message' ? 'chat-sent' : `${subtype}-sent`);
     return { ok: true, itemId: localId };
   }
 

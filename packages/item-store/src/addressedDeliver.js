@@ -51,6 +51,12 @@ export const DM_ITEM_TYPE = 'chat-message';
  * @param {(envelope: object, toAddr: string) => object} [deps.toWire]
  *   project the Envelope onto the caller's exact wire payload (preserves subtype).
  *   Absent → the Envelope itself is sent.
+ * @param {(envelope: object, ctx: { to: string|null, direction: 'out'|'in' }) => (object|null|Promise<object|null>)} [deps.toItem]
+ *   project the Envelope onto the caller's EXACT persisted item draft (the symmetric
+ *   twin of `toWire`, for the durable half). Absent → the default DM item (below).
+ *   Return a falsy value to skip persistence for this turn (send-only subtypes).
+ *   May be async so a caller can do per-item IO (e.g. writing attachment bytes)
+ *   inside the projection — it runs only AFTER a successful send.
  * @param {object | (() => object|Promise<object>) | Promise<object> | null} [deps.itemStore]
  *   an `{ addItems, listOpen }` store (wireChat's item-store surface). Omitted →
  *   the send stays ephemeral (back-compat). May be a value, a Promise, or a thunk
@@ -62,6 +68,7 @@ export const DM_ITEM_TYPE = 'chat-message';
 export function createAddressedDeliver({
   send,
   toWire,
+  toItem,
   itemStore = null,
   localActor = null,
   localStableId = null,
@@ -77,16 +84,11 @@ export function createAddressedDeliver({
     return s && typeof s.addItems === 'function' ? s : null;
   }
 
-  /** Persist one turn (out or in) as a durable DM item, dedup on the msg id. */
-  async function persistTurn(envelope, { to, direction }) {
-    const store = await resolveStore();
-    if (!store) return { itemId: null };
-    const nonce = envelope?.id ?? null;
-    if (nonce && seenNonces.has(nonce)) return { itemId: null, deduped: true };
-    if (nonce) seenNonces.add(nonce);
+  /** Default persist projection: the durable 1:1 DM item (the contact-thread shape). */
+  function defaultToItem(envelope, { to, direction }) {
     const ex = (envelope && typeof envelope.extras === 'object' && envelope.extras) || {};
     const threadKey = ex.threadKey ?? ex.threadId ?? to ?? null;
-    const [item] = await store.addItems([{
+    return {
       type: DM_ITEM_TYPE,
       text: envelope?.body ?? '',
       visibility: 'household',
@@ -102,9 +104,26 @@ export function createAddressedDeliver({
         replyTo:      ex.replyTo ?? null,
         ...(Array.isArray(ex.buttons) ? { buttons: ex.buttons } : {}),
         sentAt:       typeof envelope?.ts === 'number' ? envelope.ts : Date.now(),
-        nonce,
+        nonce:        envelope?.id ?? null,
       },
-    }], { actor: envelope?.author ?? localActor ?? 'me' });
+    };
+  }
+  const projectItem = typeof toItem === 'function' ? toItem : defaultToItem;
+
+  /** Persist one turn (out or in) as a durable item, dedup on the msg id. */
+  async function persistTurn(envelope, { to, direction }) {
+    const store = await resolveStore();
+    if (!store) return { itemId: null };
+    // Project the item FIRST — a falsy draft means "send-only, don't persist"
+    // (so a send-only subtype never touches the dedup set either). The
+    // projection may be async (a caller may write attachment bytes inside it);
+    // it runs only here, after the send has already succeeded.
+    const draft = await projectItem(envelope, { to, direction });
+    if (!draft) return { itemId: null };
+    const nonce = envelope?.id ?? null;
+    if (nonce && seenNonces.has(nonce)) return { itemId: null, deduped: true };
+    if (nonce) seenNonces.add(nonce);
+    const [item] = await store.addItems([draft], { actor: envelope?.author ?? localActor ?? 'me' });
     return { itemId: item?.id ?? null };
   }
 
