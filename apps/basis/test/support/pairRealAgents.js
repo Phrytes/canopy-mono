@@ -96,7 +96,7 @@ export async function until(pred, { timeout = 4000, step = 10 } = {}) {
  *   pendingMap: Map<string, object>,
  * }>}
  */
-export async function bootRealAgentNode(label = 'agent') {
+export async function bootRealAgentNode(label = 'agent', { redeemTimeoutMs = 8000 } = {}) {
   const routerRef = { fn: null };
   const received = [];
   // A sealed circle's log carries key-events + sealed content over the real transport. Key-events are recorded
@@ -164,7 +164,11 @@ export async function bootRealAgentNode(label = 'agent') {
     sendPeer,
     pendingMap,
     circleAddressFor: agent.circleAddressFor,
-    timeoutMs: 8000,
+    // The redeem is a full round-trip (request → admin → response). Over a mesh
+    // transport (real NKN) each leg pays a several-second cold-start, so the
+    // in-process default (8s) is too tight; the NKN gate boots with a larger
+    // budget. Bus/relay gates keep the fast default.
+    timeoutMs: redeemTimeoutMs,
     logger: QUIET,
   });
 

@@ -767,6 +767,21 @@ export async function createSecureAgent(opts = {}) {
       if (typeof console !== 'undefined') {
         console.log('[secure-agent] recv envelope from=' + String(env?._from ?? '?').slice(0, 16) + '… type=' + (env?.type ?? '?') + ' subtype=' + (env?.payload?.subtype ?? 'n/a'));
       }
+      // Keying — register the peer's crypto key under its CANONICAL chat
+      // pubKey, not just the wire address.  A HI carries the sender's canonical
+      // pubKey in `payload.pubKey`; SecurityLayer auto-registers it keyed by the
+      // WIRE address (`env._from`).  On a relay/InternalTransport the wire
+      // address IS the chat pubKey, so that already matches how the send path
+      // resolves a peer (`getPeerKey(chatPubKey)` + encrypt-to-chatPubKey).  On
+      // a mesh transport the wire address is the seed-derived native address,
+      // which DIVERGES from the chat pubKey — so a lookup by the canonical
+      // pubKey would miss even though the HI arrived.  Register the peer under
+      // the canonical pubKey too: harmless idempotent self-mapping on relay,
+      // the missing link on the mesh transport.
+      if (env?._p === 'HI' && env?.payload?.pubKey
+            && typeof agent.security?.registerPeer === 'function') {
+        agent.security.registerPeer(env.payload.pubKey, env.payload.pubKey);
+      }
       // S1 — drop envelopes from muted peers BEFORE any further
       // bookkeeping (no reciprocal HI, no onPeerMessage fire).
       // S4 — fanout the check across resolver-known aliases.
@@ -1312,42 +1327,70 @@ export async function createSecureAgent(opts = {}) {
     const tx      = sel.transport;
     const wireAddr = sel.address ?? addr;   // per-transport address (Phase-1 map); === addr today
     if (!helloedPeers.has(addr)) {
+      // The peer's key is known once its reciprocal HI has registered it at our
+      // SecurityLayer.  Treated as "known" when there is no SecurityLayer to
+      // consult, so a plaintext transport never blocks on a handshake it can't
+      // observe (matches the pre-resend behaviour).
+      const peerKeyKnown = () =>
+        !(agent.security && typeof agent.security.getPeerKey === 'function')
+        || !!agent.security.getPeerKey(addr);
+      // One path for the initial HI and every propagation re-announce.
+      const announceHi = async () => {
+        try {
+          await tx.sendHello(wireAddr, { pubKey: identity.pubKey });
+          if (typeof console !== 'undefined') {
+            console.log('[secure-agent] outbound HI sent OK to ' + String(addr).slice(0, 16) + '…');
+          }
+        } catch (err) {
+          // Log + continue — a later re-announce (or a peer that already has our
+          // pubKey from a previous session) may still let the send through.
+          if (typeof console !== 'undefined') {
+            console.warn('[secure-agent] HI failed (continuing)', err?.message ?? err);
+          }
+        }
+      };
       if (typeof console !== 'undefined') {
         console.log('[secure-agent] sending outbound HI to ' + String(addr).slice(0, 16) + '…');
       }
-      try {
-        await tx.sendHello(wireAddr, { pubKey: identity.pubKey });
-        if (typeof console !== 'undefined') {
-          console.log('[secure-agent] outbound HI sent OK to ' + String(addr).slice(0, 16) + '…');
-        }
-      } catch (err) {
-        // Log + continue — sendOneWay may still succeed if the peer
-        // already has our pubKey from a previous session.
-        if (typeof console !== 'undefined') {
-          console.warn('[secure-agent] HI failed (continuing)', err.message ?? err);
-        }
-      }
-      // Wait for the peer's reciprocal HI to register their pubKey
-      // at our SecurityLayer.  Otherwise the OW encrypt below throws
-      // 'No pubKey registered for recipient'.
+      await announceHi();
+      // Wait for the peer's reciprocal HI to register their pubKey at our
+      // SecurityLayer — otherwise the OW encrypt below throws 'No pubKey
+      // registered for recipient'.  A freshly-connected peer on a mesh
+      // transport takes several seconds to become reachable (its presence must
+      // propagate into the mesh), and the FIRST HI sent into that cold-start
+      // window is simply lost.  So instead of one send + a passive wait, we
+      // RE-ANNOUNCE our HI on a coarse cadence across a longer window and
+      // succeed the instant the peer's key arrives.  On an always-reachable
+      // transport (relay / InternalTransport) the reciprocal HI lands in well
+      // under a second, so the loop breaks on an early poll tick, the
+      // re-announce never fires, and that path stays fast — the extra patience
+      // is gated on the mesh transport.
+      const meshTransport = sel.name === 'nkn';
+      const defaultWaitMs = meshTransport ? 15_000 : 5_000;
       const waitMs = typeof opts.firstSendTimeoutMs === 'number'
-        ? opts.firstSendTimeoutMs : 5000;
-      if (waitMs > 0 && agent.security
-            && typeof agent.security.getPeerKey === 'function'
-            && !agent.security.getPeerKey(addr)) {
+        ? opts.firstSendTimeoutMs : defaultWaitMs;
+      const resendEveryMs = 2_500;
+      if (waitMs > 0 && !peerKeyKnown()) {
         const start = Date.now();
+        let lastResend = start;
         while (Date.now() - start < waitMs) {
-          if (agent.security.getPeerKey(addr)) break;
+          if (peerKeyKnown()) break;
           await new Promise((r) => setTimeout(r, 100));
+          if (!peerKeyKnown() && Date.now() - lastResend >= resendEveryMs) {
+            lastResend = Date.now();
+            if (typeof console !== 'undefined') {
+              console.log('[secure-agent] re-announcing HI to ' + String(addr).slice(0, 16) + '… (peer still propagating)');
+            }
+            await announceHi();
+          }
         }
-        if (!agent.security.getPeerKey(addr)) {
-          // 2026-05-24 — DON'T add to helloedPeers when the poll
-          // times out.  Previously this happened right after
-          // tx.sendHello, so subsequent retries skipped the HI
-          // re-send entirely and threw "No pubKey registered"
-          // forever.  Leaving helloedPeers unset lets the next call
-          // retry the full handshake (which may succeed if the peer
-          // came online or the previous HI was lost in flight).
+        if (!peerKeyKnown()) {
+          // 2026-05-24 — DON'T add to helloedPeers when the wait times out.
+          // Previously this happened right after the single tx.sendHello, so
+          // subsequent retries skipped the HI re-send entirely and threw
+          // "No pubKey registered" forever.  Leaving helloedPeers unset lets
+          // the next call retry the full handshake (which may succeed once the
+          // peer finishes propagating or a lost HI is re-sent).
           throw new Error(
             `secure-agent: peer "${addr}" did not respond with HI within ${waitMs}ms; ` +
             `they may be offline.  Try again after they reconnect.`,
