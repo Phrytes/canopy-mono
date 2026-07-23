@@ -225,6 +225,77 @@ export function toWireEnvelope({ circleId, msgId, ts, text, fromActor, fromWebid
   };
 }
 
+/**
+ * `toWire` (REF variant) — the pod-signal projection of the canonical
+ * Envelope. Per DESIGN-connectivity-phase2-deliver §2/§3, the canonical
+ * Envelope carries EITHER a `body` (the full text — `toWireEnvelope` above)
+ * OR a `ref` (an opaque pointer at the row a shared pod already holds). A
+ * circle whose data-policy resolves to `pod-signal` (shared/hybrid) writes
+ * the message to the pod and fans THIS shape — the same envelope minus the
+ * body, plus a `ref` — so peers pull the content from the pod instead of
+ * receiving it inline.
+ *
+ * It is the byte-for-byte sibling of `toWireEnvelope` with `text` replaced by
+ * `ref`: same `{ type, subtype, circleId, msgId, ts, fromActor, fromWebid,
+ * media? }` frame, no `text` field. `ref` is an opaque string (a pod row
+ * pointer); this projector neither interprets nor resolves it.
+ *
+ * NOTE (Phase 2 honesty): the live send path DEGRADES pod-signal to a
+ * full-body `toWireEnvelope` fan until Phase 3 wires the real shared-pod
+ * write, so this shape is defined + unit-tested now but not yet fanned on the
+ * live path. Phase 3 plugs it in at the stoop `broadcastToCircle` pod seam.
+ *
+ * @param {object} a
+ * @param {string} a.circleId
+ * @param {string} a.msgId
+ * @param {number} a.ts
+ * @param {string} a.ref                  opaque pod-row pointer (replaces the body)
+ * @param {(string|null)} a.fromActor
+ * @param {(string|null)} a.fromWebid
+ * @param {object} [a.media]              already wire-whitelisted (unchanged from toWireEnvelope)
+ */
+export function toWireRefEnvelope({ circleId, msgId, ts, ref, fromActor, fromWebid, media }) {
+  return {
+    type: 'p2p-chat', subtype: KRING_CHAT_KIND,
+    circleId, msgId, ts, ref, fromActor, fromWebid,
+    ...(media && typeof media === 'object' && !Array.isArray(media) ? { media } : {}),
+  };
+}
+
+/**
+ * The inverse of `toWireRefEnvelope` — recover the canonical ref fields from a
+ * pod-signal wire envelope, so the projection round-trip is testable and a
+ * receiver can read the pointer back. Returns `null` for anything that isn't a
+ * ref-shaped wire envelope (missing `ref`).
+ *
+ * @param {object} env
+ * @returns {{circleId:string, msgId:string, ts:number, ref:string, fromActor:(string|null), fromWebid:(string|null), media?:object} | null}
+ */
+export function fromWireRefEnvelope(env) {
+  if (!env || typeof env !== 'object') return null;
+  if (typeof env.ref !== 'string' || !env.ref) return null;
+  const out = {
+    circleId:  env.circleId,
+    msgId:     env.msgId,
+    ts:        env.ts,
+    ref:       env.ref,
+    fromActor: env.fromActor ?? null,
+    fromWebid: env.fromWebid ?? null,
+  };
+  if (isMediaObject(env.media)) out.media = env.media;
+  return out;
+}
+
+/**
+ * Discriminate the two wire variants of the ONE canonical Envelope: a
+ * `pod-signal` fan carries a `ref` (and no body), a `fan-out-full` fan carries
+ * the `text` body (and no ref). `body`/`ref` are mutually exclusive by
+ * construction, so the presence of `ref` alone identifies the ref variant.
+ */
+export function isRefEnvelope(env) {
+  return !!env && typeof env === 'object' && typeof env.ref === 'string' && env.ref.length > 0;
+}
+
 /** A media-card-shaped object (never an array, never a primitive). */
 function isMediaObject(m) {
   return !!m && typeof m === 'object' && !Array.isArray(m);

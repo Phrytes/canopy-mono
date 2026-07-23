@@ -181,6 +181,25 @@ export async function createNeighborhoodAgent({
    * stoop's own single-process tests exercise that path unchanged).
    */
   reliableSend,
+  /**
+   * Connectivity Phase 2 (G1/G2) — OPTIONAL host-injected circle data-move
+   * resolver: `(circleId) => 'fan-out-full' | 'pod-signal' | 'pod-only'`
+   * (may return a Promise). The host (basis) owns the ONE data-policy resolver
+   * (`circleDataPolicy.circleDataMove` over the circle's stored `policy.pod`)
+   * and hands the DECISION down here so the send path can branch on it without
+   * an app→app import. Absent → the fan defaults to `'fan-out-full'` (today's
+   * behaviour, unchanged: with no pod known, the envelope must carry the data).
+   */
+  circleDataMove,
+  /**
+   * Connectivity Phase 3 SEAM — OPTIONAL host-injected shared-pod writer:
+   * `(circleId, envelope) => Promise<{ ref } | any>`. When a REAL shared pod is
+   * wired (Phase 3), `broadcastToCircle` writes the message to the pod through
+   * this and fans a ref envelope (pod-signal) / no envelope (pod-only). It is
+   * NOT wired today (`getMessagesSince` is still a stub — DESIGN §2), so a
+   * `pod-signal`/`pod-only` decision DEGRADES to `fan-out-full`, loudly logged.
+   */
+  podWrite,
   label = 'NeighborhoodAgent',
 }) {
   if (!offeringMatchOpts?.group || !offeringMatchOpts?.localActor) {
@@ -462,6 +481,8 @@ export async function createNeighborhoodAgent({
     persist,
     chat,
     reliableSend: (typeof reliableSend === 'function') ? reliableSend : null,  // host-injected hold-forward sender (kring chat fan-out)
+    circleDataMove: (typeof circleDataMove === 'function') ? circleDataMove : null,  // Phase 2 G1/G2 — host-injected data-move resolver (absent → fan-out-full)
+    podWrite:       (typeof podWrite       === 'function') ? podWrite       : null,  // Phase 3 seam — real shared-pod writer (absent → pod-signal/pod-only degrade)
     metrics,
     oidcSession: null,
     pushRegistry,                   // Phase 21 — Web-Push subscriptions per webid

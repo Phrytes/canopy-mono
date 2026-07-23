@@ -74,6 +74,12 @@ export async function createBrowserStoopAgent({
   // `sa.peer.sendTo(..., {guarantee:'hold-forward'})`). Threaded straight into
   // the bundle so kring chat fan-out inherits failover + offline hold-forward.
   reliableSend,
+  // Connectivity Phase 2 (G1/G2) — OPTIONAL host-injected data-move resolver
+  // `(circleId) => 'fan-out-full'|'pod-signal'|'pod-only'` (basis derives it
+  // from the circle's `policy.pod` via `circleDataMove`). Absent → fan-out-full.
+  circleDataMove,
+  // Connectivity Phase 3 SEAM — OPTIONAL real shared-pod writer (see Agent.js).
+  podWrite,
 }) {
   if (!bus)           throw new TypeError('createBrowserStoopAgent: bus required');
   if (!identityVault) throw new TypeError('createBrowserStoopAgent: identityVault required');
@@ -101,6 +107,8 @@ export async function createBrowserStoopAgent({
     label,
     controlAgent,   // sealed-pod membership hooks (no-op when absent) — see the param doc above
     reliableSend,   // host-injected hold-forward sender for kring chat fan-out (absent → chat.send fallback)
+    circleDataMove, // Phase 2 G1/G2 — host-injected data-move resolver (absent → fan-out-full)
+    podWrite,       // Phase 3 seam — real shared-pod writer (absent → pod-signal/pod-only degrade)
   });
 
   return {

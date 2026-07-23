@@ -12,6 +12,9 @@ import {
   toEventLogItem,
   fromEventLogItem,
   toWireEnvelope,
+  toWireRefEnvelope,
+  fromWireRefEnvelope,
+  isRefEnvelope,
 } from '../src/index.js';
 
 // ── The three shapes, reproduced inline as golden fixtures ────────────────
@@ -196,5 +199,78 @@ describe('store item → wire round-trip (fromItem then toWire)', () => {
     const env = chatEnvelopeFromStoreItem(item, { groupId: 'g1', lenient: true });
     const wire = toWireEnvelope({ circleId: env.circleId, msgId: env.msgId, ts: env.ts, text: env.text, fromActor: env.fromActor, fromWebid: env.fromActor, media: env.media });
     expect(wire).toMatchObject({ type: 'p2p-chat', subtype: 'kring-chat-message', circleId: 'g1', msgId: 'a', ts: 100, text: 'hoi', fromActor: 'bob', media: MEDIA });
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Connectivity Phase 2 (§2/§3) — the REF variant of the canonical Envelope.
+ *
+ * The canonical Envelope carries EITHER a `body` (the full text, `toWireEnvelope`)
+ * OR a `ref` (a pod-row pointer, `toWireRefEnvelope`). A `pod-signal` fan writes
+ * the message to the shared pod and fans the ref shape so peers pull the content
+ * from the pod. `body`/`ref` are mutually exclusive by construction. This shape is
+ * defined + tested now; the live send path degrades pod-signal to a full-body fan
+ * until Phase 3 wires the real pod write.
+ * ─────────────────────────────────────────────────────────────────────── */
+
+function goldenRefWire({ circleId, msgId, ts, ref, fromActor, fromWebid, media }) {
+  return {
+    type: 'p2p-chat', subtype: 'kring-chat-message',
+    circleId, msgId, ts, ref, fromActor, fromWebid,
+    ...(media ? { media } : {}),
+  };
+}
+
+describe('toWireRefEnvelope — the pod-signal ref projection', () => {
+  const a = { circleId: 'g1', msgId: 'm1', ts: 100, ref: 'urn:pod:g1:row:42', fromActor: 'bob', fromWebid: 'bob' };
+
+  it('is the sibling of toWireEnvelope with `text` replaced by `ref` (no body on the wire)', () => {
+    const wire = toWireRefEnvelope(a);
+    expect(wire).toEqual(goldenRefWire(a));
+    expect(wire).not.toHaveProperty('text');
+    expect(wire.ref).toBe('urn:pod:g1:row:42');
+    expect(wire.subtype).toBe(KRING_CHAT_KIND);
+  });
+
+  it('carries a whitelisted media pointer when present (absent → no media key)', () => {
+    expect(toWireRefEnvelope({ ...a, media: MEDIA })).toEqual(goldenRefWire({ ...a, media: MEDIA }));
+    expect(toWireRefEnvelope(a)).not.toHaveProperty('media');
+    // a non-object media is dropped (same guard as toWireEnvelope)
+    expect(toWireRefEnvelope({ ...a, media: ['x'] })).not.toHaveProperty('media');
+  });
+
+  it('the ref body never leaks the text: the wire JSON contains the pointer, not content', () => {
+    const wire = toWireRefEnvelope(a);
+    expect(JSON.stringify(wire)).not.toContain('"text"');
+  });
+});
+
+describe('toWireRefEnvelope ↔ fromWireRefEnvelope round-trip', () => {
+  it('recovers the canonical ref fields byte-for-byte', () => {
+    const a = { circleId: 'g1', msgId: 'm1', ts: 100, ref: 'urn:pod:g1:row:42', fromActor: 'bob', fromWebid: 'bob', media: MEDIA };
+    expect(fromWireRefEnvelope(toWireRefEnvelope(a))).toEqual(a);
+  });
+
+  it('without media, the round-trip omits the media key', () => {
+    const a = { circleId: 'g1', msgId: 'm1', ts: 100, ref: 'r', fromActor: 'bob', fromWebid: 'bob' };
+    expect(fromWireRefEnvelope(toWireRefEnvelope(a))).toEqual(a);
+  });
+
+  it('fromWireRefEnvelope returns null for a non-ref (full-body) wire envelope', () => {
+    const full = toWireEnvelope({ circleId: 'g1', msgId: 'm1', ts: 100, text: 'hoi', fromActor: 'bob', fromWebid: 'bob' });
+    expect(fromWireRefEnvelope(full)).toBeNull();
+    expect(fromWireRefEnvelope(null)).toBeNull();
+    expect(fromWireRefEnvelope({})).toBeNull();
+  });
+});
+
+describe('isRefEnvelope — discriminate the two wire variants', () => {
+  it('true for a ref envelope, false for a full-body one', () => {
+    const ref  = toWireRefEnvelope({ circleId: 'g', msgId: 'm', ts: 1, ref: 'r', fromActor: 'a', fromWebid: 'a' });
+    const full = toWireEnvelope({ circleId: 'g', msgId: 'm', ts: 1, text: 't', fromActor: 'a', fromWebid: 'a' });
+    expect(isRefEnvelope(ref)).toBe(true);
+    expect(isRefEnvelope(full)).toBe(false);
+    expect(isRefEnvelope(null)).toBe(false);
+    expect(isRefEnvelope({ ref: '' })).toBe(false);
   });
 });

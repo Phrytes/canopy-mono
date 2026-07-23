@@ -92,6 +92,9 @@ export {
   toEventLogItem,
   fromEventLogItem,
   toWireEnvelope,
+  toWireRefEnvelope,
+  fromWireRefEnvelope,
+  isRefEnvelope,
 } from './chatEnvelope.js';
 
 // Connectivity Phase 2 (§5 / C3) — the ONE addressed send: `deliver(envelope,

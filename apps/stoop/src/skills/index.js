@@ -880,10 +880,58 @@ export function buildSkills({
    * @param {object|null} [a.envelope]   reliable-send wire envelope (chat kind)
    * @returns {Promise<{sent:number, attempted:number, errors:Array}|{error:string,sent:0,attempted:0,errors:Array}>}
    */
+  /**
+   * Connectivity Phase 2 (G1/G2) — resolve the circle's data-MOVE branch:
+   * `'fan-out-full' | 'pod-signal' | 'pod-only'`. The host owns the ONE
+   * data-policy resolver (basis `circleDataMove` over the circle's stored
+   * `policy.pod`) and injects the decision as `bundle.circleDataMove(circleId)`
+   * — so the send path branches on the policy WITHOUT an app→app import. The
+   * resolver may be sync or async. Absent / unknown / throwing → 'fan-out-full'
+   * (the honest default: with no pod posture known, the envelope must carry the
+   * data — today's only real path).
+   */
+  async function resolveCircleDataMove(circleId) {
+    const resolver = bundle?.circleDataMove;
+    if (typeof resolver !== 'function') return 'fan-out-full';
+    try {
+      const r = resolver(circleId);
+      const move = (r && typeof r.then === 'function') ? await r : r;
+      return (move === 'pod-signal' || move === 'pod-only') ? move : 'fan-out-full';
+    } catch { return 'fan-out-full'; }
+  }
+
   async function broadcastToCircle({ circleId, kind, from, body = '', extras = {}, metric = null, envelope = null }) {
     const reliableSend = (envelope && typeof bundle?.reliableSend === 'function') ? bundle.reliableSend : null;
     if (!reliableSend && !chat?.send) return { error: 'chat-unavailable', sent: 0, attempted: 0, errors: [] };
     if (!members)                     return { error: 'members-unavailable', sent: 0, attempted: 0, errors: [] };
+
+    // ── Connectivity Phase 2 (G1/G2) — the data-move branch ────────────────
+    // The circle's data-policy (`policy.pod`) decides HOW a message moves; we
+    // consult it here, ABOVE the transport choice (reliableSend vs chat.send).
+    const dataMove = await resolveCircleDataMove(circleId);
+    if (dataMove === 'pod-signal' || dataMove === 'pod-only') {
+      // A real shared pod would be written HERE — then peers signalled with a
+      // REF envelope (`pod-signal`: item-store `toWireRefEnvelope`, the body
+      // replaced by the pod-row `ref`) or left to read the pod themselves
+      // (`pod-only`, no fan). The pod write is the injected `bundle.podWrite`
+      // — the Phase-3 seam. It is NOT wired yet (the shared pod's
+      // `getMessagesSince` is still a stub — DESIGN-connectivity-phase2-deliver
+      // §2), so we DEGRADE to fan-out-full — EXPLICITLY and loudly, never
+      // silently — so the message still reaches every member.
+      const podWrite = typeof bundle?.podWrite === 'function' ? bundle.podWrite : null;
+      if (podWrite) {
+        // Phase 3 completes this branch: `await podWrite(circleId, envelope)`,
+        // then fan the ref envelope (pod-signal) / return without fanning
+        // (pod-only). Phase 2 owns the BRANCH only — it does not build the pod
+        // move — so until Phase 3 finishes the ref-fan we still fall through to
+        // the honest full fan below rather than half-deliver.
+        console.info(`[broadcastToCircle] data-policy for circle ${circleId} selected ${dataMove}; podWrite wired but the ref-fan is Phase 3 → degrading to fan-out-full`);
+      } else {
+        console.info(`[broadcastToCircle] data-policy for circle ${circleId} selected ${dataMove}; shared-pod not yet real → degrading to fan-out-full`);
+      }
+      // fall through — fan-out-full is both today's only real path AND the
+      // honest degrade target for pod-signal/pod-only until Phase 3.
+    }
 
     const { sent, attempted, errors } = reliableSend
       ? await _fanOutViaReliableSend({ members, reliableSend, selfWebid: from, envelope })
