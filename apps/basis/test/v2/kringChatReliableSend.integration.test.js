@@ -1,46 +1,15 @@
 /**
- * Verification — kring chat SEND now fans through the unified secure-agent
- * reliable path (basis injects `sa.peer.sendTo(..., {guarantee:'hold-forward'})`
- * into the stoop bundle as `reliableSend`; `broadcastKringMessage` uses it).
- *
- * Proves, headlessly (node + shared InternalBus, no network):
- *   1. A drives the REAL kring send op (`broadcastKringMessage`) A→B; the
- *      conforming `kring-chat-message` envelope DELIVERS to B and RECORDS
- *      through B's real receive path (chatMessageInbox → ingestKringMessage).
- *   2. A→(offline B): the message is HELD (hold-forward), then delivered on
- *      B's reconnect presence signal — chat now inherits offline hold-forward.
+ * Verification — kring chat SEND fans through the unified secure-agent reliable path
+ * (basis injects `sa.peer.sendTo(..., {guarantee:'hold-forward'})` as `reliableSend`;
+ * `broadcastKringMessage` uses it), and RECORDS through B's REAL receive path — the
+ * harness now wires the real `kringChatReceiver → chatMessageInbox` (eventLog +
+ * ingestKringMessage), no stand-in. Plus offline hold-forward for chat.
  */
 import { describe, it, expect, afterAll } from 'vitest';
 
 import {
   bootRealAgentNode, connectAgentsOverBus, pairCircle, until, teardown, goOffline, goOnline,
 } from '../support/pairRealAgents.js';
-import { createChatMessageInbox } from '../../src/v2/chatMessageInbox.js';
-import { makeKringChatPeerHandler } from '../../src/v2/kringChatReceiver.js';
-
-/** Wire a REAL kring receive stack (inbox → stoop ingest + eventLog) for a node,
- *  and feed it any `kring-chat-message` envelopes the node's default handler saw. */
-function makeKringReceive(node) {
-  const events = [];
-  const inbox = createChatMessageInbox({
-    eventLog: { append: (e) => events.push(e) },
-    ingest:   (payload, fromPeerAddr) =>
-      node.agent.callSkill('stoop', 'ingestKringMessage', { payload, fromPeerAddr }),
-    logger:   { warn() {}, info() {}, debug() {} },
-  });
-  const handler = makeKringChatPeerHandler({ inbox });
-  return { events, handler };
-}
-
-/** Pump every kring-chat-message envelope currently in node.received through the handler. */
-async function drainKring(node, handler) {
-  for (const m of node.received) {
-    if (m?.payload?.subtype === 'kring-chat-message' && !m._drained) {
-      m._drained = true;
-      await handler(m.from, m.payload);
-    }
-  }
-}
 
 describe('kring chat send over the unified secure-agent reliable path', () => {
   let A; let B;
@@ -55,29 +24,19 @@ describe('kring chat send over the unified secure-agent reliable path', () => {
     const { joined } = await pairCircle(A, B, { groupId, name: 'Peer Circle', handle: 'peerbee' });
     expect(joined.ok).toBe(true);
 
-    const Brecv = makeKringReceive(B);
-
-    // ── 1. Online delivery + record ──────────────────────────────────────────
+    // ── 1. Online delivery + record (via the REAL receiver) ──────────────────
     const t1 = Date.now();
     const msgId = `kring-${groupId}-${Date.now().toString(36)}`;
     const text = `hoi kring vanaf A ${Date.now().toString(36)}`;
-    const ts = Date.now();
-    const res = await A.agent.callSkill('stoop', 'broadcastKringMessage', { groupId, text, msgId, ts });
-    // The reliable fan-out reached B (held or delivered both count as sent).
+    const res = await A.agent.callSkill('stoop', 'broadcastKringMessage', { groupId, text, msgId, ts: Date.now() });
     expect(res.error, `broadcastKringMessage errored: ${res.error}`).toBeUndefined();
     expect(res.sent, `fan-out reached ≥1 recipient — got ${JSON.stringify(res)}`).toBeGreaterThanOrEqual(1);
 
-    // B receives the kring envelope over the wire, then records it through the REAL inbox.
-    const gotEnv = await until(() => B.received.find((m) => m.payload?.msgId === msgId));
-    expect(gotEnv, 'B received the kring-chat-message envelope').toBeTruthy();
-    expect(gotEnv.payload.subtype).toBe('kring-chat-message');
-    expect(gotEnv.payload.text, 'envelope carries top-level text (not body)').toBe(text);
-
-    await drainKring(B, Brecv.handler);
-    const rendered = Brecv.events.find((e) => e.id === msgId);
-    expect(rendered, 'B rendered the kring message into its eventLog').toBeTruthy();
-    expect(rendered.payload.text).toBe(text);
-    // Durable record on B's side (the ingest mirror into stoop's itemStore).
+    // B ingests through its real kringChatReceiver → eventLog (chatEvents).
+    const rendered = await until(() => B.chatEvents.find((e) => e.id === msgId));
+    expect(rendered, 'B rendered the kring message via the real receiver').toBeTruthy();
+    expect(rendered.payload.text, 'top-level text (not body)').toBe(text);
+    // Durable mirror (getMessagesSince) reflects the received chat too.
     const since = await B.agent.callSkill('stoop', 'getMessagesSince', { groupId, sinceTs: 0 });
     expect(since.items.some((i) => i.msgId === msgId), 'B persisted the kring message').toBe(true);
     const onlineMs = Date.now() - t1;
@@ -87,24 +46,18 @@ describe('kring chat send over the unified secure-agent reliable path', () => {
     const t2 = Date.now();
     const msgId2 = `kring-${groupId}-off-${Date.now().toString(36)}`;
     const text2 = `hoi terwijl B offline is ${Date.now().toString(36)}`;
-    const res2 = await A.agent.callSkill('stoop', 'broadcastKringMessage', {
-      groupId, text: text2, msgId: msgId2, ts: Date.now(),
-    });
+    const res2 = await A.agent.callSkill('stoop', 'broadcastKringMessage', { groupId, text: text2, msgId: msgId2, ts: Date.now() });
     expect(res2.error).toBeUndefined();
-    expect(res2.sent, 'offline send is HELD (counts as sent, not failed)').toBeGreaterThanOrEqual(1);
-    // Not yet delivered while offline.
-    expect(B.received.find((m) => m.payload?.msgId === msgId2), 'held, not delivered while offline').toBeFalsy();
+    expect(res2.sent, 'offline send is HELD (counts as sent)').toBeGreaterThanOrEqual(1);
+    expect(B.chatEvents.find((e) => e.id === msgId2), 'held, not delivered while offline').toBeFalsy();
 
-    // Reconnect + announce presence → the held envelope flushes to B.
     await goOnline(B, { announceTo: A });
-    const gotHeld = await until(() => B.received.find((m) => m.payload?.msgId === msgId2), { timeout: 6000 });
+    const gotHeld = await until(() => B.chatEvents.find((e) => e.id === msgId2), { timeout: 6000 });
     expect(gotHeld, 'held kring message delivered on B reconnect').toBeTruthy();
     expect(gotHeld.payload.text).toBe(text2);
-    await drainKring(B, Brecv.handler);
-    expect(Brecv.events.some((e) => e.id === msgId2), 'flushed message rendered on B').toBe(true);
     const holdMs = Date.now() - t2;
 
     // eslint-disable-next-line no-console
-    console.log(`[kring-reliable] boot+pair→online-deliver ${onlineMs}ms · offline-hold→flush ${holdMs}ms · total ${Date.now() - t0}ms`);
+    console.log(`[kring-reliable] online-deliver ${onlineMs}ms · offline-hold→flush ${holdMs}ms · total ${Date.now() - t0}ms`);
   }, 30_000);
 });

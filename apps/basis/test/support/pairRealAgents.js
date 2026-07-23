@@ -55,6 +55,9 @@ import {
   makeHandleGroupRedeemResponse,
 } from '../../src/core/handlers/groupRedeem.js';
 import { makePropagateMeshIntros, makeHandleBuurtPeerIntro } from '../../src/core/handlers/meshIntros.js';
+import { EventLog } from '../../src/eventLog.js';
+import { createChatMessageInbox } from '../../src/v2/chatMessageInbox.js';
+import { makeKringChatPeerHandler } from '../../src/v2/kringChatReceiver.js';
 
 import {
   initialState as createGroupInitialState,
@@ -130,7 +133,20 @@ export async function bootRealAgentNode(label = 'agent') {
 
   const pendingMap = new Map();
   const propagateMeshIntros = makePropagateMeshIntros({ callSkill, sendPeer, logger: QUIET });
+  // The REAL kring-chat receiver — the exact wiring circleApp.js uses (inbox + peer handler).
+  // The harness previously had NO 'kring-chat-message' handler, so chat fell to the defaultHandler
+  // stub: the blind spot that let a broken chat-receive pass node tests. Wire it for real.
+  const chatEventLog = new EventLog({ initial: [], muted: [] });
+  const chatInbox = createChatMessageInbox({
+    eventLog: chatEventLog,
+    // Match the browser: the inbox also ingests into stoop's itemStore, so
+    // getMessagesSince (durable mirror / catch-up) reflects received chats too.
+    ingest: (payload, fromPeerAddr) => callSkill('stoop', 'ingestKringMessage', { payload, fromPeerAddr }),
+    logger: QUIET,
+  });
+  const kringChatHandler = makeKringChatPeerHandler({ inbox: chatInbox });
   const handlers = {
+    'kring-chat-message': kringChatHandler,
     // ADMIN side: verify the joiner's code + reply, then propagate mesh intros.
     'group-redeem-request': makeHandleGroupRedeemRequest({ callSkill, sendPeer, propagateMeshIntros, logger: QUIET }),
     // JOINER side: resolve the pending redeem promise.
@@ -159,7 +175,9 @@ export async function bootRealAgentNode(label = 'agent') {
     logger: QUIET,
   });
 
-  const node = { agent, pubKey, received, sendPeerRedeem, pendingMap, label, keyEventStore, sealedContent, circlePods, circleControlAgentRouter };
+  const node = { agent, pubKey, received, sendPeerRedeem, pendingMap, label, keyEventStore, sealedContent, circlePods, circleControlAgentRouter, chatEventLog, chatInbox, _routerRef: routerRef };
+  // Live view of the REAL ingested kring chats (the browser reads the same eventLog for its bubble list).
+  Object.defineProperty(node, 'chatEvents', { enumerable: true, get: () => chatEventLog.query({ excludeMuted: true }) });
   // `keyEvents` is a LIVE VIEW of the production store (all circles this node holds), so assertions like
   // `B.keyEvents.some(e => e.version === 2)` reflect exactly what the production receive handler recorded.
   Object.defineProperty(node, 'keyEvents', { enumerable: true, get: () => keyEventStore.all() });
@@ -187,6 +205,39 @@ export async function connectAgentsOverBus(a, b, { transportName = 'relay' } = {
   a._busTransport = txA;
   b._busTransport = txB;
   return bus;
+}
+
+/**
+ * Connect two booted node agents over a REAL relay (a running ws relay server) via the
+ * browser's OWN `connectPeerTransport` path — so the node gate exercises the real relay
+ * transport AND the real `handleInbound → router` receive, not just InternalTransport
+ * (where wire-address == pubKey and no receive filtering runs). This closes the harness
+ * blind spot that let a transport-specific chat-receive bug pass in-process node tests.
+ */
+export async function connectAgentsOverRelay(a, b, { relayUrl }) {
+  for (const n of [a, b]) {
+    await n.agent.connectPeerTransport({
+      relayUrl,
+      onPeerMessage: (env) => n._routerRef.fn?.(env),
+    });
+  }
+}
+
+/**
+ * Connect two booted node agents over REAL public NKN (the browser's other transport),
+ * via `connectPeerTransport({ nknLib })`. Uses the actual `nkn-sdk` (node-importable).
+ * NB: NKN cold-routing can be slow/flaky from a sandbox — a hang here is itself a signal
+ * that NKN one-way delivery is the unreliable path (the both-mode failure mode).
+ */
+export async function connectAgentsOverNkn(a, b) {
+  const mod = await import('nkn-sdk');
+  const nknLib = mod.default ?? mod;
+  for (const n of [a, b]) {
+    await n.agent.connectPeerTransport({
+      nknLib,
+      onPeerMessage: (env) => n._routerRef.fn?.(env),
+    });
+  }
 }
 
 /**
