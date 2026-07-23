@@ -93,3 +93,16 @@ export {
   fromEventLogItem,
   toWireEnvelope,
 } from './chatEnvelope.js';
+
+// Connectivity Phase 2 (§5 / C3) — the ONE addressed send: `deliver(envelope,
+// { to })` folds the two 1:1 DM paths (ephemeral contactThreadChannel + the
+// persisted wireChat chat.send) into one send-to-a-peer-AND-persist-the-turn
+// primitive, on the canonical Envelope. Transport-agnostic (send + wire
+// projection injected); item-store owns only the durable persistence + dedup
+// half (lifted from wireChat). Fixes G18: the contact/bot DM becomes durable.
+// See `addressedDeliver.js`.
+export {
+  createAddressedDeliver,
+  chatTurnsFromItems,
+  DM_ITEM_TYPE,
+} from './addressedDeliver.js';

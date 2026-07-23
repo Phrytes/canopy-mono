@@ -269,7 +269,7 @@ import { renderCircleKring } from './circleKring.js';
 import { makeCircleLists } from '@onderling/kring-host/circleLists';  // composable lists (shared web≡mobile)
 // the app-level cross-circle SHARE op. The {onShare, policy} binder + resource-URI resolver are
 // pod-layer, composed at the pod site below; the op logic itself is shared (web≡mobile) in circleShare.js.
-import { sealItem, isCanonicalPosture } from '@onderling/item-store';
+import { sealItem, isCanonicalPosture, createCircleStores, memoryDataSource } from '@onderling/item-store';
 import {
   shareItemAcrossCircles, shareItemToPublishedKey, listSharedResolved, revokeItemShare, listOutboundShares, revokeAllForMember,
 } from '../../src/v2/circleShare.js';
@@ -299,6 +299,44 @@ function getDefaultCircleLists() {
     })();
   }
   return _circleListsPromise;
+}
+
+// Connectivity Phase 2 (C3 / the G18 fix) — the DURABLE contact-DM store. The
+// contact/bot DM path used to be ephemeral (an in-memory Map lost on reload);
+// now `contactThreadChannel` persists every turn through the shared `deliver`
+// core into this store. One IndexedDB-backed CircleItemStore (a single 'dm'
+// bucket, no type registry so a `chat-message` turn stores without a task
+// schema), adapted to the `{ addItems, listOpen }` surface `deliver` expects.
+// Lazy + memoised; falls back to in-memory when IDB is unavailable (SSR/tests),
+// and any build failure resolves to `null` → the channel stays ephemeral (no
+// regression). Passed to the channel as a thunk (the channel is built
+// synchronously; this store builds async).
+let _contactDmStorePromise = null;
+function getContactDmStore() {
+  if (!_contactDmStorePromise) {
+    _contactDmStorePromise = (async () => {
+      try {
+        let dataSource;
+        try { dataSource = await buildHouseholdDataSource({ dbName: 'cc-contact-dm-state', storeName: 'items' }); }
+        catch { dataSource = memoryDataSource(); }
+        const store = createCircleStores({ dataSource: dataSource || memoryDataSource() }).getStore('dm');
+        return {
+          addItems: async (drafts, ctx = {}) => {
+            const out = [];
+            for (const d of drafts) {
+              out.push(await store.put({ type: d.type, text: d.text, source: d.source }, { by: ctx.actor ?? LOCAL_ACTOR }));
+            }
+            return out;
+          },
+          listOpen: async () => store.list(),
+        };
+      } catch (err) {
+        if (typeof console !== 'undefined') console.warn('[circleApp] contact-DM store unavailable:', err?.message ?? err);
+        return null;   // channel falls back to ephemeral
+      }
+    })();
+  }
+  return _contactDmStorePromise;
 }
 
 // L1b — a SEALED, POD-BACKED lists service per circle (opt-in). When a pod session is present AND the circle
@@ -1542,6 +1580,11 @@ function buildCircleBot(agent) {
       (typeof agent.sendPeerMessage === 'function'
         ? agent.sendPeerMessage(addr, payload)
         : Promise.reject(new Error('agent.sendPeerMessage unavailable'))),
+    // Phase 2 (C3): route through the shared persisted `deliver` — a contact DM
+    // is now DURABLE (persisted + rehydratable), the G18 fix. Thunked so the
+    // async-built store doesn't block channel construction; null → ephemeral.
+    itemStore:  () => getContactDmStore(),
+    localActor: LOCAL_ACTOR,
   });
   if (typeof window !== 'undefined') {
     window.canopyContactChannel = circleContactChannel;
@@ -2422,6 +2465,17 @@ async function showContactThread(contactId) {
   const thread = contactThreads.get(contactId);
   thread.name = name; thread.peerAddr = peerAddr;
 
+  // Phase 2 (C3 / the G18 fix): rehydrate the DURABLE thread on open so a reload
+  // shows the conversation history (best-effort; ephemeral mode / no history → no-op).
+  if (thread.messages.length === 0 && typeof circleContactChannel?.rehydrate === 'function') {
+    try {
+      const durable = await circleContactChannel.rehydrate(contactId);
+      if (durable.length) {
+        thread.messages = durable.map((m) => ({ origin: m.origin, text: m.text, ...(m.buttons ? { buttons: m.buttons } : {}) }));
+      }
+    } catch { /* best-effort — a rehydrate failure just shows an empty thread */ }
+  }
+
   // the bot's skills, shown as in-thread quick actions. Tapping one (or
   // typing `/<skill> args`) DISPATCHES it to the bot via the registry
   // (sendA2ATask), distinct from a free-text conversational turn over the channel.
@@ -2654,12 +2708,16 @@ function replyTextFromResult(res) {
 // the contactId for a native peer); appends the other party's bubble and
 // re-renders if that thread is on screen. For a brand-new thread (someone DMs you
 // first), resolves their display name from the merged directory, best-effort.
-function onContactReply({ fromAddr, threadId, text, buttons }) {
+function onContactReply({ fromAddr, threadId, text, buttons, messageId, replyTo }) {
   const contactId = (threadId && contactThreads.has(threadId)) ? threadId : fromAddr;
   let thread = contactThreads.get(contactId);
   const isNew = !thread;
   if (isNew) { thread = { name: contactId, peerAddr: fromAddr, messages: [] }; contactThreads.set(contactId, thread); }
   thread.messages.push({ origin: 'bot', text, buttons });
+  // Phase 2 (C3 / the G18 fix): persist the inbound turn so the thread is durable
+  // in BOTH directions (dedup on messageId is shared with sendTurn's outbound).
+  try { circleContactChannel?.persistInbound?.({ contactId, fromAddr, text, buttons, messageId, replyTo }); }
+  catch { /* best-effort — durability never blocks the live render */ }
   if (_activeContactThread?.contactId === contactId) _activeContactThread.rerender();
   // Resolve a friendlier name for an unsolicited inbound thread (fire-and-forget).
   if (isNew) {
