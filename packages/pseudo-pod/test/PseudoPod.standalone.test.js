@@ -12,7 +12,19 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createPseudoPod, createMemoryBackend } from '../index.js';
+import { createPseudoPod, createMemoryBackend, PSEUDO_POD_MODES } from '../index.js';
+
+describe('PSEUDO_POD_MODES — exported store-mode vocabulary', () => {
+  it('is the three store-backing modes, frozen (single source for the data-policy mapping)', () => {
+    expect(PSEUDO_POD_MODES).toEqual(['standalone', 'replication-ring', 'cache']);
+    expect(Object.isFrozen(PSEUDO_POD_MODES)).toBe(true);
+  });
+
+  it('createPseudoPod accepts exactly the exported modes', () => {
+    expect(() => createPseudoPod({ backend: createMemoryBackend(), mode: 'bogus', deviceId: 'd' }))
+      .toThrow(/standalone/);
+  });
+});
 
 function mkPod() {
   return createPseudoPod({

@@ -10,7 +10,7 @@
  *   - `Project Files/Substrates/substrates-v2-functional-design-2026-05-11.md` §4.1
  */
 
-export { createPseudoPod }          from './src/PseudoPod.js';
+export { createPseudoPod, PSEUDO_POD_MODES } from './src/PseudoPod.js';
 export { createMemoryBackend }      from './src/MemoryBackend.js';
 export { createWriteThroughQueue, QUEUE_PREFIX as WRITE_THROUGH_QUEUE_PREFIX }
                                     from './src/writeThroughQueue.js';

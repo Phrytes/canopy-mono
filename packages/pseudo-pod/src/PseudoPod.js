@@ -58,7 +58,19 @@ import { createWriteThroughQueue }   from './writeThroughQueue.js';
  *  Phase 52.4 (`notify-envelope`) will own this string. */
 const REPLICATION_KIND = 'pseudo-pod.write';
 
-const VALID_MODES = new Set(['standalone', 'replication-ring', 'cache']);
+/**
+ * The store-backing modes a PseudoPod runs in — the store-adapter half of a
+ * circle's data-policy. Exported so a single upstream mapping (basis's
+ * `circleDataPolicy`) can derive the mode from a circle's `pod` posture
+ * without re-hardcoding the vocabulary here and drifting apart.
+ *   - `standalone`       — local only, no fan-out, no pod (a no-pod circle).
+ *   - `replication-ring` — writes fan out to peers; local stays canonical.
+ *   - `cache`            — write-through to a real pod (a pod-backed circle).
+ * @type {ReadonlyArray<'standalone'|'replication-ring'|'cache'>}
+ */
+export const PSEUDO_POD_MODES = Object.freeze(['standalone', 'replication-ring', 'cache']);
+
+const VALID_MODES = new Set(PSEUDO_POD_MODES);
 
 /**
  * @param {object} opts

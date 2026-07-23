@@ -23,6 +23,7 @@
  */
 
 import { CIRCLE_POLICY_ENUMS } from './circlePolicy.js';
+import { circleCatchUpStrategy } from './circleDataPolicy.js';
 
 /**
  * The pod-axis values catchUpStrategy knows about.  Sourced from
@@ -48,26 +49,23 @@ export const CATCH_UP_STRATEGIES = Object.freeze(['pod', 'peer', 'hybrid', 'none
 
 /**
  * Decision logic: given a kring policy, return the right catch-up
- * strategy.  Single source of truth for the pod-axis → strategy
- * mapping; ε.3-5 plug their implementations in via {@link scheduleCatchUp}
- * below.
+ * strategy.  Delegates to the ONE circle data-policy resolver
+ * (`circleDataPolicy.resolveCircleDataPolicy`) so the pod-posture → branch
+ * mapping lives in a single place shared with the send-path `dataMove`
+ * resolver and the store adapter, rather than being re-derived here.
+ * ε.3-5 plug their implementations in via {@link scheduleCatchUp} below.
  *
  * Forward-compat: unknown / missing pod axes fall back to 'peer' — the
  * existing path is the safest default for an unknown axis (it won't
- * try to hit a pod that may not exist).
+ * try to hit a pod that may not exist). The shared resolver folds an
+ * unknown/missing axis to the no-pod row, whose catch-up is 'peer', so
+ * this behaviour is unchanged.
  *
  * @param {object|null|undefined} policy  — circle policy doc (the `circle.policy.*` shape).
  * @returns {'pod' | 'peer' | 'hybrid' | 'none'}
  */
 export function pickCatchUpStrategy(policy) {
-  const podAxis = policy?.pod;
-  switch (podAxis) {
-    case 'shared':   return 'pod';
-    case 'personal': return 'peer';
-    case 'hybrid':   return 'hybrid';
-    case 'none':     return 'peer';   // no pod → peer is the only option
-    default:         return 'peer';   // forward-compat: unknown axis → safest existing path
-  }
+  return circleCatchUpStrategy(policy);
 }
 
 /**

@@ -161,6 +161,14 @@ export {
   pickCatchUpStrategy, scheduleCatchUp,
   KNOWN_POD_AXES, CATCH_UP_STRATEGIES,
 } from './v2/catchUpStrategy.js';
+// C9 — the ONE circle data-policy: `policy.pod` is the single vocabulary,
+// mapped once to the send-path dataMove branch + the PseudoPod store mode +
+// the catch-up strategy, so no consumer re-derives the pod posture itself.
+export {
+  CIRCLE_DATA_POLICIES, DATA_MOVE_BRANCHES, STORE_MODES, DATA_POLICY_MAP,
+  LEGACY_MODE_TO_POLICY, normalizeDataPolicy, resolveCircleDataPolicy,
+  circleDataMove, circleStoreMode, circleCatchUpStrategy, circleHasPod,
+} from './v2/circleDataPolicy.js';
 // α.1a/b — scherm "recipe book" model + per-block content materializer
 // (v2 §2 RECEPT · SCHERM-WEERGAVE INRICHTEN).
 export {
