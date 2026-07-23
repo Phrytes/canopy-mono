@@ -272,6 +272,8 @@ export {
   buildSharedFiles, sharedFilesFromListFiles,
 } from './v2/folioSharedFilters.js';
 export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
+// LEDEN tab → member-persona card + self-view (thin projections over the reveal machinery).
+export { personaAttributes, memberPersonaView, selfViewSplit } from './v2/memberCards.js';
 export { normalizeCircleMembers, circleMemberCount } from '@onderling/kring-host/circleMembers';
 // 5.9d — Proof-of-Location placeholder seam (real attestation deferred).
 export { getCirclePolStatus, formatPolStatus, formatAttestedAt } from './v2/circlePol.js';

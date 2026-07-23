@@ -142,6 +142,16 @@ export function renderCircleKring(container, {
   //   `onAddTask()` — the tab's compose affordance (host adds a task, then refreshes).
   tasks = null,
   onAddTask = null,
+  // G16 — the real LEDEN (members) tab. When the active tab is `leden`, the body
+  // lists the circle's trail-roster (the canonical Member via `normalizeCircleMembers`),
+  // one tappable row per member. `members` is the host-loaded roster
+  // (`[{ id, handle, realName, reveals }]`); `null` = not loaded yet → loading state,
+  // `[]` = empty. `selfWebid` marks the viewer's own row ("jij"). `onMemberTap(member)`
+  // opens the §2 card — a member row → their persona card, your own row → self-view;
+  // the host routes by comparing `member.id` to `selfWebid`.
+  members = null,
+  selfWebid = null,
+  onMemberTap = null,
   // media — the sealed media path (live wiring). Both optional; without them the
   // composer + bubbles render exactly as before.
   //   `onAttachMedia(file)`  host runs the picked image through createMediaEmbed (sealed
@@ -300,6 +310,9 @@ export function renderCircleKring(container, {
       tasks: Array.isArray(tasks) ? tasks : [],
       tr, onAction, onAddTask, viewerWebid, viewerIsAdmin,
     });
+  } else if (effectiveTab === 'leden') {
+    // G16 — the real member roster (trail-derived), one tappable row per member.
+    renderLedenTab(body, { members, selfWebid, tr, onMemberTap });
   } else if (effectiveTab !== 'gesprek') {
     const placeholder = document.createElement('div');
     placeholder.className = 'circle-kring__placeholder';
@@ -608,6 +621,71 @@ function renderTakenTab(body, { tasks = [], tr, onAction, onAddTask, viewerWebid
       card.appendChild(actRow);
     }
     wrap.appendChild(card);
+  }
+  body.appendChild(wrap);
+}
+
+/**
+ * G16 — LEDEN (members) tab body: one tappable row per member of the circle's
+ * trail-roster (`normalizeCircleMembers` → canonical Member). A row shows the
+ * member's handle + real name (whatever the roster carries); the viewer's own row
+ * is badged "jij". Tapping a row calls `onMemberTap(member)` — the host opens the
+ * §2 card (persona for a member, self-view for your own row). Pure render: the
+ * roster + the visibility logic live in shared code, this only draws + wires taps.
+ *
+ * `members === null` → loading; `[]` → empty; otherwise the rows.
+ */
+function renderLedenTab(body, { members = null, selfWebid = null, tr, onMemberTap } = {}) {
+  const wrap = document.createElement('div');
+  wrap.className = 'circle-kring__leden';
+
+  if (members == null) {
+    const loading = document.createElement('div');
+    loading.className = 'circle-kring__leden-loading';
+    loading.textContent = tr('circle.leden_tab.loading');
+    wrap.appendChild(loading);
+    body.appendChild(wrap);
+    return;
+  }
+  if (!members.length) {
+    const empty = document.createElement('div');
+    empty.className = 'circle-kring__leden-empty';
+    empty.textContent = tr('circle.leden_tab.empty');
+    wrap.appendChild(empty);
+    body.appendChild(wrap);
+    return;
+  }
+
+  for (const m of members) {
+    const self = selfWebid != null && m.id === selfWebid;
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = `circle-kring__member${self ? ' circle-kring__member--self' : ''}`;
+    row.dataset.memberId = m.id ?? '';
+    if (self) row.dataset.self = 'true';
+
+    const primary = document.createElement('span');
+    primary.className = 'circle-kring__member-primary';
+    primary.textContent = m.handle ? `@${m.handle}` : (m.realName || m.id || '');
+    row.appendChild(primary);
+
+    // Show the real name as a secondary line only when it's distinct from the handle.
+    if (m.realName && m.handle) {
+      const secondary = document.createElement('span');
+      secondary.className = 'circle-kring__member-secondary';
+      secondary.textContent = m.realName;
+      row.appendChild(secondary);
+    }
+
+    if (self) {
+      const badge = document.createElement('span');
+      badge.className = 'circle-kring__member-you';
+      badge.textContent = tr('circle.leden_tab.you');
+      row.appendChild(badge);
+    }
+
+    row.addEventListener('click', () => { if (typeof onMemberTap === 'function') onMemberTap(m); });
+    wrap.appendChild(row);
   }
   body.appendChild(wrap);
 }

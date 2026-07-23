@@ -190,6 +190,7 @@ import CircleRecordScreen from './CircleRecordScreen.js';
 import CircleAvailabilityScreen from './CircleAvailabilityScreen.js';
 import CircleStreamScreen from './CircleStreamScreen.js';
 import CircleViewAsScreen from './CircleViewAsScreen.js';
+import CircleMemberCardScreen from './CircleMemberCardScreen.js';   // §2 — member-persona card + self-view
 import CircleAdvisorScreen from './CircleAdvisorScreen.js';
 import CircleHopScreen from './CircleHopScreen.js';
 import CircleOfferingEditorScreen from './CircleOfferingEditorScreen.js';
@@ -2489,6 +2490,9 @@ function CircleDetail({
 
   // S6.B — chat-triggered screen panel ({screen} | null) + its materialized blocks.
   const [screenPanel, setScreenPanel] = useState(null);
+  // §2 — the LEDEN-tab card overlay: `{ member, self }` when a member row is tapped
+  // (self = the row is the viewer's own → self-view; otherwise the member-persona card).
+  const [memberCard, setMemberCard] = useState(null);
   const [panelBlocks, setPanelBlocks] = useState(null);
   const [listScreenData, setListScreenData] = useState(null);   // { items, categoryField, appOrigin, capabilityMatrix }
   const [aboutMePersona, setAboutMePersona] = useState(null);   // personas#1 — the persona id whose "About me" view is open
@@ -3137,12 +3141,25 @@ function CircleDetail({
           ) : tabMembers.length === 0 ? (
             <Text style={styles.placeholder}>{t('circle.leden_tab.empty')}</Text>
           ) : (
-            tabMembers.map((m) => (
-              <View key={m.id} style={styles.memberRow} testID="circle-member-row">
-                <Text style={styles.memberHandle} numberOfLines={1}>{m.handle ? `@${m.handle}` : (m.realName || m.id)}</Text>
-                {m.realName && m.handle ? <Text style={styles.memberName} numberOfLines={1}>{m.realName}</Text> : null}
-              </View>
-            ))
+            tabMembers.map((m) => {
+              const isSelf = mandateViewer.viewerWebid != null && m.id === mandateViewer.viewerWebid;
+              return (
+                // §2 — tap a member row → their persona card; tap your own row → self-view.
+                <Pressable
+                  key={m.id}
+                  style={styles.memberRow}
+                  accessibilityRole="button"
+                  testID="circle-member-row"
+                  onPress={() => setMemberCard({ member: m, self: isSelf })}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.memberHandle} numberOfLines={1}>{m.handle ? `@${m.handle}` : (m.realName || m.id)}</Text>
+                    {m.realName && m.handle ? <Text style={styles.memberName} numberOfLines={1}>{m.realName}</Text> : null}
+                  </View>
+                  {isSelf ? <Text style={styles.memberYou}>{t('circle.leden_tab.you')}</Text> : null}
+                </Pressable>
+              );
+            })
           )
         ) : activeTab === 'taken' ? (
           // Taken (tasks) tab — list the circle's tasks with their lifecycle chips + the
@@ -3269,6 +3286,24 @@ function CircleDetail({
                 </View>
               </ScrollView>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* §2 — member-persona card / self-view, opened by tapping a LEDEN-tab row. */}
+      <Modal visible={!!memberCard} animationType="slide" transparent onRequestClose={() => setMemberCard(null)}>
+        <View style={styles.panelBackdrop}>
+          <View style={styles.panelCard}>
+            {memberCard ? (
+              <CircleMemberCardScreen
+                member={memberCard.member}
+                self={memberCard.self}
+                roster={Array.isArray(tabMembers) ? tabMembers : []}
+                myWebid={mandateViewer.viewerWebid ?? null}
+                policy={policy?.revealPolicy ?? 'pairwise'}
+                onBack={() => setMemberCard(null)}
+              />
+            ) : null}
           </View>
         </View>
       </Modal>
@@ -3856,9 +3891,10 @@ const makeStyles = (theme) => StyleSheet.create({
   viewToggleText:      { fontSize: 12, color: theme.color.inkSoft },
   viewToggleTextActive:{ color: theme.color.white, fontWeight: '600' },
   placeholder:      { color: theme.color.inkSoft, fontStyle: 'italic', textAlign: 'center', paddingVertical: 24, paddingHorizontal: 12 },
-  memberRow:        { paddingVertical: 10, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  memberRow:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: theme.color.line },
   memberHandle:     { fontSize: 15, color: theme.color.ink, fontWeight: '600' },
   memberName:       { fontSize: 13, color: theme.color.inkSoft, marginTop: 1 },
+  memberYou:        { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, color: theme.color.inkSoft, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: theme.color.card },
   // Per-row action buttons (Ik help / Negeer …) — used by chat bubbles.
   rowActions:     { flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap' },
   rowActionBtn:   { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.paper },

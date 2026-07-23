@@ -377,6 +377,41 @@
   padding: 3px 8px; border-radius: 999px; background: var(--paper-2); color: var(--ink-soft);
 }
 
+/* ─────────────── LEDEN (members) tab + member cards (§2 · G16) ─────────────── */
+.circle-kring__leden { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; }
+.circle-kring__leden-loading, .circle-kring__leden-empty {
+  padding: 24px 12px; color: var(--ink-soft); font-style: italic; text-align: center;
+}
+.circle-kring__member {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  width: 100%; text-align: left; padding: 10px 12px; background: none;
+  border: none; border-bottom: 1px solid var(--line); cursor: pointer; color: inherit; font: inherit;
+}
+.circle-kring__member:hover { background: var(--paper-2); }
+.circle-kring__member-primary { font-weight: 600; }
+.circle-kring__member-secondary { color: var(--ink-soft); font-size: 13px; }
+.circle-kring__member-you {
+  margin-left: auto; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  padding: 2px 8px; border-radius: 999px; background: var(--paper-2); color: var(--ink-soft);
+}
+
+.circle-membercard__back { background: none; border: none; color: var(--accent-ink); cursor: pointer; padding: 4px 0; font: inherit; }
+.circle-membercard__title { margin: 8px 0 2px; }
+.circle-membercard__lede { color: var(--ink-soft); margin: 0 0 14px; }
+.circle-membercard__picker { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+.circle-membercard__viewer {
+  padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); cursor: pointer; font: inherit;
+}
+.circle-membercard__viewer[aria-pressed="true"], .circle-membercard__viewer.is-active {
+  border-color: var(--accent); background: var(--paper-2); font-weight: 600;
+}
+.circle-membercard__col { margin: 0 0 16px; }
+.circle-membercard__col-title { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin: 0 0 6px; }
+.circle-membercard__col--hides .circle-membercard__attr-value { color: var(--ink-soft); font-style: italic; }
+.circle-membercard__attr { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.circle-membercard__attr-label { color: var(--ink-soft); }
+.circle-membercard__none { color: var(--ink-soft); font-style: italic; padding: 4px 0; }
+
 /* ───────────────────── advisor (board 3D) ───────────────────── */
 .circle-advisor__card { border-left: 3px solid var(--accent); }
 .circle-advisor__advice { font-size: 14px; }

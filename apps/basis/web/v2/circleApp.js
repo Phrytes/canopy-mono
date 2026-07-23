@@ -691,6 +691,9 @@ import { buildSharedWithMe, openSharedCopy } from '../../src/v2/sharedWithMe.js'
 // pod-client sealing adapter into the encapsulated identity secret; only the opener closure escapes.
 import { openerForIdentity } from '../../src/v2/sharedCopyOpener.js';
 import { renderCircleViewAs } from './circleViewAs.js';
+// §2 — the LEDEN-tab card views + their shared reveal projections (member-persona / self-view).
+import { renderMemberPersonaCard, renderSelfViewCard } from './circleMemberCard.js';
+import { memberPersonaView, selfViewSplit } from '../../src/v2/memberCards.js';
 import { renderCircleLauncher } from './circleLauncher.js';
 import { renderCircleTabBar, hideCircleTabBar } from './circleTabBar.js';
 import { renderCircleSettings } from './circleSettings.js';
@@ -4326,6 +4329,9 @@ function showKring(id, circle, policy) {
   // on tab-switch, after each task op, and after a `/addtask` turn — so a task created
   // any way (button / `/addtask` / bot) appears here.
   let kringTasks = [];
+  // G16 — the LEDEN tab's trail-roster (canonical Member via normalizeCircleMembers).
+  // null = not loaded yet → the tab shows its loading state; [] = loaded empty.
+  let kringRoster = null;
   let noticeboardPendingAttachment = null;   // S5 — { encoded, thumbnail, name } before posting
   let myWebid = null;   // fetched once, best-effort (whoAmI is a stoop skill, not chat-manifested)
   let myCircleRole = null;   // my role in THIS circle ('admin' | …), for mandate owner-visibility
@@ -4424,6 +4430,16 @@ function showKring(id, circle, policy) {
       const items = Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []);
       kringTasks = buildTaskRows(items, { circleId: id });
     } catch { kringTasks = []; }
+    if (getActiveCircle() === id) rerender();
+  }
+
+  // G16 — load THIS circle's trail-roster for the LEDEN tab. Same op + normaliser
+  // the "View as…" screen (showViewAs) uses → one canonical Member, no second shape.
+  async function loadRoster() {
+    await ensureMyWebid();
+    try {
+      kringRoster = normalizeCircleMembers(await rawCallSkill('stoop', 'listGroupMembers', { groupId: id }));
+    } catch { kringRoster = []; }
     if (getActiveCircle() === id) rerender();
   }
 
@@ -4579,6 +4595,15 @@ function showKring(id, circle, policy) {
       // The view only reads these when the taken tab is active.
       tasks: kringTasks,
       onAddTask: addTaskFromTab,
+      // G16 — the LEDEN tab's trail-roster + the viewer's own webid (badges "jij").
+      // The view only reads these when the leden tab is active.
+      members: kringRoster,
+      selfWebid: myWebid || null,
+      // §2 — tap a member row → their persona card; tap your own row → self-view.
+      onMemberTap: (m) => {
+        if (m && m.id && myWebid && m.id === myWebid) showSelfView(id);
+        else showMemberPersona(id, m);
+      },
       // S6.A — tap an inline manifest button on a bot reply → dispatch its op.
       // Task #13 — an onboarding option button (help circle) routes to the onboarding driver instead.
       onEmbedButton: (b) => {
@@ -4694,6 +4719,7 @@ function showKring(id, circle, policy) {
         if (f) actionFrequency.bump(id, f);
         if (tabId === 'prikbord') loadNoticeboard();   // S1 — lazy-load the buurt posts
         if (tabId === 'taken') loadTasks();            // Taken — lazy-load the circle's tasks
+        if (tabId === 'leden')  loadRoster();          // G16 — lazy-load the member roster
         rerender();
       },
       // D1 (§5A) — a "Veel-gebruikt" pill tap.  Bump the feature's count,
@@ -5289,6 +5315,42 @@ function showAdvisor(id) {
       onBack: () => showDetail(id),
     });
   };
+  rerender();
+}
+
+// §2 member-persona — tap a member row in the LEDEN tab → a card of what THIS
+// viewer (me) may see of THAT member. The sees/hides split re-runs the built
+// reveal rules (memberPersonaView → splitViewAsAttributes); this only fetches my
+// webid + the circle policy and draws the returned split.
+async function showMemberPersona(id, member) {
+  if (!member) { showDetail(id); return; }
+  const policy = (await policyStore.get(id))?.revealPolicy ?? 'pairwise';
+  let myWebid = '';
+  try { const r = await rawCallSkill('stoop', 'whoAmI', {}); myWebid = r?.webid ?? r?.webId ?? ''; } catch { /* stranger view */ }
+  const split = memberPersonaView({ member, viewerWebid: myWebid || null, policy });
+  renderMemberPersonaCard(rootEl, { member, split, t, onBack: () => showDetail(id) });
+}
+
+// §2 self-view — tap your own row → "how others see me": pick a viewer (a member /
+// a stranger / an agent) and feel exactly what you expose. The sees/hides split
+// re-runs the same reveal rules over MY attributes (selfViewSplit); the picked
+// viewer is host state, re-rendered on each pick (the showViewAs pattern).
+async function showSelfView(id) {
+  const policy = (await policyStore.get(id))?.revealPolicy ?? 'pairwise';
+  let myWebid = '';
+  try { const r = await rawCallSkill('stoop', 'whoAmI', {}); myWebid = r?.webid ?? r?.webId ?? ''; } catch { /* */ }
+  let roster = [];
+  try { roster = normalizeCircleMembers(await rawCallSkill('stoop', 'listGroupMembers', { groupId: id })); } catch { /* */ }
+  const me = roster.find((m) => m.id === myWebid) ?? { id: myWebid || null, handle: null, realName: null, reveals: [] };
+  const others = roster.filter((m) => m.id && m.id !== myWebid);
+  let viewer = { kind: 'stranger' };
+  const rerender = () => renderSelfViewCard(rootEl, {
+    me, members: others, viewer,
+    split: selfViewSplit({ me, viewer, policy }),
+    t,
+    onPickViewer: (v) => { viewer = v; rerender(); },
+    onBack: () => showDetail(id),
+  });
   rerender();
 }
 

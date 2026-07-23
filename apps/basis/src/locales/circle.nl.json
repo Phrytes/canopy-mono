@@ -163,6 +163,10 @@
     "empty": {
       "text": "Nog geen leden.",
       "doc": "LEDEN tab — the circle's roster is empty."
+    },
+    "you": {
+      "text": "Jij",
+      "doc": "LEDEN tab — badge on the viewer's own row."
     }
   },
   "tile_unread": {
@@ -2120,6 +2124,46 @@
       "private": {
         "text": "Privé",
         "doc": "Openness chip."
+      }
+    }
+  },
+  "memberCard": {
+    "persona_lede": {
+      "text": "Wat dit lid aan jou heeft laten zien.",
+      "doc": "Member-persona card lede — what a tapped member reveals to me (§2)."
+    },
+    "self_title": {
+      "text": "Hoe anderen jou zien",
+      "doc": "Self-view card title — 'how others see me' (§2)."
+    },
+    "self_lede": {
+      "text": "Kies wie er kijkt en zie precies wat je aan diegene laat zien.",
+      "doc": "Self-view card lede — pick a viewer, feel what you expose."
+    },
+    "sees": {
+      "text": "Zichtbaar",
+      "doc": "Card column header — attributes the viewer can see."
+    },
+    "hides": {
+      "text": "Verborgen",
+      "doc": "Card column header — attributes the viewer can't see."
+    },
+    "none": {
+      "text": "Niets hier.",
+      "doc": "Card column empty state — no attributes in this column."
+    },
+    "hidden_marker": {
+      "text": "verborgen",
+      "doc": "Placeholder shown in the 'hidden' column instead of the value."
+    },
+    "attr": {
+      "handle": {
+        "text": "Handle",
+        "doc": "Persona attribute label — the pseudonymous @handle (always visible)."
+      },
+      "realName": {
+        "text": "Echte naam",
+        "doc": "Persona attribute label — the member's real name (revealed per the reveal rules)."
       }
     }
   },
