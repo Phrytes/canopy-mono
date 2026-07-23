@@ -47,6 +47,59 @@ merge contracts.
 
 **Methods:** `addItems()` · `listOpen()` · `listClosed()` · `getById()` · `markComplete()` · `applySync()` · `removeSync()` · `removeItems()` · `claim()` · `reassign()` · `update()` · `auditLog()` · `submit()` · `approve()` · `reject()` · `revoke()` · `setApprovalMode()` · `_assertDepsClosed()`
 
+## `src/addressedDeliver.js`
+
+### `DM_ITEM_TYPE`
+
+**Kind:** constant · **Import:** `DM_ITEM_TYPE` from `'@onderling/item-store'`
+
+The durable DM turn item type (parity with wireChat's persisted chat item).
+
+### `createAddressedDeliver`
+
+**Kind:** function · **Import:** `createAddressedDeliver` from `'@onderling/item-store'`
+
+```js
+createAddressedDeliver({ send, toWire, toItem, itemStore = null, localActor = null, localStableId = null, seenNonces = new Set(), } = {})
+```
+
+Build the one addressed-send core shared by the 1:1 DM paths: send an Envelope
+to ONE peer via the injected `send`, then (optionally) persist + dedup the
+turn. Returns `{ deliver, persistInbound, seenNonces }`. Transport-agnostic —
+the send and the wire/item projections are injected, so item-store imports no
+transport and each caller keeps its exact wire shape + subtype.
+
+**Parameters**
+
+- `deps` `object`
+- `deps.send` `(toAddr: string, wire: object) => any` — the injected addressed send to ONE peer (e.g. `agent.sendPeerMessage`).
+- `[deps.toWire]` `(envelope: object, toAddr: string) => object` — project the Envelope onto the caller's exact wire payload (preserves subtype). Absent → the Envelope itself is sent.
+- `[deps.toItem]` `(envelope: object, ctx: { to: string|null, direction: 'out'|'in' }) => (object|null|Promise<object|null>)` — project the Envelope onto the caller's EXACT persisted item draft (the symmetric twin of `toWire`, for the durable half). Absent → the default DM item (below). Return a falsy value to skip persistence for this turn (send-only subtypes). May be async so a caller can do per-item IO (e.g. writing attachment bytes) inside the projection — it runs only AFTER a successful send.
+- `[deps.itemStore]` `object | (() => object|Promise<object>) | Promise<object> | null` — an `{ addItems, listOpen }` store (wireChat's item-store surface). Omitted → the send stays ephemeral (back-compat). May be a value, a Promise, or a thunk returning either, so a caller can wire a store that builds asynchronously.
+- `[deps.localActor]` `string | null`
+- `[deps.localStableId]` `string | null`
+- `[deps.seenNonces]` `Set<string>` — shared dedup set (out + in).
+
+### `chatTurnsFromItems`
+
+**Kind:** function · **Import:** `chatTurnsFromItems` from `'@onderling/item-store'`
+
+```js
+chatTurnsFromItems(items, { threadKey } = {})
+```
+
+Rehydrate a durable DM thread: project persisted DM items back into the
+ordered turn shape the contact-thread UI renders (`{ origin, text, … }`).
+The inverse read of `createAddressedDeliver`'s persistence, so a reload
+reconstructs the conversation (the G18 fix, read side).
+
+**Parameters**
+
+- `items` `Array<{ id?:string, text?:string, addedAt?:number, source?:object }>`
+- `[opts]` `{ threadKey?: string }` — filter to one thread (the contact id).
+
+**Returns:** `Array<{ origin:'user'|'bot', text:string, messageId:string, ts:number, replyTo?:string, buttons?:Array }>`
+
 ## `src/audience.js`
 
 ### `audienceFromItem`
@@ -221,6 +274,206 @@ Decide which side to keep when an inbound item meets the local copy.
 - `incoming` `object` — the inbound PAYLOAD (its `updatedAt` is the origin clock, if present)
 
 **Returns:** `'incoming'|'local'` — no local → 'incoming' (first arrival / create) - incoming has no comparable clock → 'incoming' (backward-compat last-received-wins) - local has no comparable clock → 'incoming' (local predates metadata; accept the clock-bearing update) - incoming.updatedAt > local → 'incoming' (causally newer wins) - incoming.updatedAt < local → 'local' (causally OLDER inbound must NOT clobber) - equal updatedAt, higher writer id → 'incoming' (deterministic concurrency tiebreak) - otherwise (fully equal / lower) → 'local' (idempotent: no rewrite, no churn)
+
+## `src/chatEnvelope.js`
+
+### `KRING_CHAT_KIND`
+
+**Kind:** constant · **Import:** `KRING_CHAT_KIND` from `'@onderling/item-store'`
+
+The kring chat message subtype/kind.
+
+### `chatEnvelopeFromStoreItem`
+
+**Kind:** function · **Import:** `chatEnvelopeFromStoreItem` from `'@onderling/item-store'`
+
+```js
+chatEnvelopeFromStoreItem(item, { groupId = null, lenient = false } = {})
+```
+
+`fromItem` — project a durable itemStore `kring-chat-message` item onto the
+WIRE/inbox chat envelope shape that `chatMessageInbox.ingestChatMessage`
+consumes:  `{ subtype, circleId, msgId, ts, text, fromActor, media? }`.
+
+This replaces the two hand-maintained reshapers that read a stored item's
+`source` and re-emit the envelope — `stoop getMessagesSince`'s `.map(...)`
+and `basis kringChatRehydrate.itemToEnvelope`. They differ only in their
+leniency toward malformed items, expressed here as one explicit flag rather
+than as two silently-drifting copies:
+
+  - `lenient: true`  (getMessagesSince) — the caller has already filtered by
+    `source.circleId === groupId` and finite `ts`, so missing `msgId`/`text`
+    fall back (`msgId → item.id`, `text → ''`, `circleId → groupId`) and the
+    projector never returns null.
+  - `lenient: false` (rehydrator, default) — a strict projector: an item
+    missing `msgId` / `circleId` / `text` yields `null` so the caller counts
+    it as skipped.
+
+**Parameters**
+
+- `item` `{id?:string, text?:string, source?:object}`
+- `[opts]` `{groupId?:string|null, lenient?:boolean}`
+
+**Returns:** `{subtype:string, circleId:string, msgId:string, ts:number, text:string, fromActor:(string|null), media?:object} | null`
+
+### `toEventLogItem`
+
+**Kind:** function · **Import:** `toEventLogItem` from `'@onderling/item-store'`
+
+```js
+toEventLogItem({ msgId, ts, circleId, actor, text, senderDisplay, buttons, scope, embeds, media, review, provenance, consent, })
+```
+
+`toItem` (render item) — project the canonical fields onto the in-memory
+EventLog render event. This is the ONE builder behind all three former
+hand-copies:
+
+  - the optimistic local append (`kring-host kringChatMessageEvent`) — passes
+    the LOCAL-ONLY presentation fields (buttons/scope/embeds/review/
+    provenance/consent) and NO `senderDisplay`;
+  - the received append (`basis chatMessageInbox`) — passes `senderDisplay`
+    + an already-guarded `media`;
+  - the rehydrate legacy append (`basis kringChatRehydrate`) — passes only
+    `senderDisplay`.
+
+The optional keys are appended in the SAME order and under the SAME
+presence conditions the originals used, so every caller's event is
+byte-identical to before. `senderDisplay` sits right after `kind`
+(matching the received/legacy layout); the presentation fields follow
+(matching the optimistic layout). A caller that passes neither set gets
+`{ circleId, text, kind }` — the minimal legacy payload.
+
+**Parameters**
+
+- `a` `object`
+- `a.msgId` `string`
+- `a.ts` `number`
+- `a.circleId` `string`
+- `a.actor` `string`
+- `a.text` `string`
+- `[a.senderDisplay]` `string` — received/rehydrate paths only
+- `[a.buttons]` `Array`
+- `[a.scope]` `string`
+- `[a.embeds]` `Array`
+- `[a.media]` `object`
+- `[a.review]` `object`
+- `[a.provenance]` `(string|object)`
+- `[a.consent]` `*`
+
+### `fromEventLogItem`
+
+**Kind:** function · **Import:** `fromEventLogItem` from `'@onderling/item-store'`
+
+```js
+fromEventLogItem(evt)
+```
+
+`fromItem` (render item) — the inverse of `toEventLogItem` for the core
+transferable fields, so the round-trip identity is testable. Local-only
+presentation fields are carried back verbatim; `senderDisplay` is dropped
+(it's a render echo of `actor`, not an envelope field).
+
+### `toWireEnvelope`
+
+**Kind:** function · **Import:** `toWireEnvelope` from `'@onderling/item-store'`
+
+```js
+toWireEnvelope({ circleId, msgId, ts, text, fromActor, fromWebid, media })
+```
+
+`toWire` — project the canonical fields onto the peer fan-out WIRE
+envelope that `stoop broadcastKringMessage` sends over the reliable
+transport:
+  `{ type:'p2p-chat', subtype:'kring-chat-message', circleId, msgId, ts, text, fromActor, fromWebid, media? }`
+
+The media wire-allowlist (`kring-host mediaForKringWire`) runs UPSTREAM
+inside `broadcastKringFanOut` before the pointer reaches this projection,
+so `media` here is already the whitelisted, circle-safe shape (sender-local
+fields such as `stored` / device paths already dropped). This projector
+only re-emits it; it never re-admits a raw embed. Absent → byte-identical
+to the pre-media wire shape (legacy receivers ignore an unknown field
+either way).
+
+**Parameters**
+
+- `a` `object`
+- `a.circleId` `string`
+- `a.msgId` `string`
+- `a.ts` `number`
+- `a.text` `string`
+- `a.fromActor` `(string|null)`
+- `a.fromWebid` `(string|null)`
+- `[a.media]` `object` — already wire-whitelisted
+
+### `toWireRefEnvelope`
+
+**Kind:** function · **Import:** `toWireRefEnvelope` from `'@onderling/item-store'`
+
+```js
+toWireRefEnvelope({ circleId, msgId, ts, ref, fromActor, fromWebid, media })
+```
+
+`toWire` (REF variant) — the pod-signal projection of the canonical
+Envelope. Per DESIGN-connectivity-phase2-deliver §2/§3, the canonical
+Envelope carries EITHER a `body` (the full text — `toWireEnvelope` above)
+OR a `ref` (an opaque pointer at the row a shared pod already holds). A
+circle whose data-policy resolves to `pod-signal` (shared/hybrid) writes
+the message to the pod and fans THIS shape — the same envelope minus the
+body, plus a `ref` — so peers pull the content from the pod instead of
+receiving it inline.
+
+It is the byte-for-byte sibling of `toWireEnvelope` with `text` replaced by
+`ref`: same `{ type, subtype, circleId, msgId, ts, fromActor, fromWebid,
+media? }` frame, no `text` field. `ref` is an opaque string (a pod row
+pointer); this projector neither interprets nor resolves it.
+
+NOTE (Phase 2 honesty): the live send path DEGRADES pod-signal to a
+full-body `toWireEnvelope` fan until Phase 3 wires the real shared-pod
+write, so this shape is defined + unit-tested now but not yet fanned on the
+live path. Phase 3 plugs it in at the stoop `broadcastToCircle` pod seam.
+
+**Parameters**
+
+- `a` `object`
+- `a.circleId` `string`
+- `a.msgId` `string`
+- `a.ts` `number`
+- `a.ref` `string` — opaque pod-row pointer (replaces the body)
+- `a.fromActor` `(string|null)`
+- `a.fromWebid` `(string|null)`
+- `[a.media]` `object` — already wire-whitelisted (unchanged from toWireEnvelope)
+
+### `fromWireRefEnvelope`
+
+**Kind:** function · **Import:** `fromWireRefEnvelope` from `'@onderling/item-store'`
+
+```js
+fromWireRefEnvelope(env)
+```
+
+The inverse of `toWireRefEnvelope` — recover the canonical ref fields from a
+pod-signal wire envelope, so the projection round-trip is testable and a
+receiver can read the pointer back. Returns `null` for anything that isn't a
+ref-shaped wire envelope (missing `ref`).
+
+**Parameters**
+
+- `env` `object`
+
+**Returns:** `{circleId:string, msgId:string, ts:number, ref:string, fromActor:(string|null), fromWebid:(string|null), media?:object} | null`
+
+### `isRefEnvelope`
+
+**Kind:** function · **Import:** `isRefEnvelope` from `'@onderling/item-store'`
+
+```js
+isRefEnvelope(env)
+```
+
+Discriminate the two wire variants of the ONE canonical Envelope: a
+`pod-signal` fan carries a `ref` (and no body), a `fan-out-full` fan carries
+the `text` body (and no ref). `body`/`ref` are mutually exclusive by
+construction, so the presence of `ref` alone identifies the ref variant.
 
 ## `src/circleStoreInbound.js`
 

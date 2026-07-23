@@ -15,6 +15,13 @@
  */
 import { StorageBackend } from './StorageBackend.js';
 
+/**
+ * In-memory reference `StorageBackend` — put/get/list over opaque ciphertext
+ * strings, backed by a plain Map. The conformance reference (see
+ * `assertStorageBackendConformance`) and the local/test backend for the
+ * seal-is-the-gate path: it stores ciphertext verbatim, never decodes it, and
+ * holds no plaintext of its own. See the module header for the full contract.
+ */
 export class MemoryStorageBackend extends StorageBackend {
   #store = new Map();
 

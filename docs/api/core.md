@@ -423,6 +423,35 @@ Uses vitest's expect, so it must run inside a vitest test.
 - `[opts.label='DataSource']` `string`
 - `[opts.supportsQuery=false]` `boolean` — also exercise `query()`.
 
+## `src/conformance/storageBackendConformance.js`
+
+### `REQUIRED_STORAGE_BACKEND_METHODS`
+
+**Kind:** constant · **Import:** `REQUIRED_STORAGE_BACKEND_METHODS` from `'@onderling/core/conformance'`
+
+The three method names every StorageBackend adapter must expose; checked by the harness.
+
+### `assertStorageBackendConformance`
+
+**Kind:** function · **Import:** `assertStorageBackendConformance` from `'@onderling/core/conformance'`
+
+```js
+async assertStorageBackendConformance(makeBackend, { label = 'StorageBackend', requireInstance = true } = {})
+```
+
+Conformance harness asserting a StorageBackend adapter satisfies the port: the
+ciphertext-only put/get/list contract (get null on miss, overwrite, prefix
+list) and that a stored ciphertext round-trips byte-for-byte (the backend is a
+blind carrier — it neither decodes nor mutates what it holds). Uses vitest's
+expect, so it must run inside a vitest test.
+
+**Parameters**
+
+- `makeBackend` `() => (StorageBackend | Promise<StorageBackend>)` — yields a fresh, empty backend.
+- `[opts]` `object`
+- `[opts.label='StorageBackend']` `string`
+- `[opts.requireInstance=true]` `boolean` — assert the adapter is a StorageBackend subclass.
+
 ## `src/conformance/transportConformance.js`
 
 ### `REQUIRED_TRANSPORT_METHODS`
@@ -535,7 +564,7 @@ change events ('added', 'removed', 'cleared', 'reachable', 'unreachable').
 Records are keyed by pubKey (or url for A2A-only peers) and persisted through a
 pluggable key-value backend; without one, an in-memory Map is used.
 
-**Methods:** `upsert()` · `get()` · `all()` · `remove()` · `clear()` · `withSkill()` · `inGroup()` · `reachable()` · `fastest()` · `a2aAgents()` · `canHandle()` · `setReachable()` · `updateLatency()` · `updateTier()` · `export()` · `import()`
+**Methods:** `upsert()` · `get()` · `addressesOf()` · `all()` · `remove()` · `clear()` · `withSkill()` · `inGroup()` · `reachable()` · `fastest()` · `a2aAgents()` · `canHandle()` · `setReachable()` · `updateLatency()` · `updateTier()` · `export()` · `import()`
 
 ## `src/discovery/PingScheduler.js`
 
@@ -1362,6 +1391,25 @@ signature over the canonical body (sorted keys, `sig` excluded).
 
 **Returns:** `boolean` — true only if admin key, expiry and signature all check out
 
+## `src/permissions/pathScope.js`
+
+### `pathScopeCovers`
+
+**Kind:** function · **Import:** `pathScopeCovers` from `'@onderling/core'`
+
+```js
+pathScopeCovers(grantedPath, requiredPath)
+```
+
+Does the granted path cover the required path under prefix-strict rules?
+
+**Parameters**
+
+- `grantedPath` `string` — path from a granted scope
+- `requiredPath` `string` — path a request needs covered
+
+**Returns:** `boolean`
+
 ## `src/protocol/LiveSyncSkill.js`
 
 ### `LiveSyncSkill`
@@ -1945,7 +1993,7 @@ bridgeFor(peerId) with a deterministically chosen bridge issuer or null.
 
 Defined as `TIERS` in the source module.
 
-Tier constants.
+Reachability-rung constants (ladder order: direct → mesh → hop → companion).
 
 ### `tierForTransport`
 
@@ -1975,22 +2023,23 @@ inputs default to `'mesh'` — see the module docstring.
 tierForRouteVia(via)
 ```
 
-Classify a route-via descriptor.  Currently the only "via" we
-model explicitly is peer-as-relay (`'hop'`); other shapes pass
-through to `tierForTransport` if they carry transport info, or
-default to `'mesh'`.
+Classify a route-via descriptor. Models the two indirect rungs that
+are routing decisions rather than transport classes — the transport-hop
+(`'hop'`, peer-as-relay) and the `'companion'` carry; other shapes pass
+through to `tierForTransport` if they carry transport info, or default
+to `'mesh'`.
 
 Accepts either:
-  - a string `'hop'`
+  - a string `'hop'` / `'companion'`
   - `{ kind: 'hop', through?: string }` (shape used by hopTunnel
-    and invokeWithHop)
-  - `{ via: 'hop' | ... }` (alternative shape)
+    and invokeWithHop) or `{ kind: 'companion', through?: string }`
+  - `{ via: 'hop' | 'companion' | ... }` (alternative shape)
 
 **Parameters**
 
 - `via` `object|string|null|undefined`
 
-**Returns:** `'direct'|'mesh'|'hop'`
+**Returns:** `'direct'|'mesh'|'hop'|'companion'`
 
 ### `compareTiers`
 
@@ -2000,14 +2049,14 @@ Accepts either:
 compareTiers(a, b)
 ```
 
-Compare two tiers.  Returns a negative number when `a` is closer
+Compare two rungs.  Returns a negative number when `a` is closer
 to direct than `b`, positive when farther, zero when equal.
-Ordering: `direct` < `mesh` < `hop`.
+Ordering: `direct` < `mesh` < `hop` < `companion`.
 
 **Parameters**
 
-- `a` `'direct'|'mesh'|'hop'`
-- `b` `'direct'|'mesh'|'hop'`
+- `a` `'direct'|'mesh'|'hop'|'companion'`
+- `b` `'direct'|'mesh'|'hop'|'companion'`
 
 **Returns:** `number`
 
@@ -2036,15 +2085,16 @@ Canonical priority order (index 0 = highest priority).
 
 ```js
 class RoutingStrategy
-new RoutingStrategy({ transports = {}, peerGraph = null, fallbackTable = null, config = {} })
+new RoutingStrategy({ transports = {}, peerGraph = null, fallbackTable = null, config = {}, hopResolver = null, companionRoute = null, logger = null, })
 ```
 
 Per-peer transport selector for outbound traffic. Combines PeerGraph type hints,
 per-peer pinned preferences, FallbackTable latency/degradation data, and a fixed
 priority order to pick the best transport; tierFor() additionally classifies the
-selection into 'direct' | 'mesh' | 'hop' reachability tiers.
+selection into 'direct' | 'mesh' | 'hop' reachability tiers, and routeLadder()
+exposes the full 'direct → mesh → hop → companion' rung ladder.
 
-**Methods:** `selectTransport()` · `onTransportFailure()` · `setPreferredTransport()` · `clearPreferredTransport()` · `getPreferredTransport()` · `addTransport()` · `removeTransport()` · `tierFor()`
+**Methods:** `attachPeerGraph()` · `selectTransport()` · `onTransportFailure()` · `setPreferredTransport()` · `clearPreferredTransport()` · `getPreferredTransport()` · `addTransport()` · `removeTransport()` · `tierFor()` · `routeLadder()`
 
 ## `src/routing/invokeWithHop.js`
 
@@ -2759,6 +2809,25 @@ string values and matches objects by exact field equality.
 
 **Methods:** `read()` · `write()` · `delete()` · `list()` · `query()`
 
+## `src/storage/MemoryStorageBackend.js`
+
+### `MemoryStorageBackend`
+
+**Kind:** class · **Import:** `MemoryStorageBackend` from `'@onderling/core'`
+
+```js
+class MemoryStorageBackend extends StorageBackend
+new MemoryStorageBackend()
+```
+
+In-memory reference `StorageBackend` — put/get/list over opaque ciphertext
+strings, backed by a plain Map. The conformance reference (see
+`assertStorageBackendConformance`) and the local/test backend for the
+seal-is-the-gate path: it stores ciphertext verbatim, never decodes it, and
+holds no plaintext of its own. See the module header for the full contract.
+
+**Methods:** `put()` · `get()` · `list()`
+
 ## `src/storage/MergeContracts/appendOnlyEventLog.js`
 
 ### `appendOnlyEventLog`
@@ -2859,6 +2928,55 @@ produce byte-identical outputs across machines.
 
 **Returns:** `Array` — Deduplicated, deterministically sorted union.
 
+## `src/storage/StorageBackend.js`
+
+### `StorageBackend`
+
+**Kind:** class · **Import:** `StorageBackend` from `'@onderling/core'`
+
+```js
+class StorageBackend
+new StorageBackend()
+```
+
+┌─ PORT ──────────────────────────────────────────────────────────────────────┐
+│ `StorageBackend` is the interface a BLIND ciphertext store implements. It is  │
+│ deliberately narrower than `DataSource`: three methods, ciphertext ONLY.      │
+│ Reference adapter: `MemoryStorageBackend` (this package). Pod adapter:         │
+│ `podStorageBackend` (@onderling/pod-client). Prove conformance with           │
+│ `assertStorageBackendConformance()` (conformance/storageBackendConformance.js).│
+└──────────────────────────────────────────────────────────────────────────────┘
+
+StorageBackend — abstract base for a store that holds ONLY ciphertext.
+
+The whole point of this port is that the STORE is a free choice, because the
+SEAL — not the store's access control — is what gates who can read content.
+A caller seals a datum ABOVE this port (via the seal resolver:
+`sealForAudience` in @onderling/pod-client) and hands the resulting ciphertext
+down through `put`; the backend moves opaque bytes it can never open. Because
+access is gated by the seal and not by the backend, the same sealed content is
+portable across backends: put it in a local in-memory store, an IndexedDB
+mirror, or a Solid pod and it still opens for a key-holder and stays closed to
+everyone else. A pod's ACP/WAC then becomes defense-in-depth on top of the
+seal, not the mechanism.
+
+Contrast with `DataSource` (read/write/delete/list, plaintext-capable, the
+general storage adapter apps persist state through): `StorageBackend` is the
+SEALED-CONTENT transport surface. It exposes no `read` that decodes, no
+`write` that a caller might hand plaintext to by convention, and no `query`
+over cleartext fields — only opaque put/get/list. Keeping it separate makes
+"the backend never sees plaintext" a property of the TYPE, not of discipline.
+
+── The port contract (what an adapter must uphold) ────────────────────────────
+  • `put(ref, ciphertext)`  → store the opaque ciphertext under `ref`
+                              (create-or-overwrite); resolves when durable.
+  • `get(ref)`              → the stored ciphertext, or `null` when `ref` is absent.
+  • `list(prefix='')`       → every stored `ref` that starts with `prefix`.
+`ref` is an opaque forward-slash key; `ciphertext` is an opaque string (a
+sealed envelope). Every method is async (returns a Promise).
+
+**Methods:** `put()` · `get()` · `list()`
+
 ## `src/storage/StorageManager.js`
 
 ### `StorageManager`
@@ -2903,11 +3021,19 @@ envelopes go to `binder.send`; inbound envelopes from the binder are fed into
 
 ```js
 class InternalBus extends Emitter
-new InternalBus()
+new InternalBus({ presenceAware = false } = {})
 ```
 
 Shared message bus. Pass the same instance to all InternalTransports that
  should be able to reach each other.
+
+ `presenceAware` (default false) opts the bus in to membership-based
+ reachability: while off, its InternalTransports are address-agnostic (they
+ report `canReach:true` for any address — the long-standing behaviour, so an
+ InternalTransport can stand in for an address-agnostic relay to a peer that
+ never joined the bus). While on, a peer is reachable only while its own
+ transport is connected, so a `disconnect()` becomes a real "unreachable"
+ signal — what the delivery-guarantee / offline tests key on.
 
 ### `InternalTransport`
 
@@ -2922,7 +3048,7 @@ In-process transport: all instances sharing one InternalBus can reach each other
 Delivery is deferred by a microtask, so it is asynchronous but near-instant. Used in
 unit tests and for running multiple agents inside the same JS process or browser tab.
 
-**Methods:** `peerTransport()` · `connect()` · `disconnect()` · `_put()`
+**Methods:** `peerTransport()` · `canReach()` · `connect()` · `disconnect()` · `_put()`
 
 ## `src/transport/LocalTransport.js`
 

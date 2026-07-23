@@ -75,6 +75,18 @@ in-process only. Node-only — the single `node:`-coupled file in this package.
 
 ## `src/PseudoPod.js`
 
+### `PSEUDO_POD_MODES`
+
+**Kind:** constant · **Import:** `PSEUDO_POD_MODES` from `'@onderling/pseudo-pod'`
+
+The store-backing modes a PseudoPod runs in — the store-adapter half of a
+circle's data-policy. Exported so a single upstream mapping (basis's
+`circleDataPolicy`) can derive the mode from a circle's `pod` posture
+without re-hardcoding the vocabulary here and drifting apart.
+  - `standalone`       — local only, no fan-out, no pod (a no-pod circle).
+  - `replication-ring` — writes fan out to peers; local stays canonical.
+  - `cache`            — write-through to a real pod (a pod-backed circle).
+
 ### `createPseudoPod`
 
 **Kind:** function · **Import:** `createPseudoPod` from `'@onderling/pseudo-pod'`

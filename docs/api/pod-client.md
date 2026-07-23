@@ -690,7 +690,7 @@ exactly as `createControlAgent` injects it:
 **Kind:** function · **Import:** `createControlAgent` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
 
 ```js
-createControlAgent({ sharing, containerUri, keyStore, controllerKey, modes = ['read', 'write'], roster = [], revokeMeshProof = null })
+createControlAgent({ sharing, containerUri, keyStore, controllerKey, modes = ['read', 'write'], roster = [], revokeMeshProof = null, keyEventLog = null, groupId = null })
 ```
 
 Create the household control-agent: applies pod ACL grant/revoke AND group-key rotation together
@@ -706,6 +706,8 @@ remains (`force` bypasses); pure orchestration — pod I/O is injected via `shar
 - `a.controllerKey` `{ publicKey: string, privateKey: string }` — the agent's own keypair (always a recipient)
 - `[a.modes]` `string[]` — ACL modes granted to members (default read+write)
 - `[a.roster]` `Array<{webId,publicKey,role}>` — initial member roster
+- `[a.keyEventLog]` `{ append: (event:object) => any }` — optional log sink — when present, every key establishment/grant/rotation ALSO emits the versioned key AS a log key-event (self-distributing, no-pod). The pod key resource is still written (defense-in-depth); the LOG is the source. Absent → pod-only, unchanged.
+- `[a.groupId]` `string` — circle id stamped onto emitted key-events.
 
 ## `src/sealing/envelope.js`
 
@@ -972,6 +974,152 @@ their access. The controller is always a recipient of every version, so it can u
 history entry with no retained `recipients` (legacy resources) is left untouched — an honest limitation.
 `extra[]` supplementary envelopes are dropped (one could otherwise re-admit the departed).
 
+## `src/sealing/keyEventsLog.js`
+
+### `KEY_EVENT_KIND`
+
+**Kind:** constant · **Import:** `KEY_EVENT_KIND` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+The log `kind` a key-event carries, so it is distinguishable from other membership-log entries.
+
+### `buildKeyEvent`
+
+**Kind:** function · **Import:** `buildKeyEvent` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+```js
+buildKeyEvent({ groupId, version = 1, groupKey, recipients } = {})
+```
+
+Build ONE key-event: the `version` group key wrapped multi-recipient to `recipients` (sealing public keys).
+Reuses `buildGroupKeyResource` for the wrap, then tags it as a log entry. Pure.
+
+**Parameters**
+
+- `o` `object`
+- `[o.groupId]` `string` — the circle the event belongs to (routes the fold).
+- `[o.version=1]` `number` — the key version this event establishes.
+- `o.groupKey` `string` — the group key (b64url) this event distributes.
+- `o.recipients` `string[]` — the then-current members' sealing PUBLIC keys.
+
+**Returns:** `{kind:string, groupId:string|null, version:number, members:number, recipients:string[], sealed:string}`
+
+### `establishKeyEvent`
+
+**Kind:** function · **Import:** `establishKeyEvent` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+```js
+establishKeyEvent({ groupId, recipients, groupKey } = {})
+```
+
+Establish a circle's FIRST group key as a version-1 key-event, generating a fresh key if none is supplied.
+Returns the event to append to the log AND the raw group key (for the establisher to seal new content with).
+
+**Parameters**
+
+- `o` `object`
+- `[o.groupId]` `string`
+- `o.recipients` `string[]` — the founding members' sealing public keys.
+- `[o.groupKey]` `string` — an existing key to establish (else a fresh one is generated).
+
+**Returns:** `{ groupKey:string, event:ReturnType<typeof buildKeyEvent> }`
+
+### `rotateKeyEvent`
+
+**Kind:** function · **Import:** `rotateKeyEvent` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+```js
+rotateKeyEvent({ groupId, priorEvents = [], fromVersion, recipients, groupKey } = {})
+```
+
+Rotate: mint the NEXT-version group key as a key-event sealed to `recipients` (pass the REMAINING members to
+revoke — the departed, omitted, cannot fold the new version in). The next version is derived from the highest
+version already in `priorEvents` (or `fromVersion`), so rotation is a pure function of the log so far.
+
+**Parameters**
+
+- `o` `object`
+- `[o.groupId]` `string`
+- `[o.priorEvents]` `Array<object>` — the key-events the rotator holds (used to derive the next version).
+- `[o.fromVersion]` `number` — override the base version explicitly (else read from priorEvents).
+- `o.recipients` `string[]` — the REMAINING members' sealing public keys.
+- `[o.groupKey]` `string` — an explicit new key (else a fresh one is generated).
+
+**Returns:** `{ groupKey:string, event:ReturnType<typeof buildKeyEvent> }`
+
+### `foldKeyEvents`
+
+**Kind:** function · **Import:** `foldKeyEvents` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+```js
+foldKeyEvents(events, { groupId } = {})
+```
+
+fold(log, key-events) → the key chain. Reduce the key-events a member holds into a `groupKeyResource`-shaped
+object: the highest version becomes the CURRENT `{version, members, recipients, sealed}`, every earlier version
+its `history[]`. Same-version duplicates collapse (a re-issued grant supersedes). The result is exactly what
+`readableGroupKeys` / `openSealedAcrossVersions` / `groupKeyStrategy({resource, privateKey})` consume, so a
+private-key holder can read across versions with the EXISTING retained-key readers, unchanged.
+
+**Parameters**
+
+- `events` `Array<object>` — the key-events in the member's log (any order, possibly with gaps).
+- `[opts]` `{groupId?:string}` — restrict the fold to one circle's events.
+
+**Returns:** `{v:number, version:number, members:number, recipients:string[]|null, sealed:string, history?:Array}|null` — `null` when the member holds no key-event for the circle (they cannot read any sealed content — the honest denial for a never-joined / fully-removed member).
+
+### `readKeyChain`
+
+**Kind:** function · **Import:** `readKeyChain` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+```js
+readKeyChain(events, { groupId, opener } = {})
+```
+
+Read the member's key chain from the log: every group-key VERSION this member can unwrap, newest-first, as
+`{version, groupKey}`. The `opener` is a `(sealedText) => plaintext` closure bound to the member's sealing
+PRIVATE key (e.g. `AgentIdentity.sharedCopyOpener` / pod-client `makeOpener`) — so the private key stays in
+custody and never crosses this boundary. A version the opener cannot unwrap (the member was not a recipient —
+removed, or not yet joined) is silently omitted, so the returned chain is EXACTLY the member's entitlement.
+
+**Parameters**
+
+- `events` `Array<object>`
+- `o` `{groupId?:string, opener:(sealedText:string)=>string}`
+
+**Returns:** `Array<{version:number, groupKey:string}>` — newest-first
+
+### `currentGroupKey`
+
+**Kind:** function · **Import:** `currentGroupKey` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+```js
+currentGroupKey(chain)
+```
+
+The CURRENT (highest-version) group key the member holds, for sealing NEW content. `null` if the chain is
+ empty (the member holds no readable version). `chain` is the newest-first output of `readKeyChain`.
+
+### `openAcrossKeyChain`
+
+**Kind:** function · **Import:** `openAcrossKeyChain` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+```js
+openAcrossKeyChain(sealedEnvelopeOrText, chain)
+```
+
+Open content sealed under SOME version, resolving the version by AUTHENTICATED TRIAL across the member's key
+chain (newest-first) — the same secretbox-auth-tag trial `openSealedAcrossVersions` uses, but over the chain
+folded from the log rather than a pod resource. Non-sealed text passes through. Throws if no version the
+member holds opens it — which is precisely the backward-secrecy denial for content sealed after the member's
+removal (that version's key never entered their chain).
+
+**Parameters**
+
+- `sealedEnvelopeOrText` `{sealed:string}|string` — a tagged seal-resolver envelope or a raw sealed string.
+- `chain` `Array<{version:number, groupKey:string}>` — the member's key chain (from `readKeyChain`).
+
+**Returns:** `string` — plaintext
+
 ## `src/sealing/memberIdentity.js`
 
 ### `createMemberSealingIdentity`
@@ -1023,6 +1171,28 @@ async readGroupKey({ keyStore, privateKey })
 Load the current key resource from a keyStore and unwrap the group key for a member. Returns null when
 the circle has no key resource yet (not bootstrapped). Throws if the member is not a recipient of the
 current version (revoked / never granted).
+
+## `src/sealing/podStorageBackend.js`
+
+### `podStorageBackend`
+
+**Kind:** function · **Import:** `podStorageBackend` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+```js
+podStorageBackend(podClient, { isNotFound } = {})
+```
+
+Wrap a PodClient-shaped client (read/write/list) as a blind `StorageBackend`. The returned object is a
+`StorageBackend` instance (so it passes `assertStorageBackendConformance`) that forwards put/get/list to
+the pod while treating every body as opaque ciphertext.
+
+**Parameters**
+
+- `podClient` `{read:Function, write:Function, list:Function}` — a PLAIN pod client (NOT a SealedPodClient).
+- `[opts]` `object`
+- `[opts.isNotFound]` `(err:any)=>boolean` — classify a read error as "absent" → get() returns null. Defaults to `err?.code === 'NOT_FOUND'` (the PodClient / mapSourceCode convention).
+
+**Returns:** `StorageBackend`
 
 ## `src/sealing/resolveCircleStorage.js`
 
@@ -1121,6 +1291,105 @@ holder never has to know the two-step shape.
 - `opts.sealed` `string` — the host-blind sealed body from `sealResource`.
 
 **Returns:** `string` — the plaintext.
+
+## `src/sealing/sealResolver.js`
+
+### `SEAL_SCHEMES`
+
+**Kind:** constant · **Import:** `SEAL_SCHEMES` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+The four sealing schemes the resolver chooses between. A datum is sealed under exactly one.
+
+### `chooseSealScheme`
+
+**Kind:** function · **Import:** `chooseSealScheme` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+```js
+chooseSealScheme(policy = {})
+```
+
+Pick the ONE sealing scheme a datum should be sealed under, from POLICY (the circle's setup + delivery
+intent). Pure. Precedence, most specific first:
+  1. an explicit `policy.scheme` (validated) always wins — a caller that already knows the scheme.
+  2. a brokered / multi-hop delivery (`policy.delivery === 'brokered'`) → sealed-forward.
+  3. a scoped / revocable share (`policy.share === 'scoped'` or `policy.revocable === true`) → per-resource CEK.
+  4. an out-of-circle / 1:1 audience (`policy.audience === 'peer'` or `policy.outOfCircle === true`) → pairwise.
+  5. a whole-circle audience (`policy.audience === 'circle'`) → group-key.
+  6. otherwise the storage-at-rest posture (`policy.posture`) → group-key (p2) / pairwise (p3) / null (p0/p1).
+Returns a scheme name, or `null` when the policy calls for no client-side seal (plaintext / enclave).
+
+**Parameters**
+
+- `[policy]` `object`
+
+**Returns:** `string|null`
+
+### `resolveSealStrategy`
+
+**Kind:** function · **Import:** `resolveSealStrategy` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+```js
+resolveSealStrategy(policy, audience = {})
+```
+
+Resolve a `{ scheme, seal, open }` strategy for the at-rest string schemes (group-key, pairwise,
+per-resource-CEK), reusing the existing strategy constructors so the crypto is unchanged. This is the
+form SealedPodClient / resolveCircleStorage consume — the scheme is chosen ONCE (by `chooseSealScheme`)
+and the matching primitive is bound to `{ seal, open }` closures.
+
+`sealed-forward` is NOT a string-body strategy (it seals a skill-invocation object in transit, not a
+resource body at rest), so it is served by `sealForAudience`/`openSealedEnvelope` below, not here.
+
+Fail-safe: returns `null` when the chosen scheme needs key material the `audience` doesn't carry, so a
+caller falls back to a plain client rather than sealing with missing material.
+
+**Parameters**
+
+- `policy` `object` — passed to `chooseSealScheme`
+- `[audience]` `object` — the key material: `{ groupKey|resource, recipients, privateKey, cek }`
+
+**Returns:** `{scheme:string, seal:Function, open:Function, cek?:string}|null`
+
+### `sealForAudience`
+
+**Kind:** function · **Import:** `sealForAudience` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+```js
+sealForAudience(datum, audience = {}, policy = {})
+```
+
+Seal one datum ONCE, under the scheme the policy names. The datum is a string body for the at-rest schemes
+(group-key / pairwise / per-resource-CEK) and a skill-invocation object for sealed-forward. Returns a
+TAGGED sealed envelope `{ v, scheme, sealed, ... }` that `openSealedEnvelope` dispatches on — so the reader
+never has to know which scheme was chosen.
+
+**Parameters**
+
+- `datum` `string|object` — a string body, or (sealed-forward) `{ skill, parts, origin, originSig, originTs, extras? }`
+- `audience` `object` — key material for the chosen scheme (see `resolveSealStrategy` + below)
+- `policy` `object` — passed to `chooseSealScheme`
+
+**Returns:** `{v:number, scheme:string, sealed:string, nonce?:string, resourceId?:string, cek?:string}|null` — `cek` (per-resource-CEK) is the custody secret — hold it / hand it to a key-grant broker; do NOT store it beside `sealed`. `null` when the policy calls for no seal (p0/p1).
+
+### `openSealedEnvelope`
+
+**Kind:** function · **Import:** `openSealedEnvelope` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+```js
+openSealedEnvelope(sealedEnvelope, keys = {})
+```
+
+Open a tagged sealed envelope produced by `sealForAudience`, dispatching on its `scheme` and using the
+key material in `keys`. Group-key opens by AUTHENTICATED TRIAL newest-first across the retained key chain
+(openSealedAcrossVersions), so a still-entitled member reads older content and a revoked one reads none of
+the newer. Returns the plaintext string (at-rest schemes) or the invocation object (sealed-forward).
+
+**Parameters**
+
+- `sealedEnvelope` `{scheme:string, sealed:string, nonce?:string}`
+- `keys` `object` — per-scheme: group-key `{resource, privateKey}` | `{groupKey}`; pairwise `{privateKey}`; per-resource-CEK `{cek}`; sealed-forward `{identity, senderPubKey}`.
+
+**Returns:** `string|object`
 
 ## `src/sealing/sealedIndex.js`
 
@@ -1228,6 +1497,98 @@ shardKeyFor(id, numShards)
 ```
 
 Stable shard bucket for an id (FNV-1a, portable). Same id → same shard, so you decrypt only one shard.
+
+## `src/sealing/sealedMessageLog.js`
+
+### `messageRef`
+
+**Kind:** function · **Import:** `messageRef` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+```js
+messageRef(circleId, ts, msgId)
+```
+
+The range-queryable row key for one message. Pure — the ONE definition of the layout both sides read.
+
+**Parameters**
+
+- `circleId` `string`
+- `ts` `number` — ms epoch
+- `msgId` `string`
+
+**Returns:** `string` — `<circleId>/<paddedTs>-<msgId>`
+
+### `tsFromRef`
+
+**Kind:** function · **Import:** `tsFromRef` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+```js
+tsFromRef(ref)
+```
+
+Recover the ts a `messageRef` encodes (for the range filter on `list`). NaN when the key isn't ours.
+
+### `writeSealedMessage`
+
+**Kind:** function · **Import:** `writeSealedMessage` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+```js
+async writeSealedMessage(backend, seal, envelope)
+```
+
+SEAL + PUT one message row. `seal` is a `(plaintext:string)=>ciphertext:string` closure (the
+`resolveCircleStorage` strategy's `seal`), or `null`/absent for a plaintext (p0/p1) store. Returns the
+row `ref` — the opaque pointer a `pod-signal` fan carries in its `toWireRefEnvelope`.
+
+**Parameters**
+
+- `backend` `import('@onderling/core').StorageBackend`
+- `seal` `((text:string)=>string)|null`
+- `envelope` `{circleId:string, msgId:string, ts:number}` — the wire/inbox chat envelope
+
+**Returns:** `Promise<string>` — the stored ref
+
+### `readSealedMessage`
+
+**Kind:** function · **Import:** `readSealedMessage` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+```js
+async readSealedMessage(backend, open, ref)
+```
+
+GET + OPEN one message row by its `ref`. `open` is the `resolveCircleStorage` strategy's `open`
+(`(ciphertext:string)=>plaintext:string`; plaintext passes through unchanged), or `null` for a plaintext
+store. Returns the canonical message envelope, or `null` when the ref is absent. Throws only on a
+corrupt/unopenable body (a caller in a receive loop should catch + skip).
+
+**Parameters**
+
+- `backend` `import('@onderling/core').StorageBackend`
+- `open` `((text:string)=>string)|null`
+- `ref` `string`
+
+**Returns:** `Promise<object|null>`
+
+### `readSealedMessagesSince`
+
+**Kind:** function · **Import:** `readSealedMessagesSince` from `'@onderling/pod-client'`, `'@onderling/pod-client/sealing'`
+
+```js
+async readSealedMessagesSince(backend, open, { circleId, sinceTs = 0, max = 200 } = {})
+```
+
+Range-query a circle's rows for every message with `ts >= sinceTs`, opened + returned oldest→newest and
+capped to `max`. This is the read half of the KEY CONVENTION: a single `list('<circleId>/')` prefix walk
++ a numeric ts filter, no store query language. A row that fails to open (wrong-key / corrupt) is SKIPPED,
+not thrown — one bad row must not sink a whole catch-up batch.
+
+**Parameters**
+
+- `backend` `import('@onderling/core').StorageBackend`
+- `open` `((text:string)=>string)|null`
+- `q` `{circleId:string, sinceTs?:number, max?:number}`
+
+**Returns:** `Promise<{items:object[], truncated:boolean}>`
 
 ## `src/sharing/acpWriter.js`
 

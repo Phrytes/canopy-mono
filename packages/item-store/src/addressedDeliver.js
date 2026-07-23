@@ -45,6 +45,12 @@
 export const DM_ITEM_TYPE = 'chat-message';
 
 /**
+ * Build the one addressed-send core shared by the 1:1 DM paths: send an Envelope
+ * to ONE peer via the injected `send`, then (optionally) persist + dedup the
+ * turn. Returns `{ deliver, persistInbound, seenNonces }`. Transport-agnostic —
+ * the send and the wire/item projections are injected, so item-store imports no
+ * transport and each caller keeps its exact wire shape + subtype.
+ *
  * @param {object} deps
  * @param {(toAddr: string, wire: object) => any} deps.send
  *   the injected addressed send to ONE peer (e.g. `agent.sendPeerMessage`).

@@ -107,6 +107,7 @@ These exports are re-exported verbatim from other `@onderling/*` packages; each 
 | `materializeBundle` | function | [`core.md`](core.md#materializebundle) |
 | `MemoryAdapter` | class | [`core.md`](core.md#memoryadapter) |
 | `MemorySource` | class | [`core.md`](core.md#memorysource) |
+| `MemoryStorageBackend` | class | [`core.md`](core.md#memorystoragebackend) |
 | `MergeContracts` | constant | [`core.md`](core.md#mergecontracts) |
 | `mkEnvelope` | function | [`core.md`](core.md#mkenvelope) |
 | `mnemonicToSeed` | function | [`core.md`](core.md#mnemonictoseed) |
@@ -118,6 +119,7 @@ These exports are re-exported verbatim from other `@onderling/*` packages; each 
 | `P` | constant | [`core.md`](core.md#p) |
 | `packSealed` | function | [`core.md`](core.md#packsealed) |
 | `Parts` | class | [`core.md`](core.md#parts) |
+| `pathScopeCovers` | function | [`core.md`](core.md#pathscopecovers) |
 | `PeerDiscovery` | class | [`core.md`](core.md#peerdiscovery) |
 | `PeerGraph` | class | [`core.md`](core.md#peergraph) |
 | `ping` | function | [`core.md`](core.md#ping) |
@@ -166,6 +168,7 @@ These exports are re-exported verbatim from other `@onderling/*` packages; each 
 | `SkillsPubSub` | class | [`core.md`](core.md#skillspubsub) |
 | `STANDARD_RANKS` | constant | [`core.md`](core.md#standard_ranks) |
 | `StateManager` | class | [`core.md`](core.md#statemanager) |
+| `StorageBackend` | class | [`core.md`](core.md#storagebackend) |
 | `StorageManager` | class | [`core.md`](core.md#storagemanager) |
 | `streamBidi` | function | [`core.md`](core.md#streambidi) |
 | `streamOut` | function | [`core.md`](core.md#streamout) |
@@ -220,8 +223,10 @@ These exports are re-exported verbatim from other `@onderling/*` packages; each 
 | `Auth` | class | [`pod-client.md`](pod-client.md#auth) |
 | `AuthError` | class | [`pod-client.md`](pod-client.md#autherror) |
 | `buildGroupKeyResource` | function | [`pod-client.md`](pod-client.md#buildgroupkeyresource) |
+| `buildKeyEvent` | function | [`pod-client.md`](pod-client.md#buildkeyevent) |
 | `CapabilityAuth` | class | [`pod-client.md`](pod-client.md#capabilityauth) |
 | `CapabilityError` | class | [`pod-client.md`](pod-client.md#capabilityerror) |
+| `chooseSealScheme` | function | [`pod-client.md`](pod-client.md#choosesealscheme) |
 | `circleStorageClient` | function | [`pod-client.md`](pod-client.md#circlestorageclient) |
 | `ConflictError` | class | [`pod-client.md`](pod-client.md#conflicterror) |
 | `ConflictResolver` | class | [`pod-client.md`](pod-client.md#conflictresolver) |
@@ -235,12 +240,15 @@ These exports are re-exported verbatim from other `@onderling/*` packages; each 
 | `createSealedIndex` | function | [`pod-client.md`](pod-client.md#createsealedindex) |
 | `createSealedPodClient` | function | [`pod-client.md`](pod-client.md#createsealedpodclient) |
 | `createSealedPodDataSource` | function | [`pod-client.md`](pod-client.md#createsealedpoddatasource) |
+| `currentGroupKey` | function | [`pod-client.md`](pod-client.md#currentgroupkey) |
 | `decodePseudonym` | function | [`pod-client.md`](pod-client.md#decodepseudonym) |
 | `DEFAULT_MAX_BODY_BYTES` | constant | [`pod-client.md`](pod-client.md#default_max_body_bytes) |
 | `DeviceUnreachableError` | class | [`pod-client.md`](pod-client.md#deviceunreachableerror) |
 | `discoverAcrUrl` | function | [`pod-client.md`](pod-client.md#discoveracrurl) |
 | `EncryptionError` | class | [`pod-client.md`](pod-client.md#encryptionerror) |
+| `establishKeyEvent` | function | [`pod-client.md`](pod-client.md#establishkeyevent) |
 | `FileTombstones` | class | [`pod-client.md`](pod-client.md#filetombstones) |
+| `foldKeyEvents` | function | [`pod-client.md`](pod-client.md#foldkeyevents) |
 | `generateGroupKey` | function | [`pod-client.md`](pod-client.md#generategroupkey) |
 | `generateKeypair` | function | [`pod-client.md`](pod-client.md#generatekeypair) |
 | `getEntry` | function | [`pod-client.md`](pod-client.md#getentry) |
@@ -250,6 +258,7 @@ These exports are re-exported verbatim from other `@onderling/*` packages; each 
 | `IdentitySync` | class | [`pod-client.md`](pod-client.md#identitysync) |
 | `IndexedDBTombstones` | class | [`pod-client.md`](pod-client.md#indexeddbtombstones) |
 | `isSealed` | function | [`pod-client.md`](pod-client.md#issealed) |
+| `KEY_EVENT_KIND` | constant | [`pod-client.md`](pod-client.md#key_event_kind) |
 | `makeGroupOpener` | function | [`pod-client.md`](pod-client.md#makegroupopener) |
 | `makeGroupSealer` | function | [`pod-client.md`](pod-client.md#makegroupsealer) |
 | `makeOpener` | function | [`pod-client.md`](pod-client.md#makeopener) |
@@ -257,10 +266,13 @@ These exports are re-exported verbatim from other `@onderling/*` packages; each 
 | `MalformedResourceError` | class | [`pod-client.md`](pod-client.md#malformedresourceerror) |
 | `mapSourceCode` | function | [`pod-client.md`](pod-client.md#mapsourcecode) |
 | `MemoryTombstones` | class | [`pod-client.md`](pod-client.md#memorytombstones) |
+| `messageRef` | function | [`pod-client.md`](pod-client.md#messageref) |
 | `migrateVaultToPod` | function | [`pod-client.md`](pod-client.md#migratevaulttopod) |
 | `NetworkError` | class | [`pod-client.md`](pod-client.md#networkerror) |
 | `NotFoundError` | class | [`pod-client.md`](pod-client.md#notfounderror) |
 | `open` | function | [`pod-client.md`](pod-client.md#open) |
+| `openAcrossKeyChain` | function | [`pod-client.md`](pod-client.md#openacrosskeychain) |
+| `openSealedEnvelope` | function | [`pod-client.md`](pod-client.md#opensealedenvelope) |
 | `openWithGroupKey` | function | [`pod-client.md`](pod-client.md#openwithgroupkey) |
 | `parseAcrUrl` | function | [`pod-client.md`](pod-client.md#parseacrurl) |
 | `parseIndex` | function | [`pod-client.md`](pod-client.md#parseindex) |
@@ -271,19 +283,27 @@ These exports are re-exported verbatim from other `@onderling/*` packages; each 
 | `PodExporter` | class | [`pod-client.md`](pod-client.md#podexporter) |
 | `podGroupPrefix` | function | [`pod-client.md`](pod-client.md#podgroupprefix) |
 | `PodImporter` | class | [`pod-client.md`](pod-client.md#podimporter) |
+| `podStorageBackend` | function | [`pod-client.md`](pod-client.md#podstoragebackend) |
 | `PodTokenRegistry` | class | [`pod-client.md`](pod-client.md#podtokenregistry) |
 | `PolicyError` | class | [`pod-client.md`](pod-client.md#policyerror) |
 | `probeCapabilities` | function | [`pod-client.md`](pod-client.md#probecapabilities) |
 | `queryIndex` | function | [`pod-client.md`](pod-client.md#queryindex) |
 | `readGroupKey` | function | [`pod-client.md`](pod-client.md#readgroupkey) |
+| `readKeyChain` | function | [`pod-client.md`](pod-client.md#readkeychain) |
+| `readSealedMessage` | function | [`pod-client.md`](pod-client.md#readsealedmessage) |
+| `readSealedMessagesSince` | function | [`pod-client.md`](pod-client.md#readsealedmessagessince) |
 | `recipientId` | function | [`pod-client.md`](pod-client.md#recipientid) |
 | `recipientStrategy` | function | [`pod-client.md`](pod-client.md#recipientstrategy) |
 | `removeEntry` | function | [`pod-client.md`](pod-client.md#removeentry) |
 | `resolveCircleStorage` | function | [`pod-client.md`](pod-client.md#resolvecirclestorage) |
+| `resolveSealStrategy` | function | [`pod-client.md`](pod-client.md#resolvesealstrategy) |
 | `resourcePathFromCacheKey` | function | [`pod-client.md`](pod-client.md#resourcepathfromcachekey) |
 | `rotateGroupKeyResource` | function | [`pod-client.md`](pod-client.md#rotategroupkeyresource) |
+| `rotateKeyEvent` | function | [`pod-client.md`](pod-client.md#rotatekeyevent) |
 | `scopeForRequest` | function | [`pod-client.md`](pod-client.md#scopeforrequest) |
 | `seal` | function | [`pod-client.md`](pod-client.md#seal) |
+| `SEAL_SCHEMES` | constant | [`pod-client.md`](pod-client.md#seal_schemes) |
+| `sealForAudience` | function | [`pod-client.md`](pod-client.md#sealforaudience) |
 | `sealingKeyPairFromNetworkKey` | function | [`pod-client.md`](pod-client.md#sealingkeypairfromnetworkkey) |
 | `sealingPublicKeyFromNetworkKey` | function | [`pod-client.md`](pod-client.md#sealingpublickeyfromnetworkkey) |
 | `sealWithGroupKey` | function | [`pod-client.md`](pod-client.md#sealwithgroupkey) |
@@ -295,10 +315,12 @@ These exports are re-exported verbatim from other `@onderling/*` packages; each 
 | `SolidOidcAuth` | class | [`pod-client.md`](pod-client.md#solidoidcauth) |
 | `SolidPodSource` | class | [`pod-client.md`](pod-client.md#solidpodsource) |
 | `TombstoneStore` | class | [`pod-client.md`](pod-client.md#tombstonestore) |
+| `tsFromRef` | function | [`pod-client.md`](pod-client.md#tsfromref) |
 | `unwrapGroupKey` | function | [`pod-client.md`](pod-client.md#unwrapgroupkey) |
 | `upsertEntry` | function | [`pod-client.md`](pod-client.md#upsertentry) |
 | `vaultCacheKeyFor` | function | [`pod-client.md`](pod-client.md#vaultcachekeyfor) |
 | `writeAcpAcr` | function | [`pod-client.md`](pod-client.md#writeacpacr) |
+| `writeSealedMessage` | function | [`pod-client.md`](pod-client.md#writesealedmessage) |
 
 ## Package-defined surface
 
