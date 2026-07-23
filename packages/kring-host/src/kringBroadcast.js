@@ -3,6 +3,13 @@
 // delivery-state transitions) were duplicated near-identically on both platforms; this is the one copy
 // (web↔mobile consolidation Phase 2). Platform-neutral: the caller injects the RAW 3-arg callSkill, the
 // δ.2 deliveryState map, and an `onChange` rerender hook (web `rerender()` / RN `setDeliveryTick`).
+//
+// Connectivity Phase 2 — the optimistic EventLog event is now a projection of
+// the ONE canonical chat Envelope: `kringChatMessageEvent` delegates to
+// `@onderling/item-store`'s `toEventLogItem` (the same projector the received
+// + rehydrate append paths use), so the render event can't drift per-caller.
+
+import { toEventLogItem } from '@onderling/item-store';
 
 /**
  * Build the optimistic kring chat-message event for the local (append-only) EventLog. The same `msgId`
@@ -11,32 +18,21 @@
  * @param {{msgId:string, ts:number, circleId:string, actor:string, text:string, buttons?:Array, scope?:string, embeds?:Array, media?:object, provenance?:(string|{llmUsed?:boolean}), consent?:*}} a
  */
 export function kringChatMessageEvent({ msgId, ts, circleId, actor, text, buttons, scope, embeds, media, review, provenance, consent }) {
-  return {
-    id: msgId, ts, app: 'kring', type: 'chat-message', actor,
-    // `scope` ('self' | 'kring') — is this message private to you or shared with the
-    // whole kring (a data property; the badge is one presentation of it). See messageScope.js.
-    // `embeds` ([{type,ref,title?}]) — cross-object references this message carries (a bot
-    // reply pointing at the task/event it just acted on); rendered as "See also" chips.
-    // `media` — a sealed media-card embed (mediaEmbed.js shape: {kind:'media-card',
-    // pointer:{type:'media',ref}, snapshot, ...}); the bubble renders it as the photo chip.
-    payload: {
-      circleId, text, kind: 'chat-message',
-      ...(buttons?.length ? { buttons } : {}),
-      ...(scope ? { scope } : {}),
-      ...(embeds?.length ? { embeds } : {}),
-      ...(media ? { media } : {}),
-      // `review` — a structured Stage-1 feedback review ({intro, points, labels}); the kring renders it as
-      // editable per-point CARDS (renderReviewCards) instead of flattened text. Private by construction
-      // (scope 'self'), so it never fans out to peers.
-      ...(review ? { review } : {}),
-      // `provenance` — the per-answer transparency badge on a BOT reply: a string renders verbatim, or
-      // `{ llmUsed }` localizes to "answered directly — no language model" / the language-model note.
-      // `consent` — marks a bot bubble as the LLM-forward consent/handoff card (the dashed-rust styling).
-      // Both light dormant restyle seams; local-only presentation, never fanned out.
-      ...(provenance != null ? { provenance } : {}),
-      ...(consent != null ? { consent } : {}),
-    },
-  };
+  // Delegate to the ONE canonical Envelope→render-event projection
+  // (connectivity Phase 2 collapse). This builder is now the optimistic-local
+  // caller of `toEventLogItem`: it passes the LOCAL-ONLY presentation fields
+  // and NO `senderDisplay`, so the render event is byte-identical to before.
+  //
+  //   `scope` ('self' | 'kring') — is this message private to you or shared with the
+  //   whole kring (a data property; the badge is one presentation of it). See messageScope.js.
+  //   `embeds` ([{type,ref,title?}]) — cross-object references this message carries (a bot
+  //   reply pointing at the task/event it just acted on); rendered as "See also" chips.
+  //   `media` — a sealed media-card embed (mediaEmbed.js shape: {kind:'media-card',
+  //   pointer:{type:'media',ref}, snapshot, ...}); the bubble renders it as the photo chip.
+  //   `review` — a structured Stage-1 feedback review ({intro, points, labels}); rendered as
+  //   editable per-point cards. Private by construction (scope 'self'), never fans out.
+  //   `provenance` / `consent` — bot-bubble presentation markers; local-only, never fanned out.
+  return toEventLogItem({ msgId, ts, circleId, actor, text, buttons, scope, embeds, media, review, provenance, consent });
 }
 
 /**

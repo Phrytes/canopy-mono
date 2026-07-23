@@ -25,6 +25,8 @@
  * paths both call this once after the agent is ready.
  */
 
+import { chatEnvelopeFromStoreItem, toEventLogItem } from '@onderling/item-store';
+
 /**
  * Rehydrate chat history into the eventLog via the shared inbox.
  *
@@ -100,30 +102,14 @@ export async function rehydrateKringChatsFromStoop({
  * Convert a stoop `listKringChats` item into the NKN envelope shape
  * the inbox expects.  Returns `null` for items that are missing
  * msgId / circleId / text so the caller counts them as skipped.
+ *
+ * Connectivity Phase 2 — this is the strict (`lenient:false`) caller of the
+ * ONE canonical `chatEnvelopeFromStoreItem` projection (`@onderling/item-store`),
+ * the same store-item→envelope reshaper `stoop getMessagesSince` uses. The
+ * hand-maintained copy that used to live here is gone.
  */
 function itemToEnvelope(item) {
-  const src = item?.source && typeof item.source === 'object' ? item.source : null;
-  if (!src) return null;
-  const msgId    = src.msgId;
-  const circleId = src.circleId;
-  const text     = item?.text;
-  const ts       = typeof src.ts === 'number' && Number.isFinite(src.ts) ? src.ts : Date.now();
-  if (typeof msgId !== 'string'    || !msgId)    return null;
-  if (typeof circleId !== 'string' || !circleId) return null;
-  if (typeof text !== 'string'     || !text)     return null;
-  return {
-    subtype:   'kring-chat-message',
-    circleId,
-    msgId,
-    ts,
-    text,
-    fromActor: src.fromActor ?? src.fromWebid ?? null,
-    // media — stored media pointer+snapshot (broadcast/ingest persisted it
-    // in `source.media`); rides the envelope so the rehydrated bubble keeps
-    // its photo chip. Absent stays absent — legacy items map unchanged.
-    ...(src.media && typeof src.media === 'object' && !Array.isArray(src.media)
-      ? { media: src.media } : {}),
-  };
+  return chatEnvelopeFromStoreItem(item);
 }
 
 /**
@@ -131,25 +117,24 @@ function itemToEnvelope(item) {
  * shared dedup Set.  Kept so tests + transitional callers that pass an
  * `eventLog` (without an inbox) still work.  When all callers route
  * through the inbox this branch can be deleted.
+ *
+ * Connectivity Phase 2 — the append is a projection of the ONE canonical
+ * chat Envelope via `toEventLogItem` (byte-identical: rehydrate carries
+ * `senderDisplay: actor`, no media/presentation extras).
  */
 function makeLegacyInsert({ eventLog, dedup }) {
   return async function legacyInsert(envelope) {
     if (dedup && dedup.has(envelope.msgId)) return false;
     if (dedup) dedup.add(envelope.msgId);
     const actor = envelope.fromActor ?? null;
-    eventLog.append({
-      id:    envelope.msgId,
-      ts:    envelope.ts,
-      app:   'kring',
-      type:  'chat-message',
+    eventLog.append(toEventLogItem({
+      msgId:    envelope.msgId,
+      ts:       envelope.ts,
+      circleId: envelope.circleId,
       actor,
-      payload: {
-        circleId: envelope.circleId,
-        text:     envelope.text,
-        kind:     'chat-message',
-        senderDisplay: actor,
-      },
-    });
+      text:     envelope.text,
+      senderDisplay: actor,
+    }));
     return true;
   };
 }

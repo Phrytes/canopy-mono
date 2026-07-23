@@ -38,6 +38,8 @@
  * construct one inbox per agent boot, sibling of the eventLog.
  */
 
+import { toEventLogItem } from '@onderling/item-store';
+
 const DEFAULT_DEDUP_CAP = 256;
 
 /**
@@ -134,20 +136,20 @@ export function createChatMessageInbox({
       && !Array.isArray(envelope.media) && envelope.media.kind === 'media-card')
       ? envelope.media : null;
 
-    eventLog.append({
-      id:    envelope.msgId,
-      ts:    envelope.ts,
-      app:   'kring',
-      type:  'chat-message',
+    // Connectivity Phase 2 — the received append is a projection of the ONE
+    // canonical chat Envelope. `toEventLogItem` (kring-host's optimistic append
+    // uses the same projector) reproduces this exact shape: the received path
+    // passes `senderDisplay` + the already-guarded `media`, so the event is
+    // byte-identical to what this inbox emitted by hand before.
+    eventLog.append(toEventLogItem({
+      msgId:    envelope.msgId,
+      ts:       envelope.ts,
+      circleId: envelope.circleId,
       actor,
-      payload: {
-        circleId: envelope.circleId,
-        text:     envelope.text,
-        kind:     'chat-message',
-        senderDisplay: actor,
-        ...(media ? { media } : {}),
-      },
-    });
+      text:     envelope.text,
+      senderDisplay: actor,
+      ...(media ? { media } : {}),
+    }));
     logger.info?.('[kring-chat] received', envelope.msgId, 'circle=' + envelope.circleId, 'source=' + source);
     return { result: 'inserted' };
   }

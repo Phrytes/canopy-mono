@@ -63,7 +63,7 @@ import { stoopManifest } from '../../manifest.js';
 import nacl from 'tweetnacl';
 import { resolve as resolveMember } from '@onderling/identity-resolver';
 import { validateCanonical } from '@onderling/item-types';
-import { treeOf, createCrossPodRefResolver } from '@onderling/item-store';
+import { treeOf, createCrossPodRefResolver, chatEnvelopeFromStoreItem, toWireEnvelope } from '@onderling/item-store';
 import { validateStoopItem, intentToCanonicalDraft } from '../lib/canonicalAdapter.js';
 
 import { validateHandle } from '../lib/handle.js';
@@ -3356,12 +3356,14 @@ export function buildSkills({
       const { sent, attempted, errors } = reliableSend
         ? await _fanOutViaReliableSend({
             members, reliableSend, selfWebid: from,
-            envelope: {
-              type: 'p2p-chat', subtype: 'kring-chat-message',
+            // Connectivity Phase 2 — the fan-out wire envelope is a projection
+            // of the ONE canonical chat Envelope (`toWireEnvelope`). `media` is
+            // already wire-whitelisted upstream by kring-host's
+            // `broadcastKringFanOut`; absent → byte-identical legacy wire shape.
+            envelope: toWireEnvelope({
               circleId: _groupId, msgId: a.msgId, ts, text,
-              fromActor, fromWebid: from,
-              ...(media ? { media } : {}),
-            },
+              fromActor, fromWebid: from, media,
+            }),
           })
         : await _fanOutToMembers({
             members, chat, selfWebid: from,
@@ -3588,18 +3590,14 @@ export function buildSkills({
       const trimmedItems = filtered.length > max
         ? filtered.slice(filtered.length - max)
         : filtered;
-      const items = trimmedItems.map((it) => ({
-        subtype:   'kring-chat-message',
-        circleId:  it?.source?.circleId ?? groupId,
-        msgId:     it?.source?.msgId ?? it.id,
-        ts:        it?.source?.ts,
-        text:      it.text ?? '',
-        fromActor: it?.source?.fromActor ?? it?.source?.fromWebid ?? null,
-        // media — carry the stored media pointer+snapshot so a catch-up
-        // receiver renders the chip too (absent stays absent — legacy shape).
-        ...(it?.source?.media && typeof it.source.media === 'object'
-          ? { media: it.source.media } : {}),
-      }));
+      // Connectivity Phase 2 — reshape each stored item into the wire/inbox
+      // chat envelope via the ONE canonical `chatEnvelopeFromStoreItem`
+      // projection (the same reshaper `basis kringChatRehydrate` uses). This
+      // is the LENIENT caller: circleId + finite ts are already guaranteed by
+      // the filters above, and msgId/text fall back rather than skip — so the
+      // returned shape is byte-identical to the hand-map this replaced.
+      const items = trimmedItems.map((it) =>
+        chatEnvelopeFromStoreItem(it, { groupId, lenient: true }));
       return { items, truncated };
     }, {
       description: 'Read kring chat-message envelopes from itemStore filtered by ts >= sinceTs; returns broadcast envelope shape for ε.3 pod-range-query catch-up.  Args: groupId (required), sinceTs (default 0), max (default 200, cap 1000).',
