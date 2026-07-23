@@ -38,6 +38,9 @@ import { createBrowserFolioAgent } from '@onderling-app/folio/browser';
 // the agents manifest via wireSkill; registerAgentBundle both registers THIS
 // device in the registry resource and returns the live registry handle.
 import { buildAgentSkills } from '@onderling-app/agents/wireSkills';
+// Canonical Member projectors — the chat-shell `listGroupMembers` item is a
+// PROJECTION of the ONE Member (kring-host), not a hand-reshape.
+import { memberFrom, memberToChatItem } from '@onderling/kring-host/circleMembers';
 // install — the curated-catalog SOURCE. commons-governance G1: when a
 // bootstrap endorser root is configured (opts.commonsRoot), the default source
 // is the REAL endorsement-backed catalog (createCatalogSource over signed,
@@ -2595,17 +2598,11 @@ export async function createRealHouseholdAgent(opts = {}) {
         // after the trail-derived roster (B1) started returning members.
         groupId: data.groupId,
         members: data.members,
-        items: data.members.map((m) => ({
-          id:          m.webid,
-          type:        'member',
-          webid:       m.webid,
-          label:       m.displayName ?? m.handle ?? m.webid,
-          handle:      m.handle ?? null,
-          role:        m.role ?? 'member',
-          // Identity 5B/C — carry the recorded per-circle address through the
-          // chat-shell projection (additive; absent for pre-substrate members).
-          ...(m.circleAddress ? { circleAddress: m.circleAddress } : {}),
-        })),
+        // The chat-shell item (shape 2) is now a PROJECTION of the ONE canonical
+        // Member (kring-host), not a hand-reshape: `memberToChatItem(memberFrom(row))`.
+        // Identity 5B/C — the recorded per-circle address rides through
+        // `memberToChatItem` (additive; absent for pre-substrate members).
+        items: data.members.map((m) => memberToChatItem(memberFrom(m))),
         _sync: simulateSync(),
       };
     }

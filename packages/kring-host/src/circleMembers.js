@@ -1,17 +1,132 @@
 /**
  * basis v2 — circle member directory (shared web + mobile, F-5.1).
  *
- * Normalises the result of the `listGroupMembers` op into the member shape
- * `circleViewAs` consumes. The op is reached two ways depending
- * on the host's dispatch:
- *   - raw stoop skill →  { groupId, members: [{ webid, handle, displayName, role }] }
- *   - chat-shell reshape → { items:   [{ id, webid, label, handle, role }] }
- * so we accept either and map to `{ id, handle, realName, reveals }`.
- * (`reveals` — the pairwise reveal list — isn't surfaced by the op yet, so
- * it defaults to [], which means View-as hides real names under pairwise
- * unless the policy is 'open'. That's the safe/correct default.)
+ * The ONE canonical circle **Member** + its declared projections
+ * (peer-connectivity Phase 0/1, the "one Member" collapse — the sibling of
+ * C10's `chatEnvelope`). A circle member used to exist in TWO hand-maintained
+ * roster shapes kept in sync by copy-paste reshapers, and that drift was the
+ * risk:
+ *
+ *   1. the RAW stoop roster row (`listGroupMembers` → `deriveRoster`)
+ *        `{ webid, handle, displayName, role, sealingPublicKey, circleAddress, … }`
+ *   2. the CHAT-SHELL projected item (`basis realAgent` `listGroupMembers`
+ *      reshape → `{ id, type:'member', webid, label, handle, role, circleAddress? }`)
+ *      where `label` = `displayName ?? handle ?? webid` (the displayName is
+ *      COLLAPSED into a single label).
+ *
+ * `normalizeCircleMembers` bridged both by hand into the `circleViewAs` shape
+ * `{ id, handle, realName, reveals }`, un-collapsing the label inline. This
+ * module makes shapes 1 & 2 PROJECTIONS of one canonical Member so the reshape
+ * lives in one place:
+ *
+ *   • `memberFrom`        — either roster shape (1 or 2) → canonical Member.
+ *   • `memberToChatItem`  — Member → the chat-shell item (shape 2) that
+ *                           `basis realAgent` used to hand-build.
+ *   • `memberToViewAs`    — Member → the `{ id, handle, realName, reveals }`
+ *                           View-as shape `circleViewAs` consumes.
+ *
+ * and `normalizeCircleMembers` becomes the single composition
+ * `memberToViewAs(memberFrom(row))` rather than a two-branch hand-reshape.
+ * Every projector is pure and proven byte-identical to what its producer /
+ * consumer emitted before (see `test/circleMembers.test.js`).
+ *
+ * Placement (CLAUDE.md invariant 5): the canonical Member lives here in
+ * `@onderling/kring-host` alongside `circleMembers.js` — the roster substrate
+ * both basis shells (web + mobile) already depend on for `normalizeCircleMembers`.
+ * The trail projection `deriveRoster` (stoop) births shape 1 and the chat-shell
+ * reshape (basis) births shape 2; both now read the projector rather than
+ * re-shaping a member by hand.
+ *
+ * (`reveals` — the pairwise reveal list — isn't surfaced by the op yet, so it
+ * defaults to [], which means View-as hides real names under pairwise unless
+ * the policy is 'open'. That's the safe/correct default.)
+ *
+ * @typedef {object} Member
+ * @property {string|null} webid        the member's WebID (roster identity).
+ * @property {string|null} handle       the `@handle`, or null.
+ * @property {string|null} displayName  the real/display name, or null. Recovered
+ *   from a shape-2 `label` only when the label is DISTINCT from the handle/webid.
+ * @property {string}      role         circle role; defaults to `'member'`.
+ * @property {string[]}    reveals      pairwise reveal list; defaults to `[]`.
+ * @property {string}      [circleAddress]  per-circle address (additive; absent
+ *   for pre-substrate members).
  */
 
+/**
+ * `memberFrom` — project EITHER roster shape onto the canonical Member.
+ * Tolerates shape 1 (raw `{ webid, handle, displayName, role }`) and shape 2
+ * (chat-shell `{ id, webid, label, handle, role }`) via the same field
+ * fallbacks the old hand-reshape used, so both shapes normalise identically.
+ *
+ * @param {object} entry  a roster row (shape 1 or shape 2)
+ * @returns {Member}
+ */
+export function memberFrom(entry) {
+  const m = entry && typeof entry === 'object' ? entry : {};
+  const webid = m.webid ?? m.id ?? null;
+  const handle = m.handle ?? null;
+  // Shape 1 carries `displayName`; shape 2 collapses it into `label`
+  // (= displayName ?? handle ?? webid) — only recover a real name from `label`
+  // when it's distinct from the handle/webid.
+  let displayName = m.displayName ?? null;
+  if (displayName == null && m.label != null && m.label !== handle && m.label !== webid) {
+    displayName = m.label;
+  }
+  const out = {
+    webid,
+    handle,
+    displayName,
+    role: m.role ?? 'member',
+    reveals: Array.isArray(m.reveals) ? m.reveals : [],
+  };
+  if (m.circleAddress != null) out.circleAddress = m.circleAddress;
+  return out;
+}
+
+/**
+ * `memberToChatItem` — project a canonical Member onto the chat-shell list
+ * item (shape 2) that `basis realAgent`'s `listGroupMembers` reshape used to
+ * hand-build:
+ *   `{ id, type:'member', webid, label, handle, role, circleAddress? }`
+ * `label` re-collapses `displayName ?? handle ?? webid`; `circleAddress` is
+ * appended only when truthy (matching the original additive guard).
+ *
+ * @param {Member} member
+ */
+export function memberToChatItem(member) {
+  const m = member ?? {};
+  return {
+    id:     m.webid,
+    type:   'member',
+    webid:  m.webid,
+    label:  m.displayName ?? m.handle ?? m.webid,
+    handle: m.handle ?? null,
+    role:   m.role ?? 'member',
+    ...(m.circleAddress ? { circleAddress: m.circleAddress } : {}),
+  };
+}
+
+/**
+ * `memberToViewAs` — project a canonical Member onto the View-as directory
+ * shape `circleViewAs` consumes: `{ id, handle, realName, reveals }`.
+ *
+ * @param {Member} member
+ */
+export function memberToViewAs(member) {
+  const m = member ?? {};
+  return {
+    id: m.webid ?? null,
+    handle: m.handle ?? null,
+    realName: m.displayName ?? null,
+    reveals: Array.isArray(m.reveals) ? m.reveals : [],
+  };
+}
+
+/**
+ * Normalise a `listGroupMembers` result (either roster shape) into the View-as
+ * member list `circleViewAs` consumes. Now the single projector
+ * `memberToViewAs(memberFrom(row))` over whichever list the result carries.
+ */
 export function normalizeCircleMembers(result) {
   if (!result || typeof result !== 'object') return [];
   const raw = Array.isArray(result.members) ? result.members
@@ -20,23 +135,7 @@ export function normalizeCircleMembers(result) {
         : [];
   return raw
     .filter((m) => m && typeof m === 'object')
-    .map((m) => {
-      const id = m.webid ?? m.id ?? null;
-      const handle = m.handle ?? null;
-      // raw MemberMap carries displayName; the reshaped item collapses it
-      // into `label` (= displayName ?? handle ?? webid) — only treat label
-      // as a real name when it's distinct from the handle/id.
-      let realName = m.displayName ?? null;
-      if (realName == null && m.label != null && m.label !== handle && m.label !== id) {
-        realName = m.label;
-      }
-      return {
-        id,
-        handle,
-        realName,
-        reveals: Array.isArray(m.reveals) ? m.reveals : [],
-      };
-    })
+    .map((m) => memberToViewAs(memberFrom(m)))
     .filter((m) => m.id != null);
 }
 
