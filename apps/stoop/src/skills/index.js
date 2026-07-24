@@ -63,6 +63,9 @@ import { stoopManifest } from '../../manifest.js';
 import nacl from 'tweetnacl';
 import { resolve as resolveMember } from '@onderling/identity-resolver';
 import { validateCanonical } from '@onderling/item-types';
+// The ONE release comparator (the disclosure home) — the roster gates its own writes on it so an
+// unchanged "share to this circle" never touches the row, never acks a change, never announces one.
+import { changedReleaseKeys } from '@onderling/agent-registry';
 import { treeOf, createCrossPodRefResolver, chatEnvelopeFromStoreItem, toWireEnvelope, toWireRefEnvelope } from '@onderling/item-store';
 import { validateStoopItem, intentToCanonicalDraft } from '../lib/canonicalAdapter.js';
 
@@ -2860,7 +2863,13 @@ export function buildSkills({
      *   row, never overwrite another's). Only updates an EXISTING member (never mints a phantom).
      *   An empty `personaProperties` ({}) is a valid "I now share nothing here" and clears the slot.
      *
-     *   Returns: { ok:true, groupId, memberWebid, keys } | { ok:false, reason }.
+     *   DIFF-GATED (profile-update propagation): the roster is the source of truth, so it is also
+     *   the diff authority. When the row already says exactly this, NOTHING is written and the
+     *   answer is `{ok:true, unchanged:true, changedKeys:[]}` — the caller then announces no
+     *   "pull-me" and the circle stays quiet. A real change answers with `changedKeys` (key NAMES
+     *   only), which is what the silent pull-me entry carries.
+     *
+     *   Returns: { ok:true, groupId, memberWebid, keys, changedKeys, unchanged? } | { ok:false, reason }.
      */
     defineSkill('recordMemberPersonaProperties', async ({ parts, from }) => {
       const a = dataArgs(parts);
@@ -2881,6 +2890,29 @@ export function buildSkills({
       //    non-member gets no phantom row: only someone the admin already recorded can be updated.
       const me = await members.resolveByWebid(webid);
       if (!me) return { ok: false, reason: 'not-a-member' };
+
+      // The DURABLE backing of this row (the redemption item `listGroupMembers` recovers from) —
+      // read up-front because it is BOTH the diff's left-hand side and the patch target below.
+      // The live MemberMap row is a lossy cache (it can read empty after a rebuild), so the
+      // durable value wins when the two disagree: never call a real change "unchanged".
+      let durableItem = null;
+      try {
+        const all = await store.listOpen({ type: 'membership-redemption' });
+        durableItem = all.find((i) => i?.source?.redeemedBy === webid && i?.source?.groupId === a.groupId) ?? null;
+      } catch { durableItem = null; }
+      const previous = me.personaProperties ?? durableItem?.source?.personaProperties ?? null;
+
+      // DIFF-GATE — an unchanged save is a true no-op: no write, no durable patch, no changed
+      // keys for the caller to announce. (A `circleAddress` refresh alone is bookkeeping, not a
+      // disclosure change, so it rides along on a real change only.)
+      const changedKeys = changedReleaseKeys(previous, stored);
+      if (changedKeys.length === 0) {
+        return {
+          ok: true, unchanged: true, groupId: a.groupId, memberWebid: webid,
+          keys: Object.keys(props), changedKeys: [], _sync: simulateSync(),
+        };
+      }
+
       await members.addMember({
         ...me,
         personaProperties: stored,
@@ -2891,8 +2923,7 @@ export function buildSkills({
       //    recovers the fresh value after a rebuild (the admin's OWN row has no redemption item —
       //    the patch simply finds nothing and the live row stands, matching createGroupV2).
       try {
-        const all = await store.listOpen({ type: 'membership-redemption' });
-        const item = all.find((i) => i?.source?.redeemedBy === webid && i?.source?.groupId === a.groupId);
+        const item = durableItem;
         if (item) {
           await store.update(item.id, {
             source: {
@@ -2904,7 +2935,10 @@ export function buildSkills({
         }
       } catch { /* durable patch is best-effort — the live row already reflects the change */ }
 
-      return { ok: true, groupId: a.groupId, memberWebid: webid, keys: Object.keys(props), _sync: simulateSync() };
+      return {
+        ok: true, groupId: a.groupId, memberWebid: webid,
+        keys: Object.keys(props), changedKeys, _sync: simulateSync(),
+      };
     }, {
       description: 'Record an already-joined member\'s disclosed persona properties onto the roster (post-join "share to this circle").',
       visibility:  'authenticated',
@@ -3667,6 +3701,44 @@ export function buildSkills({
       });
     }, {
       description: 'Fan a kring circlePolicy document out to every other member via chat.send subtype:kring-policy-broadcast; receivers cache as pending incomingPolicy for the γ.4 conflict resolver.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * broadcastRosterUpdated({groupId, memberRef, keys?, msgId, ts?})
+     *   — the roster "pull-me" signal. Sibling of the `broadcastKring*`
+     *   family (same fan-out plumbing, subtype `roster-updated`), with one
+     *   defining difference: it carries NO CONTENT. Only a member REF and the
+     *   NAMES of the properties that changed ride the wire; every receiver
+     *   re-reads the changed rows from the roster itself.
+     *
+     *   Fired by the roster owner right after a REAL
+     *   `recordMemberPersonaProperties` write (an unchanged save announces
+     *   nothing). Receivers route it to basis's `makeRosterUpdatedPeerHandler`,
+     *   which records a SILENT stream entry — no chat bubble, and it never
+     *   wakes an offline member — and refreshes the members view.
+     *
+     *   Best-effort + fire-and-forget: per-peer failures land in the returned
+     *   `errors[]` array but never throw.
+     */
+    defineSkill('broadcastRosterUpdated', async ({ parts, from }) => {
+      const a = dataArgs(parts);
+      const _groupId = a.groupId ?? groupId;
+      if (!_groupId)                                          return { error: 'groupId-required' };
+      if (typeof a.memberRef !== 'string' || !a.memberRef)    return { error: 'memberRef-required' };
+      if (typeof a.msgId !== 'string' || !a.msgId)            return { error: 'msgId-required' };
+
+      const ts = typeof a.ts === 'number' && Number.isFinite(a.ts) ? a.ts : Date.now();
+      // Key NAMES only — a value that somehow reached this arg is dropped here, at the boundary.
+      const keys = Array.isArray(a.keys) ? a.keys.filter((k) => typeof k === 'string' && k) : [];
+
+      return broadcastToCircle({
+        circleId: _groupId, kind: 'roster-updated', from,
+        extras: { circleId: _groupId, msgId: a.msgId, ts, memberRef: a.memberRef, keys },
+        metric: 'roster-updated-fanout',
+      });
+    }, {
+      description: 'Fan a roster "pull-me" signal (member ref + changed property NAMES, never values) out to every other member via chat.send subtype:roster-updated; receivers re-read the changed roster rows.',
       visibility:  'authenticated',
     }),
 

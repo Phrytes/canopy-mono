@@ -127,6 +127,13 @@ export {
   // C15 — per-circle chat projection (excludes the silent system lane).
   buildCircleChat,
 } from './v2/circleStream.js';
+// profile-update propagation (Phase-4 Wave B) — the roster "pull-me" signal substrate:
+// the diff comparator, the silent-entry kind, the announce (admin) + receive (member) factories.
+export {
+  ROSTER_UPDATED_KIND, changedReleaseKeys, releaseUnchanged,
+  rosterUpdatedPayload, appendRosterUpdatedEntry, isValidRosterUpdatedEnvelope,
+  makeRosterUpdateAnnouncer, makeRosterUpdatedPeerHandler,
+} from './v2/rosterUpdated.js';
 // per-kring bottom tabs derived from policy.features (v2 §1).
 export { buildKringTabs, DEFAULT_KRING_TAB, featureActionLabelKey, featureTabId, featureForTabId } from './v2/kringTabs.js';
 // δ.2 — per-message delivery state (pending / sent / failed) for the

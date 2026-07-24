@@ -133,6 +133,42 @@ export function releasedValues({ getProfile, profileId, defaultProfileId = null 
   return out;
 }
 
+/* ─── release DIFF — "did what I share here actually change?" ──────────────── */
+
+/** Stable value comparison (order-independent for objects; absent ≡ null). */
+function sameReleasedValue(a, b) {
+  if (a === b) return true;
+  try { return JSON.stringify(a ?? null) === JSON.stringify(b ?? null); }
+  catch { return false; }
+}
+
+/**
+ * Which keys REALLY differ between two releases (two `releasedValues` results for the same
+ * context). Added, removed and edited keys all count. The comparator behind the profile-update
+ * propagation gate: an unchanged save yields `[]`, so nothing is written, sent or announced.
+ *
+ * An absent/`null` release and `{}` mean the same thing ("I share nothing here") — the roster
+ * normalises an empty disclosure to `null`, so this must treat them alike.
+ *
+ * @param {object|null} before
+ * @param {object|null} after
+ * @returns {string[]} changed keys, sorted (stable output for wires + tests)
+ */
+export function changedReleaseKeys(before, after) {
+  const a = (before && typeof before === 'object' && !Array.isArray(before)) ? before : {};
+  const b = (after  && typeof after  === 'object' && !Array.isArray(after))  ? after  : {};
+  const out = [];
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    if (!sameReleasedValue(a[k], b[k])) out.push(k);
+  }
+  return out.sort();
+}
+
+/** True when two releases are the same — the no-op save. */
+export function releaseUnchanged(before, after) {
+  return changedReleaseKeys(before, after).length === 0;
+}
+
 /**
  * The MATCHING counterpart to `releasedValues` — the values the on-device matcher may consult for a
  * CONTEXT, keyed off the `matchable` axis (isMatchable), INDEPENDENT of `disclosed`/`enabled`.

@@ -160,7 +160,8 @@ describe('shareDisclosureToCircle — local-vs-peer routing', () => {
       return { ok: true };
     });
     const r = await shareDisclosureToCircle({ callSkill, sendPersonaUpdate, circleId: 'c1', personaId: 'default' });
-    expect(r).toEqual({ ok: true, via: 'local' });
+    // Wave B: the local path now also reports the changed keys (for the pull-me signal).
+    expect(r).toMatchObject({ ok: true, via: 'local' });
     expect(sendPersonaUpdate).not.toHaveBeenCalled();
     expect(calls).toContainEqual(['recordMemberPersonaProperties', { groupId: 'c1', personaProperties: { place: 'Groningen' } }]);
   });

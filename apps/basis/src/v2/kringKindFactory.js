@@ -93,8 +93,10 @@ function isValidEnvelope(p, subtype, payloadKey) {
   );
 }
 
-// Tiny LRU set — one shared copy for all kring kinds.
-class LruSet {
+// Tiny LRU set — one shared copy for all kring kinds. Exported so any other
+// per-circle broadcast receiver (e.g. the roster "pull-me" signal in
+// `rosterUpdated.js`) reuses THIS dedup rather than growing a second copy.
+export class LruSet {
   constructor(cap) { this.cap = cap; this.m = new Map(); }
   has(k) { return this.m.has(k); }
   add(k) {

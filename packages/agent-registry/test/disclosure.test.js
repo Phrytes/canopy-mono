@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { own, inherit } from '../src/profileProperties.js';
 import { descriptor, createVocabulary, isPropertyType, PROPERTY_TYPES } from '../src/propertyVocabulary.js';
-import { createDisclosurePolicy, setDisclosure, getDisclosure, releasedValues, releasedForMatching, isDisclosed, isMatchable, isRequestable } from '../src/disclosure.js';
+import { createDisclosurePolicy, setDisclosure, getDisclosure, releasedValues, releasedForMatching, isDisclosed, isMatchable, isRequestable, changedReleaseKeys, releaseUnchanged } from '../src/disclosure.js';
 import { createDriver } from '../src/drivers.js';
 
 // a tiny profile registry: id → { properties }
@@ -239,6 +239,23 @@ describe('releasedForMatching — the matching surface, keyed off matchable, NOT
     policy = setDisclosure(policy, 'circleA', 'hobby', { matchable: true });
     expect(Object.keys(releasedForMatching(ctx, null, policy, 'circleA'))).toEqual(['hobby']);
     expect(releasedForMatching(ctx, null, policy, 'circleB')).toEqual({});
+  });
+
+  it('changedReleaseKeys / releaseUnchanged — the profile-update propagation gate', () => {
+    // unchanged (order-independent) → nothing moved
+    expect(changedReleaseKeys({ a: 1, b: 2 }, { b: 2, a: 1 })).toEqual([]);
+    expect(releaseUnchanged({ a: 1 }, { a: 1 })).toBe(true);
+    // added / removed / edited all count, sorted
+    expect(changedReleaseKeys({ a: 1 }, { a: 1, b: 2 })).toEqual(['b']);
+    expect(changedReleaseKeys({ a: 1, b: 2 }, { b: 2 })).toEqual(['a']);
+    expect(changedReleaseKeys({ a: 1 }, { a: 9 })).toEqual(['a']);
+    // absent/null ≡ {} (the roster normalises an empty disclosure to null)
+    expect(releaseUnchanged(null, {})).toBe(true);
+    expect(changedReleaseKeys(null, { a: 1 })).toEqual(['a']);
+    // object values (e.g. a sealed media ref) compare deeply
+    const ref = { type: 'blob', ref: 'blob://x', enc: { sealed: true } };
+    expect(releaseUnchanged({ pic: ref }, { pic: { ...ref } })).toBe(true);
+    expect(changedReleaseKeys({ pic: ref }, { pic: { ...ref, ref: 'blob://y' } })).toEqual(['pic']);
   });
 
   it('fail-closed: a matchable value its coarsen fn cannot reduce is WITHHELD from the matcher too', () => {

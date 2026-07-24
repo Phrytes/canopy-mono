@@ -211,8 +211,11 @@ import { makeKeyEventLogSink, recipientAddrsFromRoster } from '@onderling/kring-
 // "only you" vs "whole kring" — message scope (a data property; the badge renders it).
 import { scopeForReply } from '../../src/v2/messageScope.js';
 import {
-  buildCircleStream, buildKringStream,
+  buildCircleStream, buildKringStream, buildCircleChat,
 } from '../../src/v2/circleStream.js';
+// profile-update propagation — the silent roster "pull-me" signal (announce on a real roster
+// write; receive → re-read the changed rows). No values on the wire, no chat bubble, no wake.
+import { makeRosterUpdatedPeerHandler, makeRosterUpdateAnnouncer } from '../../src/v2/rosterUpdated.js';
 import { isFeatureEnabled, defaultViewModeFromPolicy } from '../../src/v2/circlePolicy.js';
 import { buildKringTabs, DEFAULT_KRING_TAB, featureTabId, featureForTabId } from '../../src/v2/kringTabs.js';
 import { buildTaskRows } from '../../src/v2/taskRows.js';
@@ -228,7 +231,7 @@ import { createKeyEventStore, openViaKeyEvents } from '../../src/v2/keyEventStor
 import { makeHandleGroupRedeemRequest, makeHandleGroupRedeemResponse, makeSendGroupRedeemRequest } from '../../src/core/handlers/groupRedeem.js';
 // personas#2 — post-join "share to this circle": the same request/ack + orchestrator trio, wired
 // into the peer router alongside group-redeem (member ⇄ admin roster-property push).
-import { makeHandlePersonaPropsUpdate, makeHandlePersonaPropsAck, makeSendPersonaPropsUpdate, shareDisclosureToCircle } from '../../src/core/handlers/personaPropsUpdate.js';
+import { makeHandlePersonaPropsUpdate, makeHandlePersonaPropsAck, makeSendPersonaPropsUpdate, shareDisclosureToCircle, createDisclosureShareMemo, localStorageDisclosureShareIo } from '../../src/core/handlers/personaPropsUpdate.js';
 // drivers #5 (b) — flag noticeboard posts that resonate with my private drivers (on-device match).
 import { annotateResonantPosts } from '../../src/core/handlers/driverMatchNotify.js';
 import { buildCircleInviteUri, joinCircleFromInvite } from '../../src/v2/circleInvite.js';
@@ -879,6 +882,23 @@ const agentRequestStore = createAgentRequestStore({
 // Cross-circle Stream reads this firehose; the agent's
 // publishEvent appends to it during boot.
 const eventLog = new EventLog({ initial: [], muted: [] });
+// Profile-update propagation (roster-as-truth, diff-gated, silent pull-me).
+//   • the memo — what this device last shared with each (persona, circle); the diff-gate's
+//     left-hand side, so open-and-save-unchanged sends nothing at all.
+//   • the announcer — after a REAL roster write, drop the SILENT `roster-updated` entry on the
+//     circle stream + fan the same refs (member + changed key NAMES, never values) to members.
+const disclosureShareMemo = createDisclosureShareMemo(localStorageDisclosureShareIo());
+const announceRosterUpdate = makeRosterUpdateAnnouncer({
+  rawCallSkill: (app, op, args) => (typeof rawCallSkill === 'function' ? rawCallSkill(app, op, args) : null),
+  eventLog,
+  onChange: () => { try { _kringRender?.rerender?.(); } catch { /* no open kring */ } },
+});
+// The member-side PULL: a pull-me for the open circle re-reads its roster rows. Silent — the
+// LEDEN rows / member cards just refresh; no bubble, no toast.
+const pullRosterForCircle = async ({ circleId }) => {
+  if (_kringRender?.circleId !== circleId) return;      // not open → next open loads it anyway
+  await _kringRender.refreshRoster?.();
+};
 // δ.2 — one delivery-state map per agent boot (lifetime matches the
 // in-memory EventLog).  showKring's onSend marks each locally-sent
 // msgId 'pending' → 'sent' | 'failed' as broadcastKringMessage
@@ -3939,6 +3959,12 @@ async function openAboutMePanel(personaId) {
         sendPersonaUpdate: circleSendPersonaUpdate,
         circleId:          contextId,
         personaId:         forPersonaId,
+        // Diff-gate: an unchanged save is a true no-op (nothing sent, written or announced).
+        lastShared:        disclosureShareMemo,
+        // Only used when I AM this circle's admin — then this device owns the roster and
+        // announces its own row's pull-me; otherwise the remote admin announces.
+        // (the member ref comes back from the roster write itself — `result.memberWebid`).
+        announceRosterUpdate,
       }),
     });
   };
@@ -4590,7 +4616,9 @@ function showKring(id, circle, policy) {
   }
 
   const rerender = () => {
-    const rows = buildKringStream({
+    // C15 — the per-circle surface is a CHAT projection: it excludes the log's silent system lane
+    // (the `roster-updated` pull-me and friends). The cross-circle Stream tab is the firehose.
+    const rows = buildCircleChat({
       events:    eventLog.query({ excludeMuted: true }),
       circles:   circlesCache,
       circleId:  id,
@@ -5005,6 +5033,9 @@ function showKring(id, circle, policy) {
     // Repaint without appending a bubble — used when module-level kring state changes outside a message
     // (e.g. a multi-field needsForm sets `circlePendingFormFollowUp` and the inline form must appear).
     rerender: () => rerender(),
+    // Profile-update propagation — the PULL half: re-read this circle's roster rows (the same op
+    // + normaliser the LEDEN tab uses) after a silent `roster-updated` entry says a row moved.
+    refreshRoster: () => loadRoster(),
   };
   rerender();
   // Mandate — resolve my identity + role in the background so the owner-only
@@ -6096,8 +6127,12 @@ async function boot() {
           'group-key-event':         makeHandleGroupKeyEvent({ recordKeyEvent: (gid, event) => circleKeyEventStore.record(gid, event) }),
           // personas#2 — post-join persona-property push: admin records the member's disclosure onto
           // the roster + acks; the member resolves the pending push on the ack.
-          'persona-props-update':    makeHandlePersonaPropsUpdate({ callSkill: rawCallSkill, sendPeer: (addr, payload) => agent.sendPeerMessage(addr, payload), publishEvent: publishEventToLog }),
+          'persona-props-update':    makeHandlePersonaPropsUpdate({ callSkill: rawCallSkill, sendPeer: (addr, payload) => agent.sendPeerMessage(addr, payload), announceRosterUpdate }),
           'persona-props-ack':       makeHandlePersonaPropsAck({ pendingMap: circlePendingPersonaProps }),
+          // profile-update propagation — the roster owner says "row X changed, keys [a,b]"; we
+          // record it as a SILENT stream entry (never a chat bubble, never a wake) and re-read
+          // those rows from the roster. The values are never on this wire.
+          'roster-updated':          makeRosterUpdatedPeerHandler({ eventLog, onPull: pullRosterForCircle }),
           // a contact-bot's reply in its 1:1 DM thread (guarded: the channel
           // is null if buildCircleBot threw, and must not break the peer router).
           // S1 #3 — also handle an inbound PEER DM (contact-msg): a person's message

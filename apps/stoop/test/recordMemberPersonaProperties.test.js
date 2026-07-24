@@ -41,10 +41,39 @@ describe('recordMemberPersonaProperties — post-join "share to this circle"', (
     });
     expect(out.ok).toBe(true);
     expect(out.keys.sort()).toEqual(['ageBand', 'place']);
+    // A first disclosure is a REAL change — both keys are reported for the pull-me signal.
+    expect(out.changedKeys.sort()).toEqual(['ageBand', 'place']);
+    expect(out.unchanged).toBeUndefined();
 
     expect((await bundle.members.resolveByWebid(BOB)).personaProperties).toEqual({ place: 'Groningen', ageBand: '35-54' });
     const list = await callSkill(bundle.agent, 'listGroupMembers', { groupId: GROUP });
     expect(list.members.find((m) => m.webid === BOB)?.personaProperties).toEqual({ place: 'Groningen', ageBand: '35-54' });
+  });
+
+  it('DIFF-GATE: re-recording the SAME disclosure is a true no-op (unchanged, no changed keys)', async () => {
+    const bundle = await buildBundle();
+    await joinBob(bundle, { place: 'Groningen', ageBand: '35-54' });   // already sharing exactly this
+
+    const out = await callSkill(bundle.agent, 'recordMemberPersonaProperties', {
+      groupId: GROUP, memberWebid: BOB, personaProperties: { ageBand: '35-54', place: 'Groningen' },
+    });
+    expect(out.ok).toBe(true);
+    expect(out.unchanged).toBe(true);
+    expect(out.changedKeys).toEqual([]);
+    // The row still reads exactly the same — nothing was rewritten.
+    expect((await bundle.members.resolveByWebid(BOB)).personaProperties).toEqual({ place: 'Groningen', ageBand: '35-54' });
+  });
+
+  it('DIFF-GATE: a partial edit reports ONLY the keys that really moved', async () => {
+    const bundle = await buildBundle();
+    await joinBob(bundle, { place: 'Groningen', ageBand: '35-54' });
+
+    const out = await callSkill(bundle.agent, 'recordMemberPersonaProperties', {
+      groupId: GROUP, memberWebid: BOB, personaProperties: { place: 'Utrecht', ageBand: '35-54' },
+    });
+    expect(out.ok).toBe(true);
+    expect(out.unchanged).toBeUndefined();
+    expect(out.changedKeys).toEqual(['place']);   // ageBand unchanged → absent
   });
 
   it('patches the durable redemption item so the value survives a roster rebuild', async () => {

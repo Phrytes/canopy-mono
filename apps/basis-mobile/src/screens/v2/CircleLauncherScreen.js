@@ -35,7 +35,7 @@ import {
   // "My things" private notes-list.
   myThingsFromListFiles,
   // kring-scoped event stream + per-row action chips.
-  buildKringStream, actionsForStreamRow,
+  buildCircleChat, actionsForStreamRow,
   // Taken (tasks) tab — task-store item → stream-row projection (shared web≡mobile).
   buildTaskRows,
   // per-kring bottom tabs from policy.features (v2 §1).
@@ -66,6 +66,8 @@ import {
   kringReplyText, scopeCatalogToApps,
   // B (circle bot) — dispatch primitives to run an interpreted command in the kring.
   parseInput, resolveDispatch, runDispatch, scopeReadyDispatch, executeBulkDispatch,
+  // profile-update propagation — the silent "pull-me" entry kind (the roster PULL trigger).
+  ROSTER_UPDATED_KIND,
 } from '@onderling-app/basis';
 // B (circle bot) — v2 free-text→LLM→command surface (shared with web). Deep-imported like the other
 // v2 modules (kringChatReceiver etc.) since they're not on the basis barrel.
@@ -1532,6 +1534,7 @@ export default function CircleLauncherScreen({
         recipeStore={recipeStore}
         onStoopEvent={bundle?.onStoopEvent}
         sendPersonaUpdate={bundle?.sendPersonaUpdate}
+        disclosureShareMemo={bundle?.disclosureShareMemo}
         /* Task #13 — first-run flags (shared with the launcher's provisioner) + the onboarding
            "Ja, help me" handoff → the mobile create flow (close the help circle, open "+ new circle"). */
         onboardingFlags={onboardingFlags}
@@ -1906,7 +1909,7 @@ function LauncherTile({ circle: c, preview, pending, isPinned = false, isMuted =
 function CircleDetail({
   circle, items, callSkill, rawCallSkill, catalog: rawCatalog, policy, myListTasks = [],
   eventLog, circles = [],
-  recipeStore = null, onStoopEvent, sendPersonaUpdate,
+  recipeStore = null, onStoopEvent, sendPersonaUpdate, disclosureShareMemo = null,
   // Task #13 — onboarding first-run flags (shared store) + the create-flow handoff.
   onboardingFlags = null, onCreateCircle = null,
   onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules, onRecipes, onAdmin, onLists, onShare, onInvite,
@@ -1980,7 +1983,9 @@ function CircleDetail({
   // EventLog has no subscribe seam yet; bumping `streamTick` after
   // local appends forces the memo to re-pull.
   const [streamTick, setStreamTick] = useState(0);
-  const rows = useMemo(() => buildKringStream({
+  // C15 — a CHAT projection: the log's silent system lane (the `roster-updated` pull-me and
+  // friends) never surfaces here; the cross-circle Stream tab is the firehose. Web parity.
+  const rows = useMemo(() => buildCircleChat({
     events:    eventLog?.query ? eventLog.query({ excludeMuted: true }) : [],
     circles,
     circleId:  circle?.id ?? null,
@@ -2040,6 +2045,17 @@ function CircleDetail({
   // LEDEN (members) tab — real roster via listGroupMembers (web≡mobile; mirrors web's directory load).
   // null = not loaded yet, [] = loaded empty. Loads lazily when the tab is opened (per circle).
   const [tabMembers, setTabMembers] = useState(null);
+  // Profile-update propagation — the PULL: a silent `roster-updated` entry for THIS circle means a
+  // member's row moved; bump this tick to re-read the roster (no bubble, no toast — just a refresh).
+  const [membersReloadTick, setMembersReloadTick] = useState(0);
+  useEffect(() => {
+    if (!eventLog?.subscribe || !circle?.id) return undefined;
+    return eventLog.subscribe((e) => {
+      if (e?.type === ROSTER_UPDATED_KIND && e?.circleId === circle.id) {
+        setMembersReloadTick((n) => n + 1);
+      }
+    });
+  }, [eventLog, circle?.id]);
   useEffect(() => {
     if (activeTab !== 'leden' || !circle?.id || typeof rawCallSkill !== 'function') return undefined;
     let alive = true;
@@ -2050,7 +2066,7 @@ function CircleDetail({
       if (alive) setTabMembers(mem);
     })();
     return () => { alive = false; };
-  }, [activeTab, circle?.id, rawCallSkill]);
+  }, [activeTab, circle?.id, rawCallSkill, membersReloadTick]);
 
   // Taken (tasks) tab — the circle's tasks from the composed tasks agent, projected to
   // stream rows via the SHARED buildTaskRows (web≡mobile), so the tab's lifecycle chips +
@@ -3384,7 +3400,7 @@ function CircleDetail({
               </Pressable>
             </View>
             {aboutMePersona ? (
-              <CircleMijScreen callSkill={rawCallSkill} sendPersonaUpdate={sendPersonaUpdate} personaId={aboutMePersona} circles={circles} />
+              <CircleMijScreen callSkill={rawCallSkill} sendPersonaUpdate={sendPersonaUpdate} lastShared={disclosureShareMemo} personaId={aboutMePersona} circles={circles} />
             ) : null}
           </View>
         </View>

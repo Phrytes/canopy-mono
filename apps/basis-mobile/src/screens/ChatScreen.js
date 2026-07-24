@@ -88,6 +88,12 @@ import {
   makeHandlePersonaPropsUpdate,
   makeHandlePersonaPropsAck,
 } from '../../../basis/src/core/handlers/personaPropsUpdate.js';
+// profile-update propagation — the roster "pull-me" signal (announce on a real roster write;
+// receive → record the silent stream entry + re-read). Web parity (circleApp.js).
+import {
+  makeRosterUpdateAnnouncer,
+  makeRosterUpdatedPeerHandler,
+} from '../../../basis/src/v2/rosterUpdated.js';
 import { makeHandleHelpWithAccepted, makeHandleHelpWithResponse }
                                from '../../../basis/src/core/handlers/helpWith.js';
 import { makeHandleCalendarInvite }
@@ -471,6 +477,14 @@ export default function ChatScreen({
       try { eventLogRef.current?.append?.(evt); } catch { /* defensive */ }
     };
 
+    // profile-update propagation — on a REAL roster write (admin recording a member's disclosure
+    // change) drop the SILENT `roster-updated` entry on the shared eventLog + fan the refs out.
+    // No values on the wire, no chat bubble, no wake. Parity with web's `announceRosterUpdate`.
+    const rosterUpdateAnnouncer = makeRosterUpdateAnnouncer({
+      rawCallSkill: callSkill,
+      eventLog:     eventLogRef.current,
+    });
+
     // main-thread bubble landing.
     // Mirrors web's `store.getThread('main').addShellMessage`.
     const addMainBubble = (bubble) => appendBubble('main', bubble);
@@ -570,8 +584,11 @@ export default function ChatScreen({
       }),
       // personas#2 — post-join persona-property push: admin records onto the roster + acks; the member
       // resolves its pending push on the ack (bundle's shared map, parity with the redeem pair).
-      'persona-props-update':  makeHandlePersonaPropsUpdate({ callSkill, sendPeer, publishEvent }),
+      'persona-props-update':  makeHandlePersonaPropsUpdate({ callSkill, sendPeer, announceRosterUpdate: rosterUpdateAnnouncer }),
       'persona-props-ack':     makeHandlePersonaPropsAck({ pendingMap: pendingPersonaProps }),
+      // profile-update propagation — record the roster owner's silent "pull-me" onto the shared
+      // eventLog (never a bubble, never a wake); the launcher's roster view re-reads on it.
+      'roster-updated':        makeRosterUpdatedPeerHandler({ eventLog: eventLogRef.current }),
       'help-with-accepted':    makeHandleHelpWithAccepted({
         ensureDmThread:    handleDmThreadOpen,
         appendBubble,

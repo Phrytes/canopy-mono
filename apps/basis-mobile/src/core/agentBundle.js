@@ -41,7 +41,7 @@ import { withCalendarOutbound } from '../../../basis/src/core/handlers/calendarO
 // OBJ-2 membership — shared joiner-side peer-redeem sender (correlated by the bundle's pending-map).
 import { makeSendGroupRedeemRequest } from '../../../basis/src/core/handlers/groupRedeem.js';
 // personas#2 — post-join "share to this circle" sender (member → admin roster-property push).
-import { makeSendPersonaPropsUpdate } from '../../../basis/src/core/handlers/personaPropsUpdate.js';
+import { makeSendPersonaPropsUpdate, createDisclosureShareMemo } from '../../../basis/src/core/handlers/personaPropsUpdate.js';
 import { sendA2ATask } from '@onderling/core';
 import { PeerGraph } from '@onderling/core';
 import { AsyncStorageAdapter } from '@onderling/react-native/storage/AsyncStorageAdapter';
@@ -501,6 +501,10 @@ export async function bootAgentBundle(opts = {}) {
     pendingMap:      pendingPersonaProps,
     circleAddressFor: (gid) => agent.circleAddressFor?.(gid) ?? null,
   });
+  // Diff-gate memo (profile-update propagation): what this device last shared with each
+  // (persona, circle). In-memory for the session (parity with web's localStorage-backed memo);
+  // the share screens pass it so an open-and-save-unchanged is a true no-op.
+  const disclosureShareMemo = createDisclosureShareMemo();
 
   // In-app relay setting live-reconnect: re-invoke connectPeerTransport with the FRESH relay URL + the
   // params captured at boot. Returns { ok, effective } — the URL now in use. Mirrors web's applyRelayUrl.
@@ -534,6 +538,7 @@ export async function bootAgentBundle(opts = {}) {
     sendPeerRedeem,
     pendingPersonaProps,
     sendPersonaUpdate,
+    disclosureShareMemo,
     contactSkills,
     peerGraph,
     contactChannel,
