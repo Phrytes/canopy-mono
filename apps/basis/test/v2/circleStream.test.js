@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  eventCircleId, buildCircleStream,
+  eventCircleId, buildCircleStream, buildCircleChat,
   buildKringStream, KRING_STREAM_KIND_FILTERS,
 } from '../../src/v2/circleStream.js';
+import { makeSilentEntry } from '../../src/eventLog.js';
 
 const circles = [
   { id: 'circle-1', name: 'Garden circle' },
@@ -22,6 +23,39 @@ describe('eventCircleId', () => {
     expect(eventCircleId({ payload: {} })).toBeNull();
     expect(eventCircleId({})).toBeNull();
     expect(eventCircleId(null)).toBeNull();
+  });
+
+  // C15 — a first-class top-level circleId is read DIRECTLY, ahead of the
+  // payload dig (which stays as the back-compat fallback for older entries).
+  it('reads a first-class top-level circleId ahead of the payload dig', () => {
+    expect(eventCircleId({ circleId: 'circle-1', payload: { groupId: 'grp-9' } })).toBe('circle-1');
+    expect(eventCircleId({ circleId: 'circle-1' })).toBe('circle-1');
+    // absent top-level → still digs the payload (unchanged behaviour)
+    expect(eventCircleId({ payload: { circleId: 'circle-1' } })).toBe('circle-1');
+  });
+});
+
+describe('C15 silent system-entry lane', () => {
+  const chatEvent = { id: 'c1', ts: 200, app: 'kring', type: 'chat-message', payload: { circleId: 'circle-1', text: 'hi', kind: 'chat-message' } };
+  const silent = makeSilentEntry({ circleId: 'circle-1', kind: 'membership-changed', payload: { who: 'ann' }, id: 's1', ts: 100 });
+
+  it('buildCircleStream (the firehose) INCLUDES silent entries, tagged by first-class circleId', () => {
+    const rows = buildCircleStream({ events: [chatEvent, silent], circles });
+    expect(rows.map((r) => r.id)).toEqual(['c1', 's1']);         // both present, newest-first
+    const srow = rows.find((r) => r.id === 's1');
+    expect(srow.circleId).toBe('circle-1');                       // read from the first-class field
+    expect(srow.circleName).toBe('Garden circle');
+  });
+
+  it('buildCircleChat EXCLUDES silent entries (chat stays a chat)', () => {
+    const rows = buildCircleChat({ events: [chatEvent, silent], circles, circleId: 'circle-1' });
+    expect(rows.map((r) => r.id)).toEqual(['c1']);               // silent dropped, chat kept
+  });
+
+  it('buildCircleChat is behaviour-preserving when there are no silent entries', () => {
+    const events = [chatEvent, { id: 'c2', ts: 50, app: 'kring', type: 'chat-message', payload: { circleId: 'circle-1', text: 'yo' } }];
+    expect(buildCircleChat({ events, circles, circleId: 'circle-1' }).map((r) => r.id))
+      .toEqual(buildKringStream({ events, circles, circleId: 'circle-1' }).map((r) => r.id));
   });
 });
 

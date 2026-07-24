@@ -32,10 +32,109 @@ export const RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
  * @property {string} app
  * @property {string} type
  * @property {string} [actor]
+ * @property {string} [circleId]   first-class circle scope (C15) — see below
+ * @property {boolean} [silent]    silent system-entry marker (C15) — see below
  * @property {{app: string, type: string, id: string}} [itemRef]
  * @property {*}      [payload]
  * @property {string} [correlationId]
  */
+
+/* ─── C15 "one stream" substrate (Phase-4 Wave B) ─────────────────
+ *
+ * North star: the EventLog is THE canonical per-circle log. Chat / Stream /
+ * LEDEN are projections of it. Two primitives land here — additive, so every
+ * existing entry, projection, and consumer keeps working byte-for-byte:
+ *
+ *   1. First-class `circleId` — a logged entry MAY carry a top-level
+ *      `circleId`, so a projection reads the circle scope DIRECTLY instead of
+ *      digging it out of the payload. `circleStream.eventCircleId` reads the
+ *      top-level field first and keeps the payload-dig as a back-compat
+ *      fallback for older entries (and for entries appended by paths that
+ *      don't set it yet).
+ *
+ *   2. A SILENT system-entry lane — `appendSilentEntry({circleId, kind,
+ *      payload})` writes a typed, first-class-`circleId`, `silent:true` entry.
+ *      Silent entries are the log's system lane: the chat projection IGNORES
+ *      them (chat stays a chat — see `circleStream.buildCircleChat`), while the
+ *      cross-circle Stream tab (the firehose) still shows them. The pinned
+ *      notifications rule keys off entry KIND: a silent kind NEVER wakes an
+ *      offline member (`shouldWakeForEntry` → false); only human-facing kinds
+ *      may. `isSilentEntry` is the single discriminator both sides read.
+ *
+ * TAIL (NOT done here — the remaining C15 consolidation): routing the scattered
+ * system actions that today dispatch via the peer-router to their own handlers
+ * (membership changes, group key-events, delivery-state) INTO the log as typed
+ * silent entries, and narrowing the per-circle chat surface to project only
+ * `chat-message`. That is the wider "peer-router → one-stream" migration; this
+ * increment only adds the lane + the first-class scope the profile-update
+ * pull-me note (the next slice) needs.
+ */
+
+/** App tag for log entries written by the system lane (not a user/peer app). */
+export const SYSTEM_APP = 'system';
+
+/**
+ * Is this entry a SILENT system entry? Discriminates by KIND: silent entries
+ * are stamped with the `silent:true` marker by `appendSilentEntry`. The
+ * notifications/attention gate + the chat projection both read THIS — never a
+ * bespoke payload peek — so "silent" has one definition.
+ *
+ * @param {LoggedEvent} entry
+ * @returns {boolean}
+ */
+export function isSilentEntry(entry) {
+  return !!entry && typeof entry === 'object' && entry.silent === true;
+}
+
+/**
+ * The single source the offline/notifications wake-gate reads: should THIS
+ * entry be allowed to wake an offline member? Keys off entry KIND — a silent
+ * system kind NEVER wakes; every human-facing kind (a `chat-message`, a
+ * reaction, …) may.
+ *
+ * SEAM: the live wake path is decoupled from the log — it lives in
+ * `@onderling/relay` (`push/wakePayload.js`) + `@onderling/notifier`
+ * (`PushPolicy`) and is driven off push tokens + `humanInTheLoop`, reached via
+ * the kring fan-out (`@onderling/kring-host` `broadcastKringFanOut` →
+ * `stoop broadcastKringMessage`). When that path grows an entry-kind gate, it
+ * MUST consult `shouldWakeForEntry(entry)` BEFORE enqueuing a wake so a silent
+ * system entry can never nudge a device. Until then this is the pure,
+ * unit-testable source of truth that gate plugs into.
+ *
+ * @param {LoggedEvent} entry
+ * @returns {boolean}
+ */
+export function shouldWakeForEntry(entry) {
+  if (!entry || typeof entry !== 'object') return false;
+  return !isSilentEntry(entry);
+}
+
+/**
+ * Build a SILENT system entry (pure — no append). Typed entry carrying a
+ * first-class `circleId`, the `silent:true` marker, `app:'system'`, and
+ * `type:kind`. Exported so callers/tests can shape one without a live log.
+ *
+ * @param {object} a
+ * @param {string} a.circleId          first-class circle scope (required)
+ * @param {string} a.kind              the system entry kind → `type`
+ * @param {*}      [a.payload]         opaque per-kind body
+ * @param {string} [a.id]             defaults to a generated `sys-…` id
+ * @param {number} [a.ts]             defaults to Date.now()
+ * @param {string} [a.actor]
+ * @returns {LoggedEvent}
+ */
+export function makeSilentEntry({ circleId, kind, payload, id, ts, actor } = {}) {
+  return {
+    id:   typeof id === 'string' && id ? id : `sys-${Math.random().toString(36).slice(2, 10)}`,
+    ts:   typeof ts === 'number' ? ts : Date.now(),
+    app:  SYSTEM_APP,
+    type: kind,
+    silent: true,
+    circleId: circleId ?? null,
+    ...(actor != null ? { actor } : {}),
+    ...(payload !== undefined ? { payload } : {}),
+  };
+}
 
 export class EventLog {
   /** @type {LoggedEvent[]} most-recent first */
@@ -93,6 +192,25 @@ export class EventLog {
     for (const fn of this.#subscribers) {
       try { fn(event); } catch { /* swallow */ }
     }
+  }
+
+  /**
+   * Append a SILENT system entry (C15). Convenience over `append` for the
+   * system lane: shapes a typed, first-class-`circleId`, `silent:true` entry
+   * (see `makeSilentEntry`) and appends it. Returns the appended entry so the
+   * caller can read its generated id.
+   *
+   * Silent entries are logged like any other (the Stream firehose shows them),
+   * but the chat projection ignores them and `shouldWakeForEntry` returns false
+   * for them — a silent kind never wakes an offline member.
+   *
+   * @param {object} a  see `makeSilentEntry` — { circleId, kind, payload, id?, ts?, actor? }
+   * @returns {LoggedEvent} the appended entry
+   */
+  appendSilentEntry(a = {}) {
+    const entry = makeSilentEntry(a);
+    this.append(entry);
+    return entry;
   }
 
   /**

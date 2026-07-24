@@ -12,19 +12,21 @@
  */
 
 import { taskRowProvenance } from './streamActions.js';
+import { isSilentEntry } from '../eventLog.js';
 
 /**
- * Best-effort circle id for a logged event.  Events don't carry a
- * first-class circleId, so we read the usual audience fields off the
- * payload (circleId ≡ circleId ≡ groupId — see [[circleid-crewid-alias]]),
- * falling back to the itemRef.  Returns null when the event isn't
- * circle-scoped (it still shows in the Stream, just untagged).
+ * Circle id for a logged event.  C15: entries MAY now carry a first-class
+ * top-level `circleId` (stamped by e.g. `EventLog.appendSilentEntry`), which
+ * we read DIRECTLY. Older entries — and paths that don't set it yet — fall
+ * back to the best-effort payload dig (the usual audience fields; circleId ≡
+ * groupId — see [[circleid-crewid-alias]]) then the itemRef. Returns null when
+ * the event isn't circle-scoped (it still shows in the Stream, just untagged).
  */
 export function eventCircleId(event) {
+  if (event && typeof event === 'object' && event.circleId != null) return event.circleId;
   const p = event && typeof event.payload === 'object' && event.payload ? event.payload : {};
   return (
     p.circleId
-    ?? p.circleId
     ?? p.groupId
     ?? p.buurtId
     ?? p.audience
@@ -98,6 +100,32 @@ export function buildKringStream({
     const cands = [p.kind, r.event?.type, r.type, r.event?.kind];
     return cands.some((c) => typeof c === 'string' && c.toLowerCase() === wanted);
   });
+}
+
+/**
+ * Per-circle CHAT projection (C15). The chat is a projection of the ONE
+ * canonical log — but chat stays a chat: it IGNORES the log's silent system
+ * lane (`isSilentEntry`). The cross-circle Stream tab (`buildCircleStream` /
+ * `buildKringStream`) is the firehose and still shows silent entries; only the
+ * chat excludes them. Same scoping args as `buildKringStream` (per-circle when
+ * `circleId` is set).
+ *
+ * Behaviour-preserving: silent entries are a NEW lane (nothing appends them in
+ * the shipped paths yet), so today this returns exactly what `buildKringStream`
+ * returns. It's the seam the chat surfaces adopt so the system lane can never
+ * leak into a conversation.
+ *
+ * C15 TAIL: narrowing the chat further to project ONLY `type:'chat-message'`
+ * (today the GESPREK surface renders a "chat-style MIXED stream" — task/buurt
+ * rows included) is part of the wider peer-router → one-stream migration, NOT
+ * done here; excluding the silent lane is the additive, behaviour-preserving
+ * slice.
+ *
+ * @param {object}   [opts]  same shape as `buildKringStream`
+ * @returns {ReturnType<typeof buildKringStream>}
+ */
+export function buildCircleChat(opts = {}) {
+  return buildKringStream(opts).filter((r) => !isSilentEntry(r.event));
 }
 
 /** Kind keys the filter strip exposes, in render order. */

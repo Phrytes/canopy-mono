@@ -3,7 +3,10 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 
-import { EventLog, RETENTION_MS } from '../src/eventLog.js';
+import {
+  EventLog, RETENTION_MS, SYSTEM_APP,
+  makeSilentEntry, isSilentEntry, shouldWakeForEntry,
+} from '../src/eventLog.js';
 import { EventRouter } from '../src/events.js';
 import { ThreadStore } from '../src/threadStore.js';
 
@@ -245,5 +248,45 @@ describe('EventLog.attachToRouter', () => {
   it("rejects non-router input", () => {
     expect(() => new EventLog().attachToRouter(null)).toThrow();
     expect(() => new EventLog().attachToRouter({})).toThrow();
+  });
+});
+
+describe('EventLog — C15 silent system-entry lane', () => {
+  it('appendSilentEntry logs a typed entry with a first-class circleId + silent marker', () => {
+    const log = new EventLog(noPrune());
+    const entry = log.appendSilentEntry({ circleId: 'circle-1', kind: 'membership-changed', payload: { who: 'ann' }, ts: 1000 });
+    expect(entry.app).toBe(SYSTEM_APP);
+    expect(entry.type).toBe('membership-changed');
+    expect(entry.circleId).toBe('circle-1');   // first-class scope
+    expect(entry.silent).toBe(true);
+    expect(typeof entry.id).toBe('string');
+    // It IS logged (the Stream firehose reads it) — appendSilentEntry rides append().
+    expect(log.query().map((e) => e.id)).toEqual([entry.id]);
+    expect(log.query()[0].payload).toEqual({ who: 'ann' });
+  });
+
+  it('makeSilentEntry is pure + generates an id/ts when omitted', () => {
+    const a = makeSilentEntry({ circleId: 'c', kind: 'k' });
+    expect(a.silent).toBe(true);
+    expect(a.app).toBe(SYSTEM_APP);
+    expect(typeof a.id).toBe('string');
+    expect(typeof a.ts).toBe('number');
+  });
+
+  it('isSilentEntry discriminates silent entries from chat messages', () => {
+    const silent = makeSilentEntry({ circleId: 'c', kind: 'k' });
+    const chat = { id: 'm1', ts: 1, app: 'kring', type: 'chat-message', payload: { circleId: 'c', text: 'hi' } };
+    expect(isSilentEntry(silent)).toBe(true);
+    expect(isSilentEntry(chat)).toBe(false);
+    expect(isSilentEntry(null)).toBe(false);
+    expect(isSilentEntry({})).toBe(false);
+  });
+
+  it('shouldWakeForEntry: silent → false, a chat message → true', () => {
+    const silent = makeSilentEntry({ circleId: 'c', kind: 'k' });
+    const chat = { id: 'm1', ts: 1, app: 'kring', type: 'chat-message', payload: { circleId: 'c', text: 'hi' } };
+    expect(shouldWakeForEntry(silent)).toBe(false);
+    expect(shouldWakeForEntry(chat)).toBe(true);
+    expect(shouldWakeForEntry(null)).toBe(false);
   });
 });

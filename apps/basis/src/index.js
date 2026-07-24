@@ -124,6 +124,8 @@ export {
   eventCircleId, buildCircleStream,
   // kring-scoped stream + chip filters.
   buildKringStream, KRING_STREAM_KIND_FILTERS,
+  // C15 — per-circle chat projection (excludes the silent system lane).
+  buildCircleChat,
 } from './v2/circleStream.js';
 // per-kring bottom tabs derived from policy.features (v2 §1).
 export { buildKringTabs, DEFAULT_KRING_TAB, featureActionLabelKey, featureTabId, featureForTabId } from './v2/kringTabs.js';
