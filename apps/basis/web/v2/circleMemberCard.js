@@ -14,7 +14,13 @@
  * Pure render; the host owns the roster / policy / picked-viewer state and re-invokes
  * on each pick (the `showViewAs` rerender pattern in circleApp.js). Unit-testable
  * under happy-dom.
+ *
+ * Both cards surface the AMOUNT PRESET the split lands at (`handle → profile → full`,
+ * the C7 reveal-state vocabulary) as a small badge — the split now carries `preset`
+ * from `memberCards.js` (`revealPresetOf`), the single reveal-state home.
  */
+
+import { revealPresetLabelKey } from '../../src/v2/memberCards.js';
 
 /**
  * @param {HTMLElement} container
@@ -45,6 +51,9 @@ export function renderMemberPersonaCard(container, { member = {}, split = { sees
   lede.className = 'circle-membercard__lede';
   lede.textContent = tr('circle.memberCard.persona_lede');
   container.appendChild(lede);
+
+  const badge = presetBadge(tr, split.preset);
+  if (badge) container.appendChild(badge);
 
   container.appendChild(attrColumn(tr, 'sees', split.sees));
   container.appendChild(attrColumn(tr, 'hides', split.hides));
@@ -108,12 +117,36 @@ export function renderSelfViewCard(container, {
   }
   container.appendChild(picker);
 
+  const badge = presetBadge(tr, split.preset);
+  if (badge) container.appendChild(badge);
+
   container.appendChild(attrColumn(tr, 'sees', split.sees));
   container.appendChild(attrColumn(tr, 'hides', split.hides));
   return container;
 }
 
 /* ── internals ── */
+
+/**
+ * The amount-preset badge (`handle → profile → full`) — surfaces how much of the persona
+ * this split reveals, resolved through `t()` (invariant 8). Null preset → no badge.
+ */
+function presetBadge(tr, preset) {
+  const labelKey = revealPresetLabelKey(preset);
+  if (!labelKey) return null;
+  const badge = document.createElement('div');
+  badge.className = 'circle-membercard__preset';
+  badge.dataset.preset = preset;
+  const name = document.createElement('span');
+  name.className = 'circle-membercard__preset-label';
+  name.textContent = tr('circle.memberCard.preset_label');
+  const value = document.createElement('span');
+  value.className = 'circle-membercard__preset-value';
+  value.textContent = tr(labelKey);
+  badge.appendChild(name);
+  badge.appendChild(value);
+  return badge;
+}
 
 function backButton(tr, onBack) {
   const back = document.createElement('button');

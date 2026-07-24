@@ -2238,6 +2238,10 @@
       "text": "hidden",
       "doc": "Placeholder shown in the 'hidden' column instead of the value."
     },
+    "preset_label": {
+      "text": "Sharing",
+      "doc": "Reveal-preset badge label — precedes the amount preset (how much of the persona shows)."
+    },
     "attr": {
       "handle": {
         "text": "Handle",
@@ -2246,6 +2250,22 @@
       "realName": {
         "text": "Real name",
         "doc": "Persona attribute label — the member's real name (revealed per the reveal rules)."
+      }
+    }
+  },
+  "reveal": {
+    "preset": {
+      "handle": {
+        "text": "Handle only",
+        "doc": "Reveal amount preset — the floor: the pseudonym only (C7 handle → profile → full)."
+      },
+      "profile": {
+        "text": "Profile",
+        "doc": "Reveal amount preset — the presented self (display name, picture, bio)."
+      },
+      "full": {
+        "text": "Full",
+        "doc": "Reveal amount preset — the most you have chosen to share (may include the real name)."
       }
     }
   },

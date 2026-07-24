@@ -2,7 +2,11 @@
 // These assert the member-persona + self-view splits re-run the SAME openness rules
 // `isVisibleTo`/`splitViewAsAttributes` already own, so no visibility logic drifts here.
 import { describe, it, expect } from 'vitest';
-import { personaAttributes, memberPersonaView, selfViewSplit } from '../../src/v2/memberCards.js';
+import { isDisclosed, revealPresetOf } from '@onderling/agent-registry';
+import {
+  personaAttributes, memberPersonaView, selfViewSplit,
+  personaPresetKeys, revealPresetLabelKey, REVEAL_PRESETS,
+} from '../../src/v2/memberCards.js';
 
 // A small roster (same shape `normalizeCircleMembers` emits): id + handle + realName + reveals.
 const me    = { id: 'me',    handle: 'Owl',   realName: 'Frits', reveals: ['bob'] };   // I revealed to bob
@@ -72,5 +76,50 @@ describe('selfViewSplit — how a chosen viewer sees me', () => {
   it('open policy: any member viewer sees my real name', () => {
     const toCarol = selfViewSplit({ me, viewer: { kind: 'member', id: 'carol' }, policy: 'open' });
     expect(toCarol.sees.map((a) => a.key).sort()).toEqual(['handle', 'realName']);
+  });
+});
+
+// The C7 re-home (Phase 4 Wave B): both cards express their result as the ONE reveal-state
+// (`disclosure.js`, the `enabled` axis) and SURFACE the amount preset (`handle → profile → full`)
+// via `revealPresetOf`. No bespoke openness truth — the split is read off `isDisclosed`.
+describe('reveal-state + amount presets (C7)', () => {
+  it('the persona preset key assignment maps handle → floor, real name → the presented self', () => {
+    expect(personaPresetKeys('handle')).toEqual(['handle']);
+    expect(personaPresetKeys('profile')).toEqual(['realName']);
+    expect(personaPresetKeys('full')).toEqual([]);         // richer attrs (picture/bio) land here later
+    // amount vocabulary, no verified/identity rung.
+    expect(REVEAL_PRESETS).toEqual(['handle', 'profile', 'full']);
+  });
+
+  it('member-persona surfaces the amount preset it lands at (handle floor vs full)', () => {
+    const seenBob = memberPersonaView({ member: bob, viewerWebid: 'me', policy: 'pairwise' });
+    // bob revealed his real name to me → the fullest amount this card carries.
+    expect(seenBob.preset).toBe('full');
+    // and the split is READ off the reveal-state's `enabled` axis, not a baked tag.
+    expect(isDisclosed(seenBob.revealState, 'persona', 'realName')).toBe(true);
+    expect(revealPresetOf(seenBob.revealState, 'persona', { keysFor: personaPresetKeys })).toBe('full');
+
+    const seenCarol = memberPersonaView({ member: carol, viewerWebid: 'me', policy: 'pairwise' });
+    // carol withheld her real name → the reveal-state floors at handle-only.
+    expect(seenCarol.preset).toBe('handle');
+    expect(isDisclosed(seenCarol.revealState, 'persona', 'realName')).toBe(false);
+  });
+
+  it('self-view: a stranger floors me at the handle preset; an open member sees the full amount', () => {
+    const toStranger = selfViewSplit({ me, viewer: { kind: 'stranger' }, policy: 'open' });
+    expect(toStranger.preset).toBe('handle');
+    expect(isDisclosed(toStranger.revealState, 'persona', 'realName')).toBe(false);
+
+    const toMember = selfViewSplit({ me, viewer: { kind: 'member', id: 'carol' }, policy: 'open' });
+    expect(toMember.preset).toBe('full');
+    expect(isDisclosed(toMember.revealState, 'persona', 'realName')).toBe(true);
+  });
+
+  it('preset labels resolve to locale keys (invariant 8), null preset → no label', () => {
+    expect(revealPresetLabelKey('handle')).toBe('circle.reveal.preset.handle');
+    expect(revealPresetLabelKey('profile')).toBe('circle.reveal.preset.profile');
+    expect(revealPresetLabelKey('full')).toBe('circle.reveal.preset.full');
+    expect(revealPresetLabelKey('identity')).toBeNull();   // rejected name is not a preset
+    expect(revealPresetLabelKey(null)).toBeNull();
   });
 });

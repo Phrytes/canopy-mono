@@ -47,6 +47,19 @@ describe('renderMemberPersonaCard', () => {
     expect(el.querySelector('.circle-membercard__title').textContent).toBe('Bob');
   });
 
+  it('surfaces the C7 amount preset badge (full when the real name shows, handle when it does not)', () => {
+    const shown = mount();
+    renderMemberPersonaCard(shown, { member: bob, split: memberPersonaView({ member: bob, viewerWebid: 'me' }), t });
+    const badgeShown = shown.querySelector('.circle-membercard__preset');
+    expect(badgeShown).not.toBeNull();
+    expect(badgeShown.dataset.preset).toBe('full');
+    expect(badgeShown.querySelector('.circle-membercard__preset-value').textContent).toBe('circle.reveal.preset.full');
+
+    const hidden = mount();
+    renderMemberPersonaCard(hidden, { member: carol, split: memberPersonaView({ member: carol, viewerWebid: 'me' }), t });
+    expect(hidden.querySelector('.circle-membercard__preset').dataset.preset).toBe('handle');
+  });
+
   it('back reaches the host', () => {
     const el = mount();
     const onBack = vi.fn();
@@ -72,6 +85,8 @@ describe('renderSelfViewCard', () => {
     // a stranger sees only my handle.
     expect(el.querySelector('.circle-membercard__col--sees [data-attr="handle"]')).not.toBeNull();
     expect(el.querySelector('.circle-membercard__col--hides [data-attr="realName"]')).not.toBeNull();
+    // …and the reveal-state badge floors at the handle preset for a stranger.
+    expect(el.querySelector('.circle-membercard__preset').dataset.preset).toBe('handle');
   });
 
   it('picking a viewer reaches the host', () => {
