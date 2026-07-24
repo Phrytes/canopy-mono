@@ -202,6 +202,7 @@ export { PeerDiscovery }  from './discovery/PeerDiscovery.js';
 export { GossipProtocol } from './discovery/GossipProtocol.js';
 export { PingScheduler }  from './discovery/PingScheduler.js';
 export { pullPeerList }   from './discovery/pullPeerList.js';
+export { peerFacade }     from './discovery/peerFacade.js';
 
 // ── A2A layer (Group H) ───────────────────────────────────────────────────────
 export { A2ATLSLayer }      from './a2a/A2ATLSLayer.js';
