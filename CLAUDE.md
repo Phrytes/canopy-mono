@@ -80,6 +80,9 @@ Project-wide rules beyond the invariants — concise here, full detail in [`docs
 - **Ship web first, then mobile** as separate steps/commits; don't bundle both platforms in one commit.
 - **Verify the RESULT, not just the dispatch** — check the skill's return value, not only that a command
   fired (the device-run lesson; a gate can route while the op silently fails).
+- **Keep the design-doc status overview current.** When you finish, supersede, or archive a plan/design doc,
+  update its row (status + date) in `plans/DOC-STATUS.md` — the living lifecycle map of the plan corpus
+  (status · 🗄 archive-ready · the reconciliation record). Stops parallel/stale plans creeping back.
 
 ## Where the truth is
 - **Doc layout (task #66 model — `plans/PLAN-file-org-inventory.md`):** function is encoded in name/location and
