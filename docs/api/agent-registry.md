@@ -431,6 +431,88 @@ property change / circle-join runs the matcher with no incoming request).
 
 **Returns:** `object` — { [key]: matchableValue } for matchable + resolvable keys only
 
+### `REVEAL_PRESETS`
+
+**Kind:** constant · **Import:** `REVEAL_PRESETS` from `'@onderling/agent-registry'`
+
+Reveal presets, LEAST → MOST revealing (by amount). `handle` = floor, `full` = ceiling.
+
+### `isRevealPreset`
+
+**Kind:** function · **Import:** `isRevealPreset` from `'@onderling/agent-registry'`
+
+```js
+isRevealPreset(p)
+```
+
+True iff `p` is one of the REVEAL_PRESETS (`handle` | `profile` | `full`).
+
+### `revealPresetRank`
+
+**Kind:** function · **Import:** `revealPresetRank` from `'@onderling/agent-registry'`
+
+```js
+revealPresetRank(preset)
+```
+
+Rank a preset (0=handle … 2=full), or -1 for an unknown preset.
+
+### `nextRevealPreset`
+
+**Kind:** function · **Import:** `nextRevealPreset` from `'@onderling/agent-registry'`
+
+```js
+nextRevealPreset(preset)
+```
+
+The next preset up (more revealing), or the same when already at the ceiling (`full`).
+
+### `applyRevealPreset`
+
+**Kind:** function · **Import:** `applyRevealPreset` from `'@onderling/agent-registry'`
+
+```js
+applyRevealPreset(policy, contextId, preset, { keysFor } = {})
+```
+
+Apply a reveal preset to a context: ENABLE every key in tiers ≤ `preset` and DISABLE
+every key in tiers > `preset` (so `handle` truly floors — nothing beyond the handle
+enabled — and `full` ceilings — all listed keys enabled). Only the `enabled` axis is
+touched; `rung`/`matchable`/`requestable` for each key are PRESERVED. Returns a NEW
+policy (pure). Per-attribute booleans stay the truth: hide one key afterwards and the
+context reads as "this preset minus that key".
+
+**Parameters**
+
+- `policy` `object`
+- `contextId` `string`
+- `preset` `string` — one of REVEAL_PRESETS
+- `opts` `{ keysFor: (preset:string)=>string[] }` — the caller's per-tier key assignment
+
+**Returns:** `object` — a new policy
+
+### `revealPresetOf`
+
+**Kind:** function · **Import:** `revealPresetOf` from `'@onderling/agent-registry'`
+
+```js
+revealPresetOf(policy, contextId, { keysFor } = {})
+```
+
+The highest preset FULLY satisfied for a context: the most-revealing preset whose whole
+cumulative key-set is `enabled`. Because presets are amount-cumulative, once a preset's
+set is not fully enabled no higher preset can be either, so the scan stops there. A
+`handle` tier with no keys is vacuously satisfied → the floor reads as `handle`. Returns
+`null` only when even the `handle` floor's (non-empty) keys are not all enabled.
+
+**Parameters**
+
+- `policy` `object`
+- `contextId` `string`
+- `opts` `{ keysFor: (preset:string)=>string[] }`
+
+**Returns:** `'handle'|'profile'|'full'|null`
+
 ## `src/driverMatch.js`
 
 ### `deriveSignature`
@@ -1478,11 +1560,32 @@ fields; freezes the result.
 
 ## `src/revealLadder.js`
 
+### `presetForRevealLevel`
+
+**Kind:** function · **Import:** `presetForRevealLevel` from `'@onderling/agent-registry'`
+
+```js
+presetForRevealLevel(level)
+```
+
+The pinned reveal PRESET for an old level name (`ephemeral→handle`, `persona→profile`, `identity→full`), or undefined.
+
+### `revealLevelForPreset`
+
+**Kind:** function · **Import:** `revealLevelForPreset` from `'@onderling/agent-registry'`
+
+```js
+revealLevelForPreset(preset)
+```
+
+The old level name for a pinned reveal preset (inverse of `presetForRevealLevel`), or undefined.
+
 ### `REVEAL_LEVELS`
 
 **Kind:** constant · **Import:** `REVEAL_LEVELS` from `'@onderling/agent-registry'`
 
-Identity levels, LEAST → MOST revealing. `identity` = hand off to the existing pairwise-reveal / contact machinery.
+Identity levels, LEAST → MOST revealing. `identity` = hand off to the existing pairwise-reveal /
+contact machinery. Derived from `REVEAL_PRESETS` order so the two vocabularies can never drift.
 
 ### `isRevealLevel`
 
@@ -1502,7 +1605,7 @@ True iff `l` is one of the REVEAL_LEVELS (`ephemeral` | `persona` | `identity`).
 revealRank(level)
 ```
 
-Rank a level (0=ephemeral … 2=identity), or -1 for an unknown level.
+Rank a level (0=ephemeral … 2=identity), or -1 for an unknown level. Delegates to the preset rank.
 
 ### `nextRevealLevel`
 
@@ -1512,7 +1615,7 @@ Rank a level (0=ephemeral … 2=identity), or -1 for an unknown level.
 nextRevealLevel(level)
 ```
 
-The next level up, or the same level when already at the top (`identity`).
+The next level up, or the same level when already at the top (`identity`). Delegates to `nextRevealPreset`.
 
 ### `ephemeralHandle`
 

@@ -1,6 +1,6 @@
 /**
  * @onderling/item-store — the ONE canonical kring chat Envelope + its
- * declared projections (connectivity Phase 2, the "one envelope" collapse).
+ * declared projections (the "one canonical envelope" collapse).
  *
  * A single kring chat message used to exist in THREE hand-maintained shapes
  * kept in sync by copy-paste reshapers — and that drift was the bug:
@@ -21,7 +21,7 @@
  * is proven byte-identical to what its producer emitted before (see the
  * round-trip tests in `test/chatEnvelope.test.js`).
  *
- * Canonical Envelope (per DESIGN-connectivity-phase2-deliver §3):
+ * Canonical Envelope:
  *   { id, circleId, author, kind, ts, hashPrev?, body?, ref?, extras? }
  *     id       = msgId
  *     author   = the sender ("fromActor" / "fromWebid")
@@ -227,7 +227,7 @@ export function toWireEnvelope({ circleId, msgId, ts, text, fromActor, fromWebid
 
 /**
  * `toWire` (REF variant) — the pod-signal projection of the canonical
- * Envelope. Per DESIGN-connectivity-phase2-deliver §2/§3, the canonical
+ * Envelope. The canonical
  * Envelope carries EITHER a `body` (the full text — `toWireEnvelope` above)
  * OR a `ref` (an opaque pointer at the row a shared pod already holds). A
  * circle whose data-policy resolves to `pod-signal` (shared/hybrid) writes
@@ -240,10 +240,10 @@ export function toWireEnvelope({ circleId, msgId, ts, text, fromActor, fromWebid
  * media? }` frame, no `text` field. `ref` is an opaque string (a pod row
  * pointer); this projector neither interprets nor resolves it.
  *
- * NOTE (Phase 2 honesty): the live send path DEGRADES pod-signal to a
- * full-body `toWireEnvelope` fan until Phase 3 wires the real shared-pod
- * write, so this shape is defined + unit-tested now but not yet fanned on the
- * live path. Phase 3 plugs it in at the stoop `broadcastToCircle` pod seam.
+ * NOTE (honest degrade): the live send path degrades pod-signal to a
+ * full-body `toWireEnvelope` fan until the real shared-pod write is wired,
+ * so this shape is defined + unit-tested now but not yet fanned on the
+ * live path. It plugs in at the stoop `broadcastToCircle` pod seam.
  *
  * @param {object} a
  * @param {string} a.circleId

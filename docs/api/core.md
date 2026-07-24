@@ -588,6 +588,28 @@ Backoff sequence (in units of the base interval):
 
 **Methods:** `start()` · `stop()` · `pingAll()`
 
+## `src/discovery/peerFacade.js`
+
+### `peerFacade`
+
+**Kind:** function · **Import:** `peerFacade` from `'@onderling/core'`
+
+```js
+peerFacade({ trailRoster = [], memberMap = [], peerGraph = [], circleId } = {})
+```
+
+Project one circle's membership into per-(circle,member) `Peer` records.
+
+**Parameters**
+
+- `o` `object`
+- `o.trailRoster` `Array<object>` — The derived roster for ONE circle (deriveRoster output / listGroupMembers). The SOURCE OF MEMBERSHIP + per-circle crypto. One entry per member.
+- `[o.memberMap]` `Array<object>` — `MemberMap.list()` output — the display/identity cache, joined by `webid`. Display-only; never consulted for member existence.
+- `[o.peerGraph]` `Array<object>` — `PeerGraph.all()` / `.export()` output — liveness records, joined by the trail member's signing `pubKey` (PeerGraph's primary key).
+- `[o.circleId]` `string` — The circle this projection is for. The trail is already scoped to it; carried for legibility / assertion, not used to filter (the trail is the membership authority).
+
+**Returns:** `Peer[]` — one `Peer` per trail member, keyed by `circleAddress`.
+
 ## `src/discovery/pullPeerList.js`
 
 ### `pullPeerList`

@@ -414,7 +414,7 @@ toWireRefEnvelope({ circleId, msgId, ts, ref, fromActor, fromWebid, media })
 ```
 
 `toWire` (REF variant) — the pod-signal projection of the canonical
-Envelope. Per DESIGN-connectivity-phase2-deliver §2/§3, the canonical
+Envelope. The canonical
 Envelope carries EITHER a `body` (the full text — `toWireEnvelope` above)
 OR a `ref` (an opaque pointer at the row a shared pod already holds). A
 circle whose data-policy resolves to `pod-signal` (shared/hybrid) writes
@@ -427,10 +427,10 @@ It is the byte-for-byte sibling of `toWireEnvelope` with `text` replaced by
 media? }` frame, no `text` field. `ref` is an opaque string (a pod row
 pointer); this projector neither interprets nor resolves it.
 
-NOTE (Phase 2 honesty): the live send path DEGRADES pod-signal to a
-full-body `toWireEnvelope` fan until Phase 3 wires the real shared-pod
-write, so this shape is defined + unit-tested now but not yet fanned on the
-live path. Phase 3 plugs it in at the stoop `broadcastToCircle` pod seam.
+NOTE (honest degrade): the live send path degrades pod-signal to a
+full-body `toWireEnvelope` fan until the real shared-pod write is wired,
+so this shape is defined + unit-tested now but not yet fanned on the
+live path. It plugs in at the stoop `broadcastToCircle` pod seam.
 
 **Parameters**
 

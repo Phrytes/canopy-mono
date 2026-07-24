@@ -121,6 +121,7 @@ These exports are re-exported verbatim from other `@onderling/*` packages; each 
 | `Parts` | class | [`core.md`](core.md#parts) |
 | `pathScopeCovers` | function | [`core.md`](core.md#pathscopecovers) |
 | `PeerDiscovery` | class | [`core.md`](core.md#peerdiscovery) |
+| `peerFacade` | function | [`core.md`](core.md#peerfacade) |
 | `PeerGraph` | class | [`core.md`](core.md#peergraph) |
 | `ping` | function | [`core.md`](core.md#ping) |
 | `PingScheduler` | class | [`core.md`](core.md#pingscheduler) |
