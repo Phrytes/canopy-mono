@@ -45,7 +45,7 @@ describe('Stoop V1 — localisation wrapper', () => {
   });
 
   it('every "errors.invalid_handle.*" reason has a localised string in both languages', async () => {
-    const reasons = ['too-short', 'too-long', 'invalid-chars', 'contains-whitespace', 'not-a-string'];
+    const reasons = ['too-short', 'too-long', 'invalid-chars', 'contains-whitespace', 'not-a-string', 'handle-taken'];
     for (const lang of ['en', 'nl']) {
       await setLang(lang);
       for (const r of reasons) {

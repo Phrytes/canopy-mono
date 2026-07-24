@@ -75,6 +75,7 @@
     "invalid_handle.invalid-chars": "Alleen kleine letters, cijfers, - en _.",
     "invalid_handle.contains-whitespace": "Handle mag geen spaties bevatten.",
     "invalid_handle.not-a-string":  "Handle is verplicht.",
+    "invalid_handle.handle-taken":  "Die handle is al in gebruik in deze kring — kies een andere.",
     "no_member_map":   "Lidmaatschapskaart is niet geconfigureerd.",
     "no_reveals":      "Reveal-store is niet geconfigureerd."
   },

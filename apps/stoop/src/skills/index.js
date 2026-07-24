@@ -66,7 +66,7 @@ import { validateCanonical } from '@onderling/item-types';
 import { treeOf, createCrossPodRefResolver, chatEnvelopeFromStoreItem, toWireEnvelope, toWireRefEnvelope } from '@onderling/item-store';
 import { validateStoopItem, intentToCanonicalDraft } from '../lib/canonicalAdapter.js';
 
-import { validateHandle } from '../lib/handle.js';
+import { validateHandle, findHandleCollision } from '../lib/handle.js';
 import { getPrivacyNotice } from '../lib/privacyNotice.js';
 import { categoryFor, TAXONOMY } from '../lib/offeringsMatch.js';
 import { findNearDuplicate } from '../lib/dupCheck.js';
@@ -258,6 +258,54 @@ async function _findLatestGroupRules(store, groupId) {
     if (tsB > tsA || (tsB === tsA && it.id > latest.id)) latest = it;
   }
   return latest;
+}
+
+/**
+ * Collect the handles already TAKEN by members of ONE circle — the roster the
+ * per-circle handle-uniqueness rule (Phase 4 Wave B) is enforced against.
+ *
+ * Reads BOTH authorities the handle can live in, so a collision is caught
+ * regardless of which path recorded the incumbent:
+ *   - the durable, signed `membership-redemption` trail (`source.peerDisplay` —
+ *     the handle a peer-joiner claimed, recorded admin-side on
+ *     `verifyMembershipCodeForPeer`), filtered to `groupId` so a handle held in
+ *     ANOTHER circle never counts (cross-circle reuse stays allowed);
+ *   - the in-circle `MemberMap` display cache (`handle`) — same-circle by
+ *     construction (one MemberMap per circle), so no group filter is needed.
+ *
+ * Returns `[{ webid, handle }]` so the caller can exclude the claimant's own
+ * row (re-claiming your current handle is not a collision). Both reads are
+ * best-effort — a missing store/roster yields fewer entries, never a throw.
+ *
+ * @param {object} o
+ * @param {{listOpen: Function}} [o.store]
+ * @param {{list: Function}} [o.members]
+ * @param {string|null} [o.groupId]
+ * @returns {Promise<Array<{webid: string, handle: string}>>}
+ */
+async function collectCircleHandles({ store, members, groupId } = {}) {
+  const taken = [];
+  if (store && typeof store.listOpen === 'function') {
+    try {
+      const reds = await store.listOpen({ type: 'membership-redemption' });
+      for (const it of reds ?? []) {
+        const src = it?.source ?? {};
+        if (groupId && src.groupId !== groupId) continue;
+        if (src.redeemedBy && src.peerDisplay) {
+          taken.push({ webid: src.redeemedBy, handle: src.peerDisplay });
+        }
+      }
+    } catch { /* trail read is best-effort — the MemberMap pass still runs */ }
+  }
+  if (members && typeof members.list === 'function') {
+    try {
+      const list = await members.list();
+      for (const m of list ?? []) {
+        if (m?.webid && m.handle) taken.push({ webid: m.webid, handle: m.handle });
+      }
+    } catch { /* roster read is best-effort */ }
+  }
+  return taken;
 }
 
 /**
@@ -1619,6 +1667,16 @@ export function buildSkills({
       const v = validateHandle(a.handle ?? '');
       if (!v.ok) return { error: 'invalid-handle', reason: v.reason };
       if (!members) return { error: 'no-member-map' };
+      // Per-circle handle uniqueness (Phase 4 Wave B — pinned rule: no duplicate
+      // handles within a single circle). Reject if ANOTHER member of this circle
+      // already holds the handle (case-folded, so `Jan`/`jan` collide). The
+      // claimant re-setting their OWN current handle is not a collision (excluded
+      // by webid). Cross-circle reuse still passes: `collectCircleHandles`
+      // filters the trail to this `groupId`, and the MemberMap is circle-local.
+      const taken = await collectCircleHandles({ store, members, groupId });
+      if (findHandleCollision({ candidate: v.handle, claimantWebid: from, taken })) {
+        return { error: 'invalid-handle', reason: 'handle-taken' };
+      }
       const updated = await members.addMember({ webid: from, handle: v.handle });
       return { handle: v.handle, member: updated, _sync: simulateSync() };
     }, {
@@ -2343,6 +2401,21 @@ export function buildSkills({
         (now <= (i.source.expiresAt ?? 0) + GRACE_MS),
       );
       if (!valid) return { error: 'invalid-or-expired-code' };
+
+      // Per-circle handle uniqueness (Phase 4 Wave B — pinned rule: no duplicate
+      // handles within a single circle), enforced HERE on the admin/host side —
+      // the authority that owns the circle roster. The joiner's chosen handle
+      // rides the redeem as `peerDisplay`; reject the join if another member of
+      // THIS circle already holds it (case-folded, so `Jan`/`jan` collide),
+      // rather than silently admitting a duplicate. The joiner re-presenting
+      // their OWN handle (a re-send) is not a collision — excluded by
+      // `requesterWebid`. Absent `peerDisplay` = no handle claimed → skip.
+      if (typeof a.peerDisplay === 'string' && a.peerDisplay) {
+        const takenHandles = await collectCircleHandles({ store, members, groupId: a.groupId });
+        if (findHandleCollision({ candidate: a.peerDisplay, claimantWebid: a.requesterWebid, taken: takenHandles })) {
+          return { error: 'handle-taken', reason: 'handle-taken' };
+        }
+      }
 
       // Signing pubKey for the peer path — the joiner's authenticated identity
       // is `requesterWebid`, which the admin-side basis handler

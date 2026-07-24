@@ -75,6 +75,7 @@
     "invalid_handle.invalid-chars": "Use lowercase letters, digits, - or _.",
     "invalid_handle.contains-whitespace": "Handle can't contain spaces.",
     "invalid_handle.not-a-string":  "Handle is required.",
+    "invalid_handle.handle-taken":  "That handle is taken in this circle — pick another.",
     "no_member_map":   "Member map is not configured.",
     "no_reveals":      "Reveal store is not configured."
   },
