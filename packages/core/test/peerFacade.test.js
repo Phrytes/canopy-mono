@@ -172,6 +172,46 @@ describe('peerFacade — per-circle keying, no global id (Decision A)', () => {
   });
 });
 
+describe('peerFacade — revealState (C7 reveal-state collapse, Wave B)', () => {
+  // The trail carries no per-viewer `reveals[]` today (the op doesn't surface it),
+  // so real-name disclosure is driven by the circle's revealPolicy: 'open' discloses
+  // it to members, 'pairwise' withholds it until a member reveals to ≥1 peer.
+  const readEnabled = (peer, ctx, key) => peer?.revealState?.perContext?.[ctx]?.[key]?.enabled === true;
+
+  it('is a disclosure.js-shaped policy keyed by the circleId, handle floor always enabled', () => {
+    const [anna] = peerFacade({ trailRoster: [trailX[0]], circleId: 'circleX' });
+    // Shape parity with disclosure.js getDisclosure: perContext[ctx][key] = {enabled,rung,matchable,requestable}.
+    expect(anna.revealState).toBeTypeOf('object');
+    expect(anna.revealState.perContext).toHaveProperty('circleX');
+    expect(anna.revealState.perContext.circleX.handle).toEqual({
+      enabled: true, rung: null, matchable: false, requestable: false,
+    });
+    // handle is the always-shown floor; realName is withheld by default (pairwise, no reveals).
+    expect(readEnabled(anna, 'circleX', 'handle')).toBe(true);
+    expect(readEnabled(anna, 'circleX', 'realName')).toBe(false);
+  });
+
+  it("'open' policy discloses realName for every member", () => {
+    const [anna] = peerFacade({ trailRoster: [trailX[0]], circleId: 'circleX', revealPolicy: 'open' });
+    expect(readEnabled(anna, 'circleX', 'realName')).toBe(true);
+  });
+
+  it("'pairwise' policy discloses realName once the member has revealed it to ≥1 peer", () => {
+    const withReveal = { ...trailX[1], reveals: ['https://anna.example/me'] };
+    const [bram] = peerFacade({ trailRoster: [withReveal], circleId: 'circleX', revealPolicy: 'pairwise' });
+    expect(readEnabled(bram, 'circleX', 'realName')).toBe(true);
+    // …and stays withheld with an empty reveal list.
+    const [bram0] = peerFacade({ trailRoster: [{ ...trailX[1], reveals: [] }], circleId: 'circleX' });
+    expect(readEnabled(bram0, 'circleX', 'realName')).toBe(false);
+  });
+
+  it('keys revealState by the per-circle context (no cross-circle leakage of the policy)', () => {
+    const [annaY] = peerFacade({ trailRoster: [{ ...trailX[0], circleAddress: 'anna@Y' }], circleId: 'circleY', revealPolicy: 'open' });
+    expect(annaY.revealState.perContext).toHaveProperty('circleY');
+    expect(annaY.revealState.perContext).not.toHaveProperty('circleX');
+  });
+});
+
 describe('peerFacade — robustness', () => {
   it('returns [] for empty / missing inputs', () => {
     expect(peerFacade({})).toEqual([]);

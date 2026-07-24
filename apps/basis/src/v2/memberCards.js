@@ -24,13 +24,19 @@
  * Disclosure is per-CIRCLE (context = the circle). Today the roster carries two
  * persona attributes — the handle (the pseudonym FLOOR, always shown) and the
  * real name (the presented self). We map them onto the preset tiers via
- * `personaPresetKeys` and let `revealPresetOf` name the amount. Richer per-member
- * attributes (picture, bio) — and the OTHER member's OWN per-circle reveal-state,
- * carried on the per-circle `Peer.revealState` slot — arrive with the Peer-façade
- * wiring (`packages/core/src/discovery/peerFacade.js`, still reserved); until then
- * the member-persona view derives the gate from the roster's pairwise `reveals`
- * and the circle policy. `matchable`/`requestable` are OTHER axes and never touch
- * the reveal card.
+ * `personaPresetKeys` and let `revealPresetOf` name the amount.
+ *
+ * ── TWO LAYERS: member-disclosure AND viewer-entitlement ───────────────────
+ * A viewer sees an attribute iff (a) the MEMBER disclosed it for this circle AND
+ * (b) the VIEWER is entitled to it. Layer (a) is the member's per-circle
+ * reveal-state — the `Peer.revealState` disclosure policy the Peer-façade now
+ * populates (`packages/core/src/discovery/peerFacade.js`); the card reads it via
+ * `isDisclosed(revealState, circleId, key)`. Layer (b) is the view-as gate
+ * (`splitViewAsAttributes` — viewer kind / pairwise reveal / circle policy), which
+ * still runs on top. When a card is handed a raw roster row rather than a Peer, it
+ * derives the SAME member-disclosure policy locally via `memberRevealState`, so
+ * behaviour is identical either way. `matchable`/`requestable` are OTHER axes and
+ * never touch the reveal card.
  */
 
 import {
@@ -54,19 +60,41 @@ export const PERSONA_TIER_KEYS = Object.freeze({ handle: ['handle'], profile: ['
 /** The persona tier's OWN keys for a preset (the `keysFor` the disclosure preset API expects). */
 export function personaPresetKeys(preset) { return PERSONA_TIER_KEYS[preset] ?? []; }
 
-// The reveal-state is read per (context, key); these cards build a per-VIEW policy, so the
-// context id is an opaque, stable slot (the real per-circle context arrives with Peer.revealState).
+// The reveal-state is read per (context, key). The RETURNED per-view state uses this opaque,
+// stable slot ("what THIS viewer sees"); a member's OWN per-circle reveal-state (Peer.revealState)
+// is keyed by the real circleId, which callers pass through as `circleId`.
 const PERSONA_CTX = 'persona';
 
 /**
- * Build the unified per-(context, key) reveal-state for ONE persona view from the set of
- * keys this viewer may see, then hand it back so the card can READ the `enabled` axis +
- * the amount preset. Real name in the seen set → the `full` amount preset (handle + real
- * name enabled); otherwise the `handle` floor (real name withheld). Only the `enabled`
- * axis is touched — `matchable`/`requestable` stay at their withheld default.
+ * Build a MEMBER's per-circle reveal-state — the disclosure policy the Peer-façade
+ * populates on `Peer.revealState` (`peerFacade.js`), derived here from a raw roster row
+ * when the card isn't handed a Peer, so behaviour is identical either way. `handle` is the
+ * pseudonym FLOOR (always enabled); `realName` is disclosed for the circle iff the policy is
+ * 'open' OR the member has revealed it to ≥1 peer (`reveals[]`). The per-PEER selection
+ * (revealed to whom) is NOT a per-circle bit — it stays in the view-as gate, not here. Only
+ * the `enabled` axis is set; `matchable`/`requestable` keep their withheld default.
  *
- * @param {string[]} seenKeys  persona keys the viewer clears (from the view-as gate)
- * @returns {object} a disclosure policy (the reveal-state)
+ * @param {object} args
+ * @param {{reveals?:string[]}} args.member  the roster row (its reveal data)
+ * @param {'open'|'pairwise'} [args.policy]  the circle's revealPolicy
+ * @param {string} [args.contextId]          the reveal-state context (the circleId)
+ * @returns {object} a disclosure policy (the member's per-circle reveal-state)
+ */
+export function memberRevealState({ member, policy = 'pairwise', contextId = PERSONA_CTX } = {}) {
+  const m = member && typeof member === 'object' ? member : {};
+  const realNameShared = policy === 'open' || (Array.isArray(m.reveals) && m.reveals.length > 0);
+  const preset = realNameShared ? 'full' : 'handle';
+  return applyRevealPreset(createDisclosurePolicy(), contextId, preset, { keysFor: personaPresetKeys });
+}
+
+/**
+ * Build the unified per-(context, key) reveal-state describing ONE VIEW (what a specific
+ * viewer sees) from the keys that view clears, so the card can READ back the `enabled` axis +
+ * the amount preset. Real name in the seen set → the `full` amount preset; otherwise the
+ * `handle` floor. Only the `enabled` axis is touched.
+ *
+ * @param {string[]} seenKeys  persona keys visible in this view
+ * @returns {object} a disclosure policy (the per-view reveal-state)
  */
 function revealStateFromSeen(seenKeys) {
   const preset = (Array.isArray(seenKeys) && seenKeys.includes('realName')) ? 'full' : 'handle';
@@ -74,43 +102,34 @@ function revealStateFromSeen(seenKeys) {
 }
 
 /**
- * Project a set of persona attributes through a reveal-state: an attribute is VISIBLE iff
- * it's the handle floor (the pseudonym is always shown) or the reveal-state marks its key
- * `enabled` for the context. Reads the unified `isDisclosed` — the split is driven by the
- * `enabled` axis, not a bespoke openness tag. Attribute order is preserved.
- *
- * @param {Array<{key:string}>} attributes
- * @param {object} revealState  a disclosure policy
- * @returns {{sees:object[], hides:object[]}}
- */
-function splitByRevealState(attributes, revealState) {
-  const sees = [];
-  const hides = [];
-  for (const a of attributes) {
-    const shown = a.key === 'handle' || isDisclosed(revealState, PERSONA_CTX, a.key);
-    (shown ? sees : hides).push(a);
-  }
-  return { sees, hides };
-}
-
-/**
- * The full reveal-state projection for a persona view: the view-as gate decides WHO clears
- * each attribute (viewer kind / pairwise / circle policy — the viewer axis, still owned by
- * `splitViewAsAttributes`); we then express that as the unified reveal-state, read the split
- * back off its `enabled` axis, and name the amount preset via `revealPresetOf`.
+ * The full persona projection — the TWO layers combined. Layer (a) MEMBER-DISCLOSURE:
+ * an attribute is disclosed for the circle iff it's the handle floor (always) or the
+ * member's `revealState` marks its key `enabled` (read via `isDisclosed`). Layer (b)
+ * VIEWER-ENTITLEMENT: the view-as gate decides who clears each attribute (viewer kind /
+ * pairwise reveal / circle policy — still owned by `splitViewAsAttributes`). An attribute
+ * is SEEN iff BOTH clear. The result is then expressed as the per-view reveal-state and its
+ * amount preset (`revealPresetOf`) — the same card shape as before.
  *
  * @param {object} args
  * @param {Array<object>} args.attributes
- * @param {object} args.viewer   the view-as viewer context
+ * @param {object} args.memberState  the member's per-circle reveal-state (Peer.revealState)
+ * @param {string} args.contextId    the context `memberState` is keyed by (the circleId)
+ * @param {object} args.viewer       the view-as viewer context
  * @param {'open'|'pairwise'} args.policy
  * @returns {{sees:object[], hides:object[], counts:object, preset:string|null, revealState:object}}
  */
-function projectRevealState({ attributes, viewer, policy }) {
+function projectPersona({ attributes, memberState, contextId, viewer, policy }) {
   const gate = splitViewAsAttributes({ attributes, viewer, policy });
-  const revealState = revealStateFromSeen(gate.sees.map((a) => a.key));
-  const split = splitByRevealState(attributes, revealState);
+  const entitled = new Set(gate.sees.map((a) => a.key));
+  const sees = [];
+  const hides = [];
+  for (const a of attributes) {
+    const disclosed = a.key === 'handle' || isDisclosed(memberState, contextId, a.key);
+    (disclosed && entitled.has(a.key) ? sees : hides).push(a);
+  }
+  const revealState = revealStateFromSeen(sees.map((a) => a.key));
   const preset = revealPresetOf(revealState, PERSONA_CTX, { keysFor: personaPresetKeys });
-  return { ...split, counts: viewAsCounts(split), preset, revealState };
+  return { sees, hides, counts: viewAsCounts({ sees, hides }), preset, revealState };
 }
 
 /**
@@ -134,43 +153,54 @@ export function personaAttributes(member) {
 }
 
 /**
- * member-persona — what THIS viewer (me) may see of THAT member. The member's
- * real name is 'revealed to me' iff they put my webid in their `reveals` list
- * (or the circle policy is 'open', which `isVisibleTo` handles). Pure projection
- * over the built split.
+ * member-persona — what THIS viewer (me) may see of THAT member. TWO layers:
+ * (a) the member's per-circle DISCLOSURE — read from the member's `revealState`
+ *     (`Peer.revealState`, populated by the Peer-façade); when not injected it's
+ *     derived from the roster row via `memberRevealState` (identical result); AND
+ * (b) my ENTITLEMENT — the view-as gate: my real name is 'revealed to me' iff the
+ *     member put my webid in their `reveals` list (or the circle policy is 'open',
+ *     which `isVisibleTo` handles). An attribute is seen iff BOTH clear. Pure.
  *
  * @param {object}  args
  * @param {{id?:string, handle?:string|null, realName?:string|null, reveals?:string[]}} args.member
  * @param {string|null} [args.viewerWebid]  my webid (the viewer)
  * @param {'open'|'pairwise'} [args.policy='pairwise']  the circle's revealPolicy
+ * @param {string} [args.circleId]           the reveal-state context (the circle)
+ * @param {object|null} [args.revealState]   the member's `Peer.revealState`; derived when absent
  * @returns {{sees:object[], hides:object[], counts:{visible:number,hidden:number,total:number}, preset:string|null, revealState:object}}
  */
-export function memberPersonaView({ member, viewerWebid = null, policy = 'pairwise' } = {}) {
+export function memberPersonaView({ member, viewerWebid = null, policy = 'pairwise', circleId = PERSONA_CTX, revealState = null } = {}) {
   const m = member && typeof member === 'object' ? member : {};
+  const memberState = revealState ?? memberRevealState({ member: m, policy, contextId: circleId });
   const revealedToMe = (viewerWebid && Array.isArray(m.reveals) && m.reveals.includes(viewerWebid))
     ? ['realName'] : [];
   const viewer = { kind: 'member', id: viewerWebid ?? null, revealedToMe };
-  return projectRevealState({ attributes: personaAttributes(m), viewer, policy });
+  return projectPersona({ attributes: personaAttributes(m), memberState, contextId: circleId, viewer, policy });
 }
 
 /**
- * self-view — how a CHOSEN viewer sees ME. For a member viewer, my real name is
+ * self-view — how a CHOSEN viewer sees ME. Same two layers: (a) MY per-circle
+ * disclosure (`memberRevealState` over my row, or an injected `revealState`) AND
+ * (b) the chosen viewer's entitlement — for a member viewer my real name is
  * 'revealed to them' iff I put their webid in MY `reveals` list; a stranger/agent
- * never clears the pairwise gate. Pure projection over the built split.
+ * never clears the pairwise gate. An attribute is seen iff BOTH clear. Pure.
  *
  * @param {object}  args
  * @param {{id?:string, handle?:string|null, realName?:string|null, reveals?:string[]}} args.me
  * @param {{kind?:string, id?:string|null}} [args.viewer]  the chosen viewer (VIEWER_KINDS)
  * @param {'open'|'pairwise'} [args.policy='pairwise']  the circle's revealPolicy
+ * @param {string} [args.circleId]           the reveal-state context (the circle)
+ * @param {object|null} [args.revealState]   my `Peer.revealState`; derived when absent
  * @returns {{sees:object[], hides:object[], counts:{visible:number,hidden:number,total:number}, preset:string|null, revealState:object}}
  */
-export function selfViewSplit({ me, viewer = { kind: 'stranger' }, policy = 'pairwise' } = {}) {
+export function selfViewSplit({ me, viewer = { kind: 'stranger' }, policy = 'pairwise', circleId = PERSONA_CTX, revealState = null } = {}) {
   const m = me && typeof me === 'object' ? me : {};
   const v = viewer && typeof viewer === 'object' ? viewer : {};
+  const memberState = revealState ?? memberRevealState({ member: m, policy, contextId: circleId });
   const revealedToMe = (v.kind === 'member' && v.id && Array.isArray(m.reveals) && m.reveals.includes(v.id))
     ? ['realName'] : [];
   const enrichedViewer = { ...v, revealedToMe };
-  return projectRevealState({ attributes: personaAttributes(m), viewer: enrichedViewer, policy });
+  return projectPersona({ attributes: personaAttributes(m), memberState, contextId: circleId, viewer: enrichedViewer, policy });
 }
 
 /**

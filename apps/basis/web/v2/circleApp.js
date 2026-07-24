@@ -5385,7 +5385,9 @@ async function showMemberPersona(id, member) {
   const policy = (await policyStore.get(id))?.revealPolicy ?? 'pairwise';
   let myWebid = '';
   try { const r = await rawCallSkill('stoop', 'whoAmI', {}); myWebid = r?.webid ?? r?.webId ?? ''; } catch { /* stranger view */ }
-  const split = memberPersonaView({ member, viewerWebid: myWebid || null, policy });
+  // circleId is the reveal-state context: the member's per-circle disclosure
+  // (Peer.revealState) is derived/keyed under it, then the view-as gate layers on top.
+  const split = memberPersonaView({ member, viewerWebid: myWebid || null, policy, circleId: id });
   renderMemberPersonaCard(rootEl, { member, split, t, onBack: () => showDetail(id) });
 }
 
@@ -5404,7 +5406,7 @@ async function showSelfView(id) {
   let viewer = { kind: 'stranger' };
   const rerender = () => renderSelfViewCard(rootEl, {
     me, members: others, viewer,
-    split: selfViewSplit({ me, viewer, policy }),
+    split: selfViewSplit({ me, viewer, policy, circleId: id }),
     t,
     onPickViewer: (v) => { viewer = v; rerender(); },
     onBack: () => showDetail(id),

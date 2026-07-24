@@ -3,8 +3,9 @@
 // `isVisibleTo`/`splitViewAsAttributes` already own, so no visibility logic drifts here.
 import { describe, it, expect } from 'vitest';
 import { isDisclosed, revealPresetOf } from '@onderling/agent-registry';
+import { peerFacade } from '@onderling/core';
 import {
-  personaAttributes, memberPersonaView, selfViewSplit,
+  personaAttributes, memberPersonaView, selfViewSplit, memberRevealState,
   personaPresetKeys, revealPresetLabelKey, REVEAL_PRESETS,
 } from '../../src/v2/memberCards.js';
 
@@ -113,6 +114,61 @@ describe('reveal-state + amount presets (C7)', () => {
     const toMember = selfViewSplit({ me, viewer: { kind: 'member', id: 'carol' }, policy: 'open' });
     expect(toMember.preset).toBe('full');
     expect(isDisclosed(toMember.revealState, 'persona', 'realName')).toBe(true);
+  });
+
+  it('memberPersonaView reads the façade-populated Peer.revealState — same output as the reveals[]-derived path', () => {
+    const circleId = 'circle-x';
+    // The Peer-façade populates Peer.revealState from the same reveal data (reveals[] + policy).
+    // bob revealed to someone (reveals:['me']) under pairwise → realName disclosed for the circle.
+    const [peerBob] = peerFacade({
+      trailRoster: [{ webid: 'bob', handle: 'Fox', reveals: ['me'] }],
+      circleId,
+      revealPolicy: 'pairwise',
+    });
+    // Peer.revealState is a REAL disclosure policy: readable by isDisclosed, keyed by circleId.
+    expect(isDisclosed(peerBob.revealState, circleId, 'handle')).toBe(true);
+    expect(isDisclosed(peerBob.revealState, circleId, 'realName')).toBe(true);
+
+    // The card READS Peer.revealState (member-disclosure) and still layers the view-as gate.
+    const fromPeer = memberPersonaView({
+      member: bob, viewerWebid: 'me', policy: 'pairwise', circleId, revealState: peerBob.revealState,
+    });
+    // The reveals[]-derived path (no Peer injected) produces the identical card.
+    const derived = memberPersonaView({ member: bob, viewerWebid: 'me', policy: 'pairwise' });
+    expect(fromPeer.sees.map((a) => a.key)).toEqual(derived.sees.map((a) => a.key));
+    expect(fromPeer.hides.map((a) => a.key)).toEqual(derived.hides.map((a) => a.key));
+    expect(fromPeer.preset).toBe(derived.preset);
+    expect(fromPeer).toEqual(derived);
+
+    // The viewer gate STILL applies on top: carol (reveals:[]) withholds realName under pairwise
+    // even though the façade would disclose it under 'open' — a viewer sees it only when BOTH clear.
+    const [peerCarolOpen] = peerFacade({
+      trailRoster: [{ webid: 'carol', handle: 'Heron', reveals: [] }],
+      circleId,
+      revealPolicy: 'open',
+    });
+    expect(isDisclosed(peerCarolOpen.revealState, circleId, 'realName')).toBe(true); // member disclosed (open)
+    const carolPairwiseViewer = memberPersonaView({
+      member: { ...carol, reveals: [] }, viewerWebid: 'me', policy: 'pairwise', circleId, revealState: peerCarolOpen.revealState,
+    });
+    // …but under the pairwise VIEW gate this viewer isn't entitled → realName hidden.
+    expect(carolPairwiseViewer.sees.map((a) => a.key)).toEqual(['handle']);
+    expect(carolPairwiseViewer.hides.map((a) => a.key)).toEqual(['realName']);
+  });
+
+  it('memberRevealState derives the same policy the façade populates (handle floor + policy/reveals rule)', () => {
+    const ctx = 'circle-y';
+    // Derived (basis) vs façade (core) must agree, key-by-key, on the enabled axis.
+    const derivedOpen = memberRevealState({ member: { reveals: [] }, policy: 'open', contextId: ctx });
+    const [peerOpen] = peerFacade({ trailRoster: [{ webid: 'x', reveals: [] }], circleId: ctx, revealPolicy: 'open' });
+    for (const key of ['handle', 'realName']) {
+      expect(isDisclosed(derivedOpen, ctx, key)).toBe(isDisclosed(peerOpen.revealState, ctx, key));
+    }
+    const derivedPw = memberRevealState({ member: { reveals: [] }, policy: 'pairwise', contextId: ctx });
+    const [peerPw] = peerFacade({ trailRoster: [{ webid: 'x', reveals: [] }], circleId: ctx, revealPolicy: 'pairwise' });
+    for (const key of ['handle', 'realName']) {
+      expect(isDisclosed(derivedPw, ctx, key)).toBe(isDisclosed(peerPw.revealState, ctx, key));
+    }
   });
 
   it('preset labels resolve to locale keys (invariant 8), null preset → no label', () => {
