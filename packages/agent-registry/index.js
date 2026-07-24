@@ -42,6 +42,12 @@ export { AVAILABILITY_STATES, AVAILABILITY_AWAY, AVAILABILITY_LADDER, isAvailabi
 // person-level coarse-enum property with the CANONICAL disclosure ladder (in-area → region →
 // municipality → district → coords) folding the bespoke stoop `profile.location` field.
 export { LOCATION_LADDER, LOCATION_IN_AREA, isLocationValue, locationLabel, inArea, locationDescriptor } from './src/location.js';
+// media property (deferred media-descriptor bridge; NOTE-reveal-state-and-profile-updates §1.4/§2.6)
+// — the `media` property type: a persona attribute (e.g. `profilePicture`) whose VALUE is a SEALED
+// MEDIA REF in @onderling/item-types' `media` item-type shape (a pointer/snapshot, blob://… + enc —
+// NOT bytes). Governed by the same disclosure policy as any attribute; reuses the sealed-media
+// surface chat photos already ride, no new mechanism.
+export { PROFILE_PICTURE_KEY, isSealedMediaRef, mediaDescriptor, profilePictureDescriptor } from './src/mediaProperty.js';
 // personal-drivers matcher (#4) — on-device, explainable-only (tag overlap + optional injected LLM judge).
 export { deriveSignature, itemSignature, sharedTags, jaccard, scoreDriver, matchDrivers, matchDriversSemantic, matchProfileDrivers } from './src/driverMatch.js';
 // matchable-aware matching (P4c) — profile↔profile match on the `matchable` axis: `matchableSignature`
@@ -54,6 +60,9 @@ export { createDisclosurePolicy, setDisclosure, getDisclosure, releasedValues, r
 // reveal PRESETS (C7) — named amount-bundles (`handle → profile → full`) over disclosure's
 // `enabled` axis; the single reveal-state home. Per-attribute booleans stay the truth.
 export { REVEAL_PRESETS, isRevealPreset, revealPresetRank, nextRevealPreset, applyRevealPreset, revealPresetOf } from './src/disclosure.js';
+// release DIFF — "did what I share in this context actually change?". The one comparator the
+// profile-update propagation gates on (member side before sending, roster side before writing).
+export { changedReleaseKeys, releaseUnchanged } from './src/disclosure.js';
 // property layer (design Phase 1) — the canonical Request record + the governed-request check.
 export { createRequest, requestHash, requestKeys } from './src/request.js';
 export { checkRequestAllowed, DEFAULT_GOVERNED_POLICY } from './src/governedRequest.js';

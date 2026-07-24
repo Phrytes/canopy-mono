@@ -13,8 +13,15 @@
 // allergy → coded) are REGISTERED by consumers, so agent-registry stays independent of any
 // one vocabulary (e.g. @onderling/attribute-charter's coarse-enum set).
 
-/** The valid property-descriptor types: coarse-enum, driver, coded, credential, scalar (frozen). */
-export const PROPERTY_TYPES = Object.freeze(['coarse-enum', 'driver', 'coded', 'credential', 'scalar']);
+/**
+ * The valid property-descriptor types (frozen):
+ *   coarse-enum · driver · coded · credential · scalar, plus
+ *   `media` — a property whose VALUE is a SEALED MEDIA REF (a pointer, not bytes), in
+ *   @onderling/item-types' canonical `media` item-type shape. The concrete descriptor +
+ *   value guard live in mediaProperty.js (like driver→drivers.js, coarse-enum place→
+ *   location.js); this layer only names the type so `descriptor({type:'media'})` validates.
+ */
+export const PROPERTY_TYPES = Object.freeze(['coarse-enum', 'driver', 'coded', 'credential', 'scalar', 'media']);
 
 /** True iff `t` is one of the PROPERTY_TYPES. */
 export function isPropertyType(t) { return PROPERTY_TYPES.includes(t); }
