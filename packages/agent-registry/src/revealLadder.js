@@ -21,21 +21,45 @@
 //
 // Pure — web ≡ mobile, no I/O. Ephemeral handles are DETERMINISTIC from the talk id (stable within a
 // talk, unlinkable across talks) so there's no randomness to thread and it's fully testable.
+//
+// ⚠ DEPRECATED-DELEGATING (C7). `disclosure.js` is now THE reveal-state home; its amount presets
+// `handle → profile → full` (`REVEAL_PRESETS`) are the pinned vocabulary. This module's `ephemeral →
+// persona → identity` level NAMES are the OLD, mis-named talk-scoped vocabulary and are kept only as a
+// back-compat shim: the ordering here now RESOLVES THROUGH the disclosure preset ordering via the 1:1
+// mapping below, so there is a single source of ordering. Public signatures + outputs are unchanged.
+// A follow-up re-homes the talk flow onto the presets and retires these level names.
 
-/** Identity levels, LEAST → MOST revealing. `identity` = hand off to the existing pairwise-reveal / contact machinery. */
-export const REVEAL_LEVELS = Object.freeze(['ephemeral', 'persona', 'identity']);
+import { REVEAL_PRESETS, revealPresetRank, nextRevealPreset } from './disclosure.js';
+
+/**
+ * The 1:1 rung↔preset mapping (design NOTE-reveal-state §1.8 / §4): the level names collapse onto the
+ * pinned amount presets by rank. `ephemeral`=floor (handle), `identity`=ceiling (full). The middle
+ * `persona` rung is the pinned `profile` preset (the presented self) — NOT the pinned model's "persona"
+ * (which is the whole presented self); the code's rung is the mis-named one.
+ */
+const LEVEL_TO_PRESET = Object.freeze({ ephemeral: 'handle', persona: 'profile', identity: 'full' });
+const PRESET_TO_LEVEL = Object.freeze({ handle: 'ephemeral', profile: 'persona', full: 'identity' });
+
+/** The pinned reveal PRESET for an old level name (`ephemeral→handle`, `persona→profile`, `identity→full`), or undefined. */
+export function presetForRevealLevel(level) { return LEVEL_TO_PRESET[level]; }
+/** The old level name for a pinned reveal preset (inverse of `presetForRevealLevel`), or undefined. */
+export function revealLevelForPreset(preset) { return PRESET_TO_LEVEL[preset]; }
+
+/**
+ * Identity levels, LEAST → MOST revealing. `identity` = hand off to the existing pairwise-reveal /
+ * contact machinery. Derived from `REVEAL_PRESETS` order so the two vocabularies can never drift.
+ */
+export const REVEAL_LEVELS = Object.freeze(REVEAL_PRESETS.map((p) => PRESET_TO_LEVEL[p]));
 
 /** True iff `l` is one of the REVEAL_LEVELS (`ephemeral` | `persona` | `identity`). */
 export function isRevealLevel(l) { return REVEAL_LEVELS.includes(l); }
 
-/** Rank a level (0=ephemeral … 2=identity), or -1 for an unknown level. */
-export function revealRank(level) { return REVEAL_LEVELS.indexOf(level); }
+/** Rank a level (0=ephemeral … 2=identity), or -1 for an unknown level. Delegates to the preset rank. */
+export function revealRank(level) { return revealPresetRank(LEVEL_TO_PRESET[level]); }
 
-/** The next level up, or the same level when already at the top (`identity`). */
+/** The next level up, or the same level when already at the top (`identity`). Delegates to `nextRevealPreset`. */
 export function nextRevealLevel(level) {
-  const i = revealRank(level);
-  if (i < 0) return 'ephemeral';
-  return REVEAL_LEVELS[Math.min(i + 1, REVEAL_LEVELS.length - 1)];
+  return PRESET_TO_LEVEL[nextRevealPreset(LEVEL_TO_PRESET[level])];
 }
 
 /**

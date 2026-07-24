@@ -180,3 +180,113 @@ export function releasedForMatching({ getProfile, profileId, defaultProfileId = 
   }
   return out;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reveal PRESETS — named bundles over the `enabled` (disclosure) axis (C7, design
+// §1.2–1.3). A preset is a convenience for setting MANY attribute keys' `enabled`
+// bits at once for a context; the per-attribute booleans remain the truth — after
+// applying a preset any single key stays individually hideable, and re-reads then as
+// "that preset minus the key".
+//
+// The presets are named for HOW MUCH you share, never for a specific field name, and
+// never with a "verified"/"identity" claim (nothing is verified in the base system):
+//   • handle  — the FLOOR: the pseudonym only, nothing beyond the handle enabled.
+//   • profile — the presented self (display name, picture, bio, …).
+//   • full    — the MOST you have chosen to share (everything the caller lists).
+// They are AMOUNT-cumulative: handle ⊆ profile ⊆ full. The caller supplies which keys
+// belong to each tier for a context via `keysFor(preset) -> string[]` (the tier's OWN
+// keys, non-cumulative); this layer makes them cumulative and reads the highest preset
+// whose whole cumulative key-set is enabled.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Reveal presets, LEAST → MOST revealing (by amount). `handle` = floor, `full` = ceiling. */
+export const REVEAL_PRESETS = Object.freeze(['handle', 'profile', 'full']);
+
+/** True iff `p` is one of the REVEAL_PRESETS (`handle` | `profile` | `full`). */
+export function isRevealPreset(p) { return REVEAL_PRESETS.includes(p); }
+
+/** Rank a preset (0=handle … 2=full), or -1 for an unknown preset. */
+export function revealPresetRank(preset) { return REVEAL_PRESETS.indexOf(preset); }
+
+/** The next preset up (more revealing), or the same when already at the ceiling (`full`). */
+export function nextRevealPreset(preset) {
+  const i = revealPresetRank(preset);
+  if (i < 0) return 'handle';
+  return REVEAL_PRESETS[Math.min(i + 1, REVEAL_PRESETS.length - 1)];
+}
+
+/**
+ * The CUMULATIVE key-set for a preset: every tier's keys up to and including `preset`,
+ * de-duplicated, in tier order. `keysFor(tier)` returns that tier's OWN keys.
+ * @param {string} preset
+ * @param {(preset:string)=>string[]} keysFor
+ * @returns {string[]}
+ */
+function cumulativePresetKeys(preset, keysFor) {
+  const idx = revealPresetRank(preset);
+  const out = [];
+  const seen = new Set();
+  REVEAL_PRESETS.forEach((p, i) => {
+    if (i > idx) return;
+    for (const k of (keysFor?.(p) || [])) {
+      if (typeof k === 'string' && k && !seen.has(k)) { seen.add(k); out.push(k); }
+    }
+  });
+  return out;
+}
+
+/**
+ * Apply a reveal preset to a context: ENABLE every key in tiers ≤ `preset` and DISABLE
+ * every key in tiers > `preset` (so `handle` truly floors — nothing beyond the handle
+ * enabled — and `full` ceilings — all listed keys enabled). Only the `enabled` axis is
+ * touched; `rung`/`matchable`/`requestable` for each key are PRESERVED. Returns a NEW
+ * policy (pure). Per-attribute booleans stay the truth: hide one key afterwards and the
+ * context reads as "this preset minus that key".
+ *
+ * @param {object} policy
+ * @param {string} contextId
+ * @param {string} preset                       one of REVEAL_PRESETS
+ * @param {{ keysFor: (preset:string)=>string[] }} opts   the caller's per-tier key assignment
+ * @returns {object} a new policy
+ */
+export function applyRevealPreset(policy, contextId, preset, { keysFor } = {}) {
+  if (typeof contextId !== 'string' || !contextId) throw new TypeError('applyRevealPreset: contextId required');
+  if (!isRevealPreset(preset)) throw new TypeError(`applyRevealPreset: unknown preset '${preset}'`);
+  if (typeof keysFor !== 'function') throw new TypeError('applyRevealPreset: keysFor(preset) function required');
+  const idx = revealPresetRank(preset);
+  let next = policy;
+  const seen = new Set();
+  REVEAL_PRESETS.forEach((p, i) => {
+    for (const k of (keysFor(p) || [])) {
+      if (typeof k !== 'string' || !k || seen.has(k)) continue;
+      seen.add(k);
+      // enable if this tier is within the applied preset, else disable — other axes untouched.
+      next = setDisclosure(next, contextId, k, { enabled: i <= idx });
+    }
+  });
+  return next;
+}
+
+/**
+ * The highest preset FULLY satisfied for a context: the most-revealing preset whose whole
+ * cumulative key-set is `enabled`. Because presets are amount-cumulative, once a preset's
+ * set is not fully enabled no higher preset can be either, so the scan stops there. A
+ * `handle` tier with no keys is vacuously satisfied → the floor reads as `handle`. Returns
+ * `null` only when even the `handle` floor's (non-empty) keys are not all enabled.
+ *
+ * @param {object} policy
+ * @param {string} contextId
+ * @param {{ keysFor: (preset:string)=>string[] }} opts
+ * @returns {'handle'|'profile'|'full'|null}
+ */
+export function revealPresetOf(policy, contextId, { keysFor } = {}) {
+  if (typeof keysFor !== 'function') throw new TypeError('revealPresetOf: keysFor(preset) function required');
+  let best = null;
+  for (const p of REVEAL_PRESETS) {
+    const keys = cumulativePresetKeys(p, keysFor);
+    const satisfied = keys.every((k) => isDisclosed(policy, contextId, k));
+    if (!satisfied) break;                       // cumulative → higher presets can't be satisfied either
+    best = p;
+  }
+  return best;
+}

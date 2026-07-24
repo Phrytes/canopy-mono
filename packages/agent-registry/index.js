@@ -49,8 +49,11 @@ export { deriveSignature, itemSignature, sharedTags, jaccard, scoreDriver, match
 // drivers against it. NOT a disclosure (fed to the on-device matcher only; see releasedForMatching).
 export { matchableSignature, matchProfilesMatchable } from './src/driverMatch.js';
 // anonymous-talk reveal ladder (#5b) — self-controlled, unilateral, ephemeral-default identity reveal.
-export { REVEAL_LEVELS, isRevealLevel, revealRank, nextRevealLevel, ephemeralHandle, createParticipant, revealSelf, revealNext, presentSelf } from './src/revealLadder.js';
+export { REVEAL_LEVELS, isRevealLevel, revealRank, nextRevealLevel, ephemeralHandle, createParticipant, revealSelf, revealNext, presentSelf, presetForRevealLevel, revealLevelForPreset } from './src/revealLadder.js';
 export { createDisclosurePolicy, setDisclosure, getDisclosure, releasedValues, releasedForMatching, isDisclosed, isMatchable, isRequestable } from './src/disclosure.js';
+// reveal PRESETS (C7) — named amount-bundles (`handle → profile → full`) over disclosure's
+// `enabled` axis; the single reveal-state home. Per-attribute booleans stay the truth.
+export { REVEAL_PRESETS, isRevealPreset, revealPresetRank, nextRevealPreset, applyRevealPreset, revealPresetOf } from './src/disclosure.js';
 // property layer (design Phase 1) — the canonical Request record + the governed-request check.
 export { createRequest, requestHash, requestKeys } from './src/request.js';
 export { checkRequestAllowed, DEFAULT_GOVERNED_POLICY } from './src/governedRequest.js';
